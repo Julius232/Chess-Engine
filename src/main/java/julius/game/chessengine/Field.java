@@ -2,9 +2,7 @@ package julius.game.chessengine;
 
 
 import julius.game.chessengine.figures.Figure;
-import lombok.Data;
 
-@Data
 public class Field {
 
     private final Position position;
@@ -18,6 +16,19 @@ public class Field {
         this.position = position;
         this.figure = figure;
     }
+
+    public Position getPosition() {
+        return position;
+    }
+
+    public Figure getFigure() {
+        return figure;
+    }
+
+    public void setFigure(Figure figure) {
+        this.figure = figure;
+    }
+
 
     public String getFigureTypeOnField() {
         if (figure.getType() == null) {

@@ -6,7 +6,9 @@ import julius.game.chessengine.figures.Rook;
 import lombok.Getter;
 import org.springframework.util.StringUtils;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -50,24 +52,24 @@ public class Board {
                 .orElseThrow(RuntimeException::new);
     }
 
-    public Set<Figure> getFigures() {
+    public List<Figure> getFigures() {
         return board.stream()
                 .filter(field -> !field.isEmptyField())
                 .map(Field::getFigure)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
     }
 
-    public Set<Pawn> getPawns(){
+    public List<Pawn> getPawns(){
         return getFigures().stream()
                 .filter(figure -> "PAWN".equals(figure.getType()))
                 .map(figure -> (Pawn)figure)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
     }
 
-    public Set<Pawn> getPawnsForColor(String color){
+    public List<Pawn> getPawnsForColor(String color){
         return getPawns().stream()
                 .filter(pawn -> color.equals(pawn.getType()))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
     }
 
 }

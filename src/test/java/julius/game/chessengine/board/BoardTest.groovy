@@ -1,5 +1,8 @@
-package julius.game.chessengine
+package julius.game.chessengine.board
 
+import julius.game.chessengine.Board
+import julius.game.chessengine.Field
+import julius.game.chessengine.Position
 import julius.game.chessengine.figures.Figure
 import julius.game.chessengine.figures.Rook
 import spock.lang.Specification
@@ -11,7 +14,7 @@ class BoardTest extends Specification {
         Board board = new Board()
 
         when:
-        Set<Figure> figures = board.getFigures()
+        List<Figure> figures = board.getFigures()
 
         then:
         figures.size() == 20
