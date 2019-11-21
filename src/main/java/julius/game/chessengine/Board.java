@@ -1,11 +1,16 @@
 package julius.game.chessengine;
 
+import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.figures.Pawn;
+import julius.game.chessengine.figures.Rook;
+import lombok.Getter;
 import org.springframework.util.StringUtils;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+@Getter
 public class Board {
 
     private final static String WHITE = "white";
@@ -15,6 +20,7 @@ public class Board {
 
     public Board(){
         setPawns();
+        setRooks();
     }
 
     private void setPawns() {
@@ -26,7 +32,14 @@ public class Board {
         }
     }
 
-    public boolean isFigureOnField(Position position) {
+    private void setRooks() {
+        this.board.add(new Field(WHITE, new Position('a', 1), new Rook(WHITE)));
+        this.board.add(new Field(WHITE, new Position('h', 1), new Rook(WHITE)));
+        this.board.add(new Field(WHITE, new Position('a', 8), new Rook(BLACK)));
+        this.board.add(new Field(WHITE, new Position('h', 8), new Rook(BLACK)));
+    }
+
+    public boolean isFigureAtPosition(Position position) {
         return ! StringUtils.isEmpty(getFieldForPosition(position).getFigureTypeOnField());
     }
 
@@ -37,6 +50,24 @@ public class Board {
                 .orElseThrow(RuntimeException::new);
     }
 
+    public Set<Figure> getFigures() {
+        return board.stream()
+                .filter(field -> !field.isEmptyField())
+                .map(Field::getFigure)
+                .collect(Collectors.toSet());
+    }
 
+    public Set<Pawn> getPawns(){
+        return getFigures().stream()
+                .filter(figure -> "PAWN".equals(figure.getType()))
+                .map(figure -> (Pawn)figure)
+                .collect(Collectors.toSet());
+    }
+
+    public Set<Pawn> getPawnsForColor(String color){
+        return getPawns().stream()
+                .filter(pawn -> color.equals(pawn.getType()))
+                .collect(Collectors.toSet());
+    }
 
 }

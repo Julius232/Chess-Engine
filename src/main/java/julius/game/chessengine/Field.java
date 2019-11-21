@@ -4,8 +4,6 @@ package julius.game.chessengine;
 import julius.game.chessengine.figures.Figure;
 import lombok.Data;
 
-import java.util.Optional;
-
 @Data
 public class Field {
 
@@ -21,26 +19,14 @@ public class Field {
         this.figure = figure;
     }
 
-    public String getColor() {
-        return color;
-    }
-
-    public Position getPosition() {
-        return position;
-    }
-
-    public Optional<Figure> getFigure() {
-        return Optional.ofNullable(this.figure);
-    }
-
-    public void setFigure(Figure figure) {
-        this.figure = figure;
-    }
-
     public String getFigureTypeOnField() {
         if (figure.getType() == null) {
             return "";
         }
         else return figure.getType();
+    }
+
+    public boolean isEmptyField() {
+       return figure == null ? true : false;
     }
 }

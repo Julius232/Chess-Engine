@@ -4,16 +4,10 @@ import julius.game.chessengine.Position;
 import lombok.Data;
 
 @Data
-public class Pawn extends Figure {
+public class Rook extends Figure {
 
-    private boolean hasMoved = false;
-
-    public Pawn(String color) {
-        super(color, "PAWN");
-    }
-
-    public boolean isFirstMove(){
-        return true;
+    public Rook(String color) {
+        super(color, "ROOK");
     }
 
     @Override
