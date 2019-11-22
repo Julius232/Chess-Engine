@@ -1,22 +1,27 @@
 package julius.game.chessengine.figures;
 
-import julius.game.chessengine.Position;
+import julius.game.chessengine.Field;
 import lombok.Data;
 
 @Data
 public class Rook extends Figure {
 
-    public Rook(String color) {
-        super(color, "ROOK");
+    public Rook(String color, Field field) {
+        super(color, "ROOK", field);
     }
 
     @Override
-    void kill(Position toPosition) {
+    void move(Field toField) {
 
     }
 
     @Override
-    boolean isLegalMove() {
+    void kill(Field toField) {
+
+    }
+
+    @Override
+    boolean isLegalMove(Field toField) {
         return false;
     }
 }

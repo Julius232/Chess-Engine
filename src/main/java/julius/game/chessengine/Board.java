@@ -4,13 +4,12 @@ import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.figures.Pawn;
 import julius.game.chessengine.figures.Rook;
 import lombok.Getter;
-import org.springframework.util.StringUtils;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
+
+
 
 @Getter
 public class Board {
@@ -18,58 +17,64 @@ public class Board {
     private final static String WHITE = "white";
     private final static String BLACK = "black";
 
-    private final Set<Field> board = new HashSet<>();
+    private final FieldGenerator fieldGenerator;
+
+    private final Collection<Field> fields;
+    private Collection<Figure> figures;
 
     public Board(){
-        setPawns();
-        setRooks();
+        this.fieldGenerator = new FieldGenerator();
+
+        this.fields = fieldGenerator.generateFields();
+        this.figures = initializeFigures();
     }
 
-    private void setPawns() {
+    private List<Figure> initializeFigures() {
+        List<Figure> figures = new ArrayList<>();
+        figures = generatePawns(figures);
+        figures = generateRooks(figures);
+
+        return figures;
+    }
+
+    private List<Figure> generatePawns(List<Figure> figures) {
         for (char x = 'a'; x <= 'h'; x++) {
-            this.board.add(new Field(WHITE, new Position(x, 2), new Pawn(WHITE)));
+            figures.add(new Pawn(WHITE, getFieldForPosition(new Position(x, 2))));
         }
         for (char x = 'a'; x <= 'h'; x++) {
-            board.add(new Field(BLACK, new Position(x, 7), new Pawn(WHITE)));
+            figures.add(new Pawn(BLACK, getFieldForPosition(new Position(x, 7))));
         }
+        return figures;
     }
 
-    private void setRooks() {
-        this.board.add(new Field(WHITE, new Position('a', 1), new Rook(WHITE)));
-        this.board.add(new Field(WHITE, new Position('h', 1), new Rook(WHITE)));
-        this.board.add(new Field(WHITE, new Position('a', 8), new Rook(BLACK)));
-        this.board.add(new Field(WHITE, new Position('h', 8), new Rook(BLACK)));
+    private List<Figure> generateRooks(List<Figure> figures) {
+        figures.add(new Rook(WHITE, getFieldForPosition(new Position('a', 1))));
+        figures.add(new Rook(WHITE, getFieldForPosition(new Position('h', 1))));
+        figures.add(new Rook(BLACK, getFieldForPosition(new Position('a', 8))));
+        figures.add(new Rook(WHITE, getFieldForPosition(new Position('h', 8))));
+        return figures;
     }
 
-    public boolean isFigureAtPosition(Position position) {
-        return ! StringUtils.isEmpty(getFieldForPosition(position).getFigureTypeOnField());
-    }
 
     public Field getFieldForPosition(Position position) {
-        return board.stream()
+        return fields.stream()
                 .filter(field -> field.getPosition().equals(position))
                 .findAny()
                 .orElseThrow(RuntimeException::new);
     }
 
-    public List<Figure> getFigures() {
-        return board.stream()
-                .filter(field -> !field.isEmptyField())
-                .map(Field::getFigure)
-                .collect(Collectors.toList());
+    public Figure getFigureForPosition(Position position) {
+        return figures.stream()
+                .filter(figure -> position.equals(figure.getCurrentField().getPosition()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No Figure at Position: " +
+                        position.getXAchse() + position.getYAchse()));
+
     }
 
-    public List<Pawn> getPawns(){
-        return getFigures().stream()
-                .filter(figure -> "PAWN".equals(figure.getType()))
-                .map(figure -> (Pawn)figure)
-                .collect(Collectors.toList());
-    }
-
-    public List<Pawn> getPawnsForColor(String color){
-        return getPawns().stream()
-                .filter(pawn -> color.equals(pawn.getType()))
-                .collect(Collectors.toList());
+    public boolean isEmptyField(Field field) {
+        return figures.stream()
+                .noneMatch(figure -> field.equals(figure.getCurrentField()));
     }
 
 }
