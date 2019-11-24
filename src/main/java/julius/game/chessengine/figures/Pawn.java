@@ -68,8 +68,8 @@ public class Pawn extends Figure {
             moveTwoForward = getPosY() + 2;
         }
         else if (Color.BLACK.equals(pawnColor)) {
-            moveOneForward = getPosY() + 1;
-            moveTwoForward = getPosY() + 2;
+            moveOneForward = getPosY() - 1;
+            moveTwoForward = getPosY() - 2;
         }
 
         else throw new RuntimeException(String.format("Color %s is not a valid color.", pawnColor));

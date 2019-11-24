@@ -1,14 +1,18 @@
 package julius.game.chessengine.board;
 
+import julius.game.chessengine.Color;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.generator.FieldGenerator;
 import julius.game.chessengine.generator.FigureGenerator;
 import lombok.Data;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Data
+@Log4j2
 public class Board {
 
     private final static String WHITE = "white";
@@ -231,4 +235,92 @@ public class Board {
         }
         return figures;
     }
+
+    public void logBoard() {
+        String logBoard = "";
+        int counter = 1;
+        for(int y = 8; y >= 1; y--) {
+            logBoard += y + ": ";
+            for (char x = 'a'; x <= 'h'; x++) {
+                Field logField = getFieldForPosition(new Position(x,y));
+
+                if(isOccupiedField(logField)) {
+                    Figure logFigure = getFigureForPosition(new Position(x, y));
+                    if(logFigure.getColor().equals(Color.BLACK)) {
+                        if (logFigure.getType().equals("PAWN")) {
+                            logBoard += String.valueOf(Character.toChars(0x265F));
+                        }
+                    }
+                    else {
+                        if (logFigure.getType().equals("PAWN")) {
+                            logBoard += String.valueOf(Character.toChars(0x2659));
+                        }
+                    }
+                    if(logFigure.getColor().equals(Color.BLACK)) {
+                        if (logFigure.getType().equals("ROOK")) {
+                            logBoard += String.valueOf(Character.toChars(0x265C));
+                        }
+                    }
+                    else {
+                        if (logFigure.getType().equals("ROOK")) {
+                            logBoard += String.valueOf(Character.toChars(0x2656));
+                        }
+                    }
+                    if(logFigure.getColor().equals(Color.BLACK)) {
+                        if (logFigure.getType().equals("KNIGHT")) {
+                            logBoard += String.valueOf(Character.toChars(0x265E));
+                        }
+                    }
+                    else {
+                        if (logFigure.getType().equals("KNIGHT")) {
+                            logBoard += String.valueOf(Character.toChars(0x2658));
+                        }
+                    }
+                    if(logFigure.getColor().equals(Color.BLACK)) {
+                        if (logFigure.getType().equals("BISHOP")) {
+                            logBoard += String.valueOf(Character.toChars(0x265D));
+                        }
+                    }
+                    else {
+                        if (logFigure.getType().equals("BISHOP")) {
+                            logBoard += String.valueOf(Character.toChars(0x2657));
+                        }
+                    }
+                    if(logFigure.getColor().equals(Color.BLACK)) {
+                        if (logFigure.getType().equals("QUEEN")) {
+                            logBoard += String.valueOf(Character.toChars(0x265B));
+                        }
+                    }
+                    else {
+                        if (logFigure.getType().equals("QUEEN")) {
+                            logBoard += String.valueOf(Character.toChars(0x2655));
+                        }
+                    }
+                    if(logFigure.getColor().equals(Color.BLACK)) {
+                        if (logFigure.getType().equals("KING")) {
+                            logBoard += String.valueOf(Character.toChars(0x265A));
+                        }
+                    }
+                    else {
+                        if (logFigure.getType().equals("KING")) {
+                            logBoard += String.valueOf(Character.toChars(0x2654));
+                        }
+                    }
+                }
+                else if (logField.getColor().equals(Color.BLACK)) {
+                    logBoard += String.valueOf(Character.toChars(0x25AE));
+                }
+                else {
+                    logBoard += String.valueOf(Character.toChars(0x25AF));
+                }
+                if (counter % 8 == 0) {
+                    log.info(logBoard);
+                    logBoard = "";
+                }
+                counter++;
+            }
+        }
+        log.info("   --------------");
+    }
+
 }

@@ -1,6 +1,9 @@
 package julius.game.chessengine.player;
 
 import julius.game.chessengine.board.Field;
+import julius.game.chessengine.figures.Figure;
+
+import java.util.List;
 
 public interface Player {
 

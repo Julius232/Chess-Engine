@@ -81,13 +81,15 @@ class BoardTest extends Specification {
     def "MovePawnToField"() {
         given:
         def board = new Board()
+        def a2 = new Position('a' as char, 2)
         def a3 = new Position('a' as char, 3)
-        def fieldA2 = new Field(Color.WHITE, new Position('a' as char, 2))
-        def fieldA3 = new Field(Color.WHITE, a3)
-        def pawn = new Pawn(Color.WHITE, fieldA2)
+        def fieldA3 =  board.getFieldForPosition(a3)
+        def pawn = board.getFigureForPosition(a2)
+        board.logBoard()
 
         when:
-        board.moveFigureToField(pawn, fieldA3)
+        pawn.move(board, fieldA3)
+        board.logBoard()
 
         then:
         board.getFigureForPosition(a3) == pawn
@@ -103,14 +105,17 @@ class BoardTest extends Specification {
         def fieldC6 = new Field(Color.WHITE, c6)
         def fieldB7 = new Field(Color.WHITE, b7)
         def pawn = new Pawn(Color.WHITE, fieldC2)
+        board.logBoard()
 
         when:
         //Move pawn to field C6
         board.moveFigureToField(pawn, fieldC6)
         def whitePawn = board.getFigureForPosition(c6)
+        board.logBoard()
 
         //Hit Enemy Pawn from field
         whitePawn.attack(board, fieldB7)
+        board.logBoard()
 
         then:
         whitePawn.color == Color.WHITE
@@ -130,7 +135,6 @@ class BoardTest extends Specification {
         then:
         possibleFields == []
     }
-
 
     def "checkIfBoardIsGeneratedCorrect"() {
         when:
