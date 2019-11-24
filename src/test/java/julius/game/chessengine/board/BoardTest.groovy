@@ -11,9 +11,6 @@ import spock.lang.Specification
 
 class BoardTest extends Specification {
 
-    def static final WHITE = "white"
-    def static final BLACK = "black"
-
     def boardUtils = new BoardUtils()
 
     def fieldGenerator = new FieldGenerator()
@@ -54,7 +51,7 @@ class BoardTest extends Specification {
 
         then:
         figure.getType() == "ROOK"
-        figure.getColor() == WHITE
+        figure.getColor() == Color.WHITE
     }
 
     def "showPossibleMovesOfPawn"() {

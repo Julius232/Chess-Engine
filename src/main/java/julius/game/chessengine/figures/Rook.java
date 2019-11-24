@@ -4,7 +4,6 @@ import julius.game.chessengine.Board;
 import julius.game.chessengine.Field;
 import lombok.Data;
 
-import java.util.Collection;
 import java.util.List;
 
 @Data
@@ -15,22 +14,17 @@ public class Rook extends Figure {
     }
 
     @Override
-    void move(Field toField) {
-
-    }
-
-    @Override
-    void kill(Field toField) {
-
-    }
-
-    @Override
-    List<Field> getPossibleFields(Board board) {
+    public Board move(Board board, Field toField) {
         return null;
     }
 
     @Override
-    boolean isLegalMove(Field toField) {
-        return false;
+    public Board attack(Board board, Field toField) {
+        return null;
+    }
+
+    @Override
+    public List<Field> getPossibleFields(Board board) {
+        return null;
     }
 }

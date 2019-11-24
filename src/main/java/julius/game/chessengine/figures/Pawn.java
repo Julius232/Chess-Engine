@@ -4,11 +4,15 @@ import julius.game.chessengine.Board;
 import julius.game.chessengine.Color;
 import julius.game.chessengine.Field;
 import julius.game.chessengine.Position;
+import julius.game.chessengine.utils.BoardUtils;
 import lombok.Data;
+import lombok.extern.log4j.Log4j2;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
+@Log4j2
 public class Pawn extends Figure {
 
     private boolean hasMoved = false;
@@ -18,56 +22,112 @@ public class Pawn extends Figure {
     }
 
     @Override
-    void move(Field toField) {
-        if(isLegalMove(toField)) {
-            setCurrentField(toField);
+    public Board move(Board board, Field toField) {
+        if(getPossibleFields(board)
+                .stream()
+                .anyMatch(field -> toField.equals(field))) {
+            board.setFigures(BoardUtils.moveFigureToField(board.getFigures(), this, toField));
             setHasMoved(true);
+            return board;
+        }
+        else {
+            log.info("Move Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+            return board;
         }
     }
 
     @Override
-    void kill(Field toField) {
-        if(isLegalMove(toField)) {
-
+    public Board attack(Board board, Field toField) {
+        if(getPossibleFields(board)
+                .stream()
+                .anyMatch(field -> toField.equals(field))) {
+            board.setFigures(BoardUtils.hitFigureFromBoard(board.getFigures(), this, toField));
             setHasMoved(true);
+            return board;
+        }
+        else {
+            log.info("Attack Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+            return board;
         }
     }
 
     @Override
-    List<Field> getPossibleFields(Board board) {
-        String color = super.getColor();
+    public List<Field> getPossibleFields(Board board) {
+
         List<Field> possibleFields = new ArrayList<>();
 
-        if(Color.WHITE.equals(color) && (getPosY() + 1 <= 8)) {
-            Optional<Field> possibleField = board.getFields().stream()
-                    .filter(field -> field.getPosition().equals(new Position(getPosX(), getPosY() + 1)))
-                    .filter(field -> board.getFigures()
-                            .stream()
-                            .noneMatch(figure -> field.equals(figure.getCurrentField())))
-                    .findFirst();
-            if(possibleField.isPresent()) {
-                possibleFields.add(possibleField.get());
+        if (Color.WHITE.equals(super.getColor())) {
+
+            Field attackLeft = BoardUtils.getFieldForPosition(
+                    board.getFields(),
+                    new Position((char) (getPosX() - 1), getPosY() + 1)
+            );
+
+            Field attackRight = BoardUtils.getFieldForPosition(
+                    board.getFields(),
+                    new Position((char) (getPosX() + 1), getPosY() + 1)
+            );
+
+            if (getPosY() + 1 <= 8) {
+                Field field = BoardUtils.getFieldForPosition(board.getFields(), new Position(getPosX(), getPosY() + 1));
+                if (BoardUtils.isEmptyField(board.getFigures(), field)) {
+                    possibleFields.add(field);
+                }
             }
 
+            if (!hasMoved) {
+                Field field = BoardUtils.getFieldForPosition(board.getFields(), new Position(getPosX(), getPosY() + 2));
+                if (BoardUtils.isEmptyField(board.getFigures(), field)) {
+                    possibleFields.add(field);
+                }
+            }
+
+            if(BoardUtils.isEnemyOnField(board.getFigures(), attackLeft, Color.WHITE)) {
+                possibleFields.add(attackLeft);
+            }
+
+            if(BoardUtils.isEnemyOnField(board.getFigures(), attackRight, Color.WHITE)) {
+                possibleFields.add(attackRight);
+            }
         }
 
-        if(!hasMoved && Color.WHITE.equals(color) && (getPosY() + 2 <= 8)) {
-            Optional<Field> possibleField = board.getFields().stream()
-                    .filter(field -> field.getPosition().equals(new Position(getPosX(), getPosY() + 2)))
-                    .filter(field -> board.getFigures()
-                            .stream()
-                            .noneMatch(figure -> field.equals(figure.getCurrentField())))
-                    .findFirst();
-            if(possibleField.isPresent()) {
-                possibleFields.add(possibleField.get());
+        if (Color.BLACK.equals(super.getColor())) {
+
+            Field attackLeft = BoardUtils.getFieldForPosition(
+                    board.getFields(),
+                    new Position((char) (getPosX() - 1), getPosY() - 1)
+            );
+
+            Field attackRight = BoardUtils.getFieldForPosition(
+                    board.getFields(),
+                    new Position((char) (getPosX() + 1), getPosY() - 1)
+            );
+
+            if (getPosY() - 1 >= 1) {
+                Field field = BoardUtils.getFieldForPosition(board.getFields(), new Position(getPosX(), getPosY() - 1));
+                if (BoardUtils.isEmptyField(board.getFigures(), field)) {
+                    possibleFields.add(field);
+                }
             }
 
+            if (!hasMoved) {
+                Field field = BoardUtils.getFieldForPosition(board.getFields(), new Position(getPosX(), getPosY() - 2));
+                if (BoardUtils.isEmptyField(board.getFigures(), field)) {
+                    possibleFields.add(field);
+                }
+            }
+
+            if(BoardUtils.isEnemyOnField(board.getFigures(), attackLeft, Color.BLACK)) {
+                possibleFields.add(attackLeft);
+            }
+
+            if(BoardUtils.isEnemyOnField(board.getFigures(), attackRight, Color.BLACK)) {
+                possibleFields.add(attackRight);
+            }
         }
         return possibleFields;
     }
 
-    @Override
-    boolean isLegalMove(Field toField) {
-        return true;
-    }
 }

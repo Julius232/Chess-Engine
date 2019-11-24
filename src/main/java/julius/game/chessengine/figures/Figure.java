@@ -1,12 +1,10 @@
 package julius.game.chessengine.figures;
 
 import julius.game.chessengine.Board;
-import julius.game.chessengine.Color;
 import julius.game.chessengine.Field;
 import julius.game.chessengine.Position;
 import lombok.Data;
 
-import java.util.Collection;
 import java.util.List;
 
 @Data
@@ -24,13 +22,11 @@ public abstract class Figure {
     }
 
     //Methods
-    abstract void move(Field toField);
+    abstract public Board move(Board board, Field toField);
 
-    abstract void kill(Field toField);
+    abstract public Board attack(Board board, Field toField);
 
-    abstract List<Field> getPossibleFields(Board board);
-
-    abstract boolean isLegalMove(Field toField);
+    abstract public List<Field> getPossibleFields(Board board);
 
     public Position getCurrentPosition() {
         return this.currentField.getPosition();
