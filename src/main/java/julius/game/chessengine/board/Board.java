@@ -42,29 +42,9 @@ public class Board {
                         position.getXAchse() + position.getYAchse()));
     }
 
-    //FIELD OPERATIONS
-
-    public Field getFieldForPosition(Position position) {
-        return fields.stream()
-                .filter(field -> field.getPosition().equals(position))
-                .findAny()
-                .orElse(new Field("offsideTheBoard", position));
-    }
-
     public boolean isEmptyField(Field field) {
         return figures.stream()
                 .noneMatch(figure -> field.equals(figure.getCurrentField()));
-    }
-
-    public List<Field> getAllEmptyFields() {
-        return figures.stream()
-                .filter(figure -> isEmptyField(figure.getCurrentField()))
-                .map(Figure::getCurrentField)
-                .collect(Collectors.toList());
-    }
-
-    public boolean isOccupiedField(Field field) {
-        return !isEmptyField(field);
     }
 
     public List<Field> getAllOccupiedFields() {
@@ -85,6 +65,25 @@ public class Board {
                 .filter(figure -> isEnemyOnField(figure.getCurrentField(), currentPlayerColor))
                 .map(Figure::getCurrentField)
                 .collect(Collectors.toList());
+    }
+
+    //FIELD OPERATIONS
+
+    public Field getFieldForPosition(Position position) {
+        return fields.stream()
+                .filter(field -> field.getPosition().equals(position))
+                .findAny()
+                .orElse(new Field("offsideTheBoard", position));
+    }
+
+    public List<Field> getAllEmptyFields() {
+        return fields.stream()
+                .filter(field -> isEmptyField(field))
+                .collect(Collectors.toList());
+    }
+
+    public boolean isOccupiedField(Field field) {
+        return !isEmptyField(field);
     }
 
     //X-AXIS OPERATIONS

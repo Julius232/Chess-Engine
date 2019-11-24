@@ -15,7 +15,7 @@ public class Position {
         this.yAchse = yAchse;
     }
 
-    public boolean isPositionInFields(List<Field> fields) {
+    public boolean  isPositionInFields(List<Field> fields) {
         return fields.stream()
                 .anyMatch(field -> this.equals(field.getPosition()));
     }

@@ -3,13 +3,14 @@ package julius.game.chessengine.figures;
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
+import lombok.extern.log4j.Log4j2;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Log4j2
 public class Knight extends Figure {
 
     public Knight(String color, Field field) {
@@ -18,17 +19,37 @@ public class Knight extends Figure {
 
     @Override
     public Board move(Board board, Field toField) {
-        return null;
+        if(getPossibleFields(board)
+                .stream()
+                .anyMatch(toField::equals)) {
+            board.moveFigureToField( this, toField);
+            return board;
+        }
+        else {
+            log.info("Move Operation of Knight from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+            return board;
+        }
     }
 
     @Override
     public Board attack(Board board, Field toField) {
-        return null;
+        if(getPossibleFields(board)
+                .stream()
+                .anyMatch(toField::equals)) {
+            board.hitFigureFromBoard(this, toField);
+            return board;
+        }
+        else {
+            log.info("Attack Operation of Knight from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+            return board;
+        }
     }
 
     @Override
     public List<Field> getPossibleFields(Board board) {
-        
+
         List<Field> attackFields = getAllPositionMoves()
                 .stream()
                 .filter(position -> position.isPositionInFields(board.getAllEnemyFields(getColor())))
