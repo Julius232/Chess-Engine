@@ -6,12 +6,9 @@ import julius.game.chessengine.Field
 import julius.game.chessengine.Position
 import julius.game.chessengine.figures.Pawn
 import julius.game.chessengine.generator.FieldGenerator
-import julius.game.chessengine.utils.BoardUtils
 import spock.lang.Specification
 
 class BoardTest extends Specification {
-
-    def boardUtils = new BoardUtils()
 
     def fieldGenerator = new FieldGenerator()
 
@@ -37,8 +34,8 @@ class BoardTest extends Specification {
         def board = new Board()
 
         then:
-        boardUtils.isEmptyField(board.getFigures(),boardUtils.getFieldForPosition(board.getFields(), emptyPosition))
-        !boardUtils.isEmptyField(board.getFigures(),boardUtils.getFieldForPosition(board.getFields(), rookPosition))
+        board.isEmptyField(board.getFieldForPosition(emptyPosition))
+        !board.isEmptyField(board.getFieldForPosition(rookPosition))
     }
 
     def "getFigureForPositionTest"() {
@@ -47,7 +44,7 @@ class BoardTest extends Specification {
         def whiteRookPosition = new Position('a' as char, 1)
 
         when:
-        def figure = boardUtils.getFigureForPosition(board.getFigures(),whiteRookPosition)
+        def figure = board.getFigureForPosition(whiteRookPosition)
 
         then:
         figure.getType() == "ROOK"

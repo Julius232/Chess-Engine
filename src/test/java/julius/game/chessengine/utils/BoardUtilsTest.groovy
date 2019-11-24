@@ -9,15 +9,6 @@ import spock.lang.Specification
 
 class BoardUtilsTest extends Specification {
 
-    def "GetFieldForPosition"() {
-    }
-
-    def "GetFigureForPosition"() {
-    }
-
-    def "IsEmptyField"() {
-    }
-
     def "IsEnemyOnField"() {
         given:
         def board = new Board()
@@ -28,8 +19,8 @@ class BoardUtilsTest extends Specification {
         def enemyField = new Field(Color.BLACK, new Position('a' as char, 7))
 
         then:
-        BoardUtils.isEnemyOnField(board.getFigures(), enemyField, currentPlayerColor)
-        !BoardUtils.isEnemyOnField(board.getFigures(), enemyField, enemyPlayerColor)
+        board.isEnemyOnField(enemyField, currentPlayerColor)
+        !board.isEnemyOnField(enemyField, enemyPlayerColor)
     }
 
     def "MoveFigureToField"() {
@@ -41,11 +32,10 @@ class BoardUtilsTest extends Specification {
         def pawn = new Pawn(Color.WHITE, fieldA2)
 
         when:
-        board.setFigures(BoardUtils.moveFigureToField(board.getFigures(), pawn, fieldA3))
-
+        board.moveFigureToField(pawn, fieldA3)
 
         then:
-        BoardUtils.getFigureForPosition(board.getFigures(), a3) == pawn
+        board.getFigureForPosition(a3) == pawn
     }
 
     def "Pawn moves to Field c6 and hits enemy Pawn on b7 from field"() {
@@ -61,8 +51,8 @@ class BoardUtilsTest extends Specification {
 
         when:
         //Move pawn to field C6
-        board.setFigures(BoardUtils.moveFigureToField(board.getFigures(), pawn, fieldC6))
-        def whitePawn = BoardUtils.getFigureForPosition(board.getFigures(), c6)
+        board.moveFigureToField(pawn, fieldC6)
+        def whitePawn = board.getFigureForPosition(c6)
 
         //Hit Enemy Pawn from field
         whitePawn.attack(board, fieldB7)

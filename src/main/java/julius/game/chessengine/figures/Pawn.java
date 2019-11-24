@@ -4,7 +4,6 @@ import julius.game.chessengine.Board;
 import julius.game.chessengine.Color;
 import julius.game.chessengine.Field;
 import julius.game.chessengine.Position;
-import julius.game.chessengine.utils.BoardUtils;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
@@ -26,7 +25,7 @@ public class Pawn extends Figure {
         if(getPossibleFields(board)
                 .stream()
                 .anyMatch(field -> toField.equals(field))) {
-            board.setFigures(BoardUtils.moveFigureToField(board.getFigures(), this, toField));
+            board.moveFigureToField( this, toField);
             setHasMoved(true);
             return board;
         }
@@ -42,7 +41,7 @@ public class Pawn extends Figure {
         if(getPossibleFields(board)
                 .stream()
                 .anyMatch(field -> toField.equals(field))) {
-            board.setFigures(BoardUtils.hitFigureFromBoard(board.getFigures(), this, toField));
+            board.hitFigureFromBoard(this, toField);
             setHasMoved(true);
             return board;
         }
@@ -55,79 +54,54 @@ public class Pawn extends Figure {
 
     @Override
     public List<Field> getPossibleFields(Board board) {
-
         List<Field> possibleFields = new ArrayList<>();
+        String pawnColor = super.getColor();
 
-        if (Color.WHITE.equals(super.getColor())) {
+        int moveOneForward;
+        int moveTwoForward;
 
-            Field attackLeft = BoardUtils.getFieldForPosition(
-                    board.getFields(),
-                    new Position((char) (getPosX() - 1), getPosY() + 1)
-            );
+        if (Color.WHITE.equals(pawnColor)) {
+            moveOneForward = getPosY() + 1;
+            moveTwoForward = getPosY() + 2;
+        }
+        else if (Color.BLACK.equals(pawnColor)) {
+            moveOneForward = getPosY() + 1;
+            moveTwoForward = getPosY() + 2;
+        }
 
-            Field attackRight = BoardUtils.getFieldForPosition(
-                    board.getFields(),
-                    new Position((char) (getPosX() + 1), getPosY() + 1)
-            );
+        else throw new RuntimeException(String.format("Color %s is not a valid color.", pawnColor));
 
-            if (getPosY() + 1 <= 8) {
-                Field field = BoardUtils.getFieldForPosition(board.getFields(), new Position(getPosX(), getPosY() + 1));
-                if (BoardUtils.isEmptyField(board.getFigures(), field)) {
-                    possibleFields.add(field);
-                }
-            }
+        Field attackLeft = board.getFieldForPosition(
+                new Position((char) (getPosX() - 1), moveOneForward)
+        );
 
-            if (!hasMoved) {
-                Field field = BoardUtils.getFieldForPosition(board.getFields(), new Position(getPosX(), getPosY() + 2));
-                if (BoardUtils.isEmptyField(board.getFigures(), field)) {
-                    possibleFields.add(field);
-                }
-            }
+        Field attackRight = board.getFieldForPosition(
+                new Position((char) (getPosX() + 1), moveTwoForward)
+        );
 
-            if(BoardUtils.isEnemyOnField(board.getFigures(), attackLeft, Color.WHITE)) {
-                possibleFields.add(attackLeft);
-            }
-
-            if(BoardUtils.isEnemyOnField(board.getFigures(), attackRight, Color.WHITE)) {
-                possibleFields.add(attackRight);
+        if (Color.WHITE.equals(pawnColor) && moveOneForward <= 8 || Color.BLACK.equals(pawnColor) && moveOneForward >= 1) {
+            Field field = board.getFieldForPosition(new Position(getPosX(), moveOneForward));
+            if (board.isEmptyField(field)) {
+                possibleFields.add(field);
             }
         }
 
-        if (Color.BLACK.equals(super.getColor())) {
-
-            Field attackLeft = BoardUtils.getFieldForPosition(
-                    board.getFields(),
-                    new Position((char) (getPosX() - 1), getPosY() - 1)
-            );
-
-            Field attackRight = BoardUtils.getFieldForPosition(
-                    board.getFields(),
-                    new Position((char) (getPosX() + 1), getPosY() - 1)
-            );
-
-            if (getPosY() - 1 >= 1) {
-                Field field = BoardUtils.getFieldForPosition(board.getFields(), new Position(getPosX(), getPosY() - 1));
-                if (BoardUtils.isEmptyField(board.getFigures(), field)) {
-                    possibleFields.add(field);
-                }
-            }
-
-            if (!hasMoved) {
-                Field field = BoardUtils.getFieldForPosition(board.getFields(), new Position(getPosX(), getPosY() - 2));
-                if (BoardUtils.isEmptyField(board.getFigures(), field)) {
-                    possibleFields.add(field);
-                }
-            }
-
-            if(BoardUtils.isEnemyOnField(board.getFigures(), attackLeft, Color.BLACK)) {
-                possibleFields.add(attackLeft);
-            }
-
-            if(BoardUtils.isEnemyOnField(board.getFigures(), attackRight, Color.BLACK)) {
-                possibleFields.add(attackRight);
+        if (!hasMoved) {
+            Field field = board.getFieldForPosition(new Position(getPosX(), moveTwoForward));
+            if (board.isEmptyField(field)) {
+                possibleFields.add(field);
             }
         }
-        return possibleFields;
+
+        if(board.isEnemyOnField(attackLeft, pawnColor)) {
+            possibleFields.add(attackLeft);
+        }
+
+        if(board.isEnemyOnField(attackRight, pawnColor)) {
+            possibleFields.add(attackRight);
+        }
+
+    return possibleFields;
     }
 
 }
