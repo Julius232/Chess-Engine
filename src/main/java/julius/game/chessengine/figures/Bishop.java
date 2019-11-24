@@ -1,7 +1,7 @@
 package julius.game.chessengine.figures;
 
-import julius.game.chessengine.Board;
-import julius.game.chessengine.Field;
+import julius.game.chessengine.board.Board;
+import julius.game.chessengine.board.Field;
 
 import java.util.List;
 

@@ -1,8 +1,8 @@
 package julius.game.chessengine.generator;
 
 import julius.game.chessengine.Color;
-import julius.game.chessengine.Field;
-import julius.game.chessengine.Position;
+import julius.game.chessengine.board.Field;
+import julius.game.chessengine.board.Position;
 
 import java.util.ArrayList;
 import java.util.List;

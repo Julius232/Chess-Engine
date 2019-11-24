@@ -1,9 +1,7 @@
 package julius.game.chessengine.board
 
-import julius.game.chessengine.Board
+
 import julius.game.chessengine.Color
-import julius.game.chessengine.Field
-import julius.game.chessengine.Position
 import julius.game.chessengine.figures.Pawn
 import julius.game.chessengine.generator.FieldGenerator
 import spock.lang.Specification

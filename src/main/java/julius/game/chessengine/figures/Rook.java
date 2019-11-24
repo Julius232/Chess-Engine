@@ -1,7 +1,7 @@
 package julius.game.chessengine.figures;
 
-import julius.game.chessengine.Board;
-import julius.game.chessengine.Field;
+import julius.game.chessengine.board.Board;
+import julius.game.chessengine.board.Field;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -10,9 +10,9 @@ import lombok.extern.log4j.Log4j2;
 import java.util.ArrayList;
 import java.util.List;
 
-@EqualsAndHashCode(callSuper = true)
 @Data
 @Log4j2
+@EqualsAndHashCode(callSuper = true)
 public class Rook extends Figure {
 
     public Rook(String color, Field field) {

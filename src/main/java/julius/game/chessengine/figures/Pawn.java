@@ -1,17 +1,20 @@
 package julius.game.chessengine.figures;
 
-import julius.game.chessengine.Board;
+import julius.game.chessengine.board.Board;
 import julius.game.chessengine.Color;
-import julius.game.chessengine.Field;
-import julius.game.chessengine.Position;
+import julius.game.chessengine.board.Field;
+import julius.game.chessengine.board.Position;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.ArrayList;
 import java.util.List;
 
+
 @Data
 @Log4j2
+@EqualsAndHashCode(callSuper = true)
 public class Pawn extends Figure {
 
     private boolean hasMoved = false;
@@ -101,7 +104,8 @@ public class Pawn extends Figure {
             possibleFields.add(attackRight);
         }
 
-    return possibleFields;
+        return possibleFields;
     }
 
 }
+

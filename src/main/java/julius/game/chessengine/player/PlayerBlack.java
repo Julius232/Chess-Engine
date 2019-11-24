@@ -1,6 +1,6 @@
 package julius.game.chessengine.player;
 
-import julius.game.chessengine.Field;
+import julius.game.chessengine.board.Field;
 
 public class PlayerBlack implements Player {
 

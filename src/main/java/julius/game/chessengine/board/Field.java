@@ -1,4 +1,4 @@
-package julius.game.chessengine;
+package julius.game.chessengine.board;
 
 import lombok.Data;
 
