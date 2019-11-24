@@ -2,11 +2,17 @@ package julius.game.chessengine.figures;
 
 import julius.game.chessengine.Board;
 import julius.game.chessengine.Field;
-import lombok.Data;
 
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.extern.log4j.Log4j2;
+
+import java.util.ArrayList;
 import java.util.List;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
+@Log4j2
 public class Rook extends Figure {
 
     public Rook(String color, Field field) {
@@ -15,16 +21,40 @@ public class Rook extends Figure {
 
     @Override
     public Board move(Board board, Field toField) {
-        return null;
+        if(getPossibleFields(board)
+                .stream()
+                .anyMatch(toField::equals)) {
+            board.moveFigureToField( this, toField);
+            return board;
+        }
+        else {
+            log.info("Move Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+            return board;
+        }
     }
 
     @Override
     public Board attack(Board board, Field toField) {
-        return null;
+        if(getPossibleFields(board)
+                .stream()
+                .anyMatch(toField::equals)) {
+            board.hitFigureFromBoard(this, toField);
+            return board;
+        }
+        else {
+            log.info("Attack Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+            return board;
+        }
     }
 
     @Override
     public List<Field> getPossibleFields(Board board) {
-        return null;
+        List<Field> possibleFields = new ArrayList<>();
+        possibleFields.addAll(board.getPossibleFieldsYAxis(this));
+        possibleFields.addAll(board.getPossibleFieldsXAxis(this));
+        return possibleFields;
     }
 }
+
