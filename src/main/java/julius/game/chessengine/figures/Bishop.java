@@ -2,9 +2,12 @@ package julius.game.chessengine.figures;
 
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
+import lombok.extern.log4j.Log4j2;
 
+import java.util.ArrayList;
 import java.util.List;
 
+@Log4j2
 public class Bishop extends Figure {
 
     public Bishop(String color, Field field) {
@@ -13,16 +16,37 @@ public class Bishop extends Figure {
 
     @Override
     public Board move(Board board, Field toField) {
-        return null;
+        if(getPossibleFields(board)
+                .stream()
+                .anyMatch(toField::equals)) {
+            board.moveFigureToField( this, toField);
+        }
+        else {
+            log.info("Move Operation of Bishop from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+        }
+        return board;
     }
 
     @Override
     public Board attack(Board board, Field toField) {
-        return null;
+        if(getPossibleFields(board)
+                .stream()
+                .anyMatch(toField::equals)) {
+            board.hitFigureFromBoard(this, toField);
+        }
+        else {
+            log.info("Attack Operation of Bishop from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+        }
+        return board;
     }
 
     @Override
     public List<Field> getPossibleFields(Board board) {
-        return null;
+        List<Field> possibleFields = new ArrayList<>();
+        possibleFields.addAll(board.getPossibleFieldsDiagonalLDRU(this));
+        possibleFields.addAll(board.getPossibleFieldsDiagonalRDLU(this));
+        return possibleFields;
     }
 }

@@ -23,13 +23,12 @@ public class Knight extends Figure {
                 .stream()
                 .anyMatch(toField::equals)) {
             board.moveFigureToField( this, toField);
-            return board;
         }
         else {
             log.info("Move Operation of Knight from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
-            return board;
         }
+        return board;
     }
 
     @Override
@@ -53,13 +52,13 @@ public class Knight extends Figure {
         List<Field> attackFields = getAllPositionMoves()
                 .stream()
                 .filter(position -> position.isPositionInFields(board.getAllEnemyFields(getColor())))
-                .map(position -> board.getFieldForPosition(position))
+                .map(board::getFieldForPosition)
                 .collect(Collectors.toList());
 
         List<Field> moveFields = getAllPositionMoves()
                 .stream()
                 .filter(position -> position.isPositionInFields(board.getAllEmptyFields()))
-                .map(position -> board.getFieldForPosition(position))
+                .map(board::getFieldForPosition)
                 .collect(Collectors.toList());
 
         return Stream.concat(attackFields.stream(), moveFields.stream())

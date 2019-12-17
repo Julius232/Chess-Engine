@@ -25,13 +25,12 @@ public class Rook extends Figure {
                 .stream()
                 .anyMatch(toField::equals)) {
             board.moveFigureToField( this, toField);
-            return board;
         }
         else {
             log.info("Move Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
-            return board;
         }
+        return board;
     }
 
     @Override
@@ -40,13 +39,12 @@ public class Rook extends Figure {
                 .stream()
                 .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
-            return board;
         }
         else {
             log.info("Attack Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
-            return board;
         }
+        return board;
     }
 
     @Override

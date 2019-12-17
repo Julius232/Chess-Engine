@@ -6,7 +6,6 @@ import julius.game.chessengine.generator.FieldGenerator;
 import julius.game.chessengine.generator.FigureGenerator;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -82,7 +81,7 @@ public class Board {
 
     public List<Field> getAllEmptyFields() {
         return fields.stream()
-                .filter(field -> isEmptyField(field))
+                .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
 
@@ -129,11 +128,8 @@ public class Board {
             else {
                 if (isEnemyOnField(nextField, figure.getColor())) {
                     possibleFields.add(nextField);
-                    break;
                 }
-                else {
-                    break;
-                }
+                break;
             }
         }
 
@@ -145,11 +141,8 @@ public class Board {
             else {
                 if (isEnemyOnField(nextField, figure.getColor())) {
                     possibleFields.add(nextField);
-                    break;
                 }
-                else {
-                    break;
-                }
+                break;
             }
         }
 
@@ -157,7 +150,6 @@ public class Board {
     }
 
     //Y-AXIS OPERATIONS
-
     public List<Field> getAllFieldsYAxis(char x) {
         return fields.stream()
                 .filter(field -> x == field.getPosition().getXAchse())
@@ -187,31 +179,171 @@ public class Board {
         List<Field> possibleFields = new ArrayList<>();
         List<Field> emptyFieldsYAxis = getEmptyFieldsYAxis(x);
 
-        for (int y = figure.getPosY() + 1; x <= 8; x++) {
+        for (int y = figure.getPosY() + 1; y <= 8; y++) {
             Field nextField = getFieldForPosition(new Position(x, y));
             if (emptyFieldsYAxis.contains(nextField)) {
                 possibleFields.add(nextField);
             } else {
                 if (isEnemyOnField(nextField, figure.getColor())) {
                     possibleFields.add(nextField);
-                    break;
-                } else {
-                    break;
                 }
+                break;
             }
         }
 
-        for (int y = figure.getPosY() - 1; x >= 1; x--) {
+        for (int y = figure.getPosY() - 1; y >= 1; y--) {
             Field nextField = getFieldForPosition(new Position(x, y));
             if (emptyFieldsYAxis.contains(nextField)) {
                 possibleFields.add(nextField);
             } else {
                 if (isEnemyOnField(nextField, figure.getColor())) {
                     possibleFields.add(nextField);
-                    break;
-                } else {
-                    break;
                 }
+                break;
+            }
+        }
+
+        return possibleFields;
+    }
+
+    //Diagonal LDRU Operations
+    public List<Field> getAllFieldsDiagonalLDRU(Position position) {
+        List<Field> allDiagonalLDRUfields = new ArrayList<>();
+
+        char posXCountUp = position.getXAchse();
+        int posYCountUp = position.getYAchse();
+
+        while(posXCountUp <= 'h' && posYCountUp <= 8) {
+            posXCountUp++;
+            posYCountUp++;
+            allDiagonalLDRUfields.add(getFieldForPosition(new Position(posXCountUp, posYCountUp)));
+        }
+
+        char posXCountDown = position.getXAchse();
+        int posYCountDown = position.getYAchse();
+
+        while(posXCountDown >= 'a' && posYCountDown >= 1) {
+            posXCountDown--;
+            posYCountDown--;
+            allDiagonalLDRUfields.add(getFieldForPosition(new Position(posXCountDown, posYCountDown)));
+        }
+
+        return allDiagonalLDRUfields;
+    }
+
+    public List<Field> getEmptyFieldsDiagonalLDRU(Position position) {
+        return getAllFieldsDiagonalLDRU(position).stream()
+                .filter(this::isEmptyField)
+                .collect(Collectors.toList());
+    }
+
+    public List<Field> getPossibleFieldsDiagonalLDRU(Figure figure) {
+        List<Field> possibleFields = new ArrayList<>();
+        List<Field> emptyFields = getEmptyFieldsDiagonalLDRU(figure.getCurrentPosition());
+
+        char posXCountUp = figure.getPosX();
+        int posYCountUp = figure.getPosY();
+
+        while(posXCountUp + 1 <= 'h' && posYCountUp + 1 <= 8) {
+            posXCountUp++;
+            posYCountUp++;
+            Field nextField = getFieldForPosition(new Position(posXCountUp, posYCountUp));
+            if (emptyFields.contains(nextField)) {
+                possibleFields.add(nextField);
+            } else {
+                if (isEnemyOnField(nextField, figure.getColor())) {
+                    possibleFields.add(nextField);
+                }
+                break;
+            }
+        }
+
+        char posXCountDown = figure.getPosX();
+        int posYCountDown = figure.getPosY();
+
+        while(posXCountDown - 1 >= 'a' && posYCountDown - 1 >= 1) {
+            posXCountDown--;
+            posYCountDown--;
+            Field nextField = getFieldForPosition(new Position(posXCountDown, posYCountDown));
+            if (emptyFields.contains(nextField)) {
+                possibleFields.add(nextField);
+            } else {
+                if (isEnemyOnField(nextField, figure.getColor())) {
+                    possibleFields.add(nextField);
+                }
+                break;
+            }
+        }
+
+        return possibleFields;
+    }
+
+    //Diagonal RDLU Operations
+    public List<Field> getAllFieldsDiagonalRDLU(Position position) {
+        List<Field> allDiagonalRDLUfields = new ArrayList<>();
+
+        char posXCountUp = position.getXAchse();
+        int posYCountUp = position.getYAchse();
+
+        while(posXCountUp - 1 >= 'a' && posYCountUp + 1 <= 8) {
+            posXCountUp--;
+            posYCountUp++;
+            allDiagonalRDLUfields.add(getFieldForPosition(new Position(posXCountUp, posYCountUp)));
+        }
+
+        char posXCountDown = position.getXAchse();
+        int posYCountDown = position.getYAchse();
+
+        while(posXCountDown + 1 <= 'h' && posYCountDown - 1 >= 1) {
+            posXCountDown++;
+            posYCountDown--;
+            allDiagonalRDLUfields.add(getFieldForPosition(new Position(posXCountDown, posYCountDown)));
+        }
+
+        return allDiagonalRDLUfields;
+    }
+
+    public List<Field> getEmptyFieldsDiagonalRDLU(Position position) {
+        return getAllFieldsDiagonalRDLU(position).stream()
+                .filter(this::isEmptyField)
+                .collect(Collectors.toList());
+    }
+
+    public List<Field> getPossibleFieldsDiagonalRDLU(Figure figure) {
+        List<Field> possibleFields = new ArrayList<>();
+        List<Field> emptyFields = getEmptyFieldsDiagonalRDLU(figure.getCurrentPosition());
+
+        char posXCountDown = figure.getPosX();
+        int posYCountUp = figure.getPosY();
+
+        while(posXCountDown - 1 >= 'a' && posYCountUp + 1 <= 8) {
+            posXCountDown--;
+            posYCountUp++;
+            Field nextField = getFieldForPosition(new Position(posXCountDown, posYCountUp));
+            if (emptyFields.contains(nextField)) {
+                possibleFields.add(nextField);
+            } else {
+                if (isEnemyOnField(nextField, figure.getColor())) {
+                    possibleFields.add(nextField);
+                }
+                break;
+            }
+        }
+
+        char posXCountUp = figure.getPosX();
+        int posYCountDown = figure.getPosY();
+
+        while(posXCountUp + 1 <= 'h' && posYCountDown - 1 >= 1) {
+            posXCountUp++;
+            posYCountDown--;
+            Field nextField = getFieldForPosition(new Position(posXCountUp, posYCountDown));
+            if (emptyFields.contains(nextField)) {
+                possibleFields.add(nextField);
+            } else {
+                if (isEnemyOnField(nextField, figure.getColor())) {
+                    possibleFields.add(nextField);
+                }
+                break;
             }
         }
 
@@ -220,11 +352,11 @@ public class Board {
 
     //MOVE && ATTACK OPERATIONS
 
-    public List<Figure> hitFigureFromBoard(Figure movingFigure, Field toField) {
+    public void hitFigureFromBoard(Figure movingFigure, Field toField) {
         figures = figures.stream()
                 .filter(figure -> !toField.equals(figure.getCurrentField()))
                 .collect(Collectors.toList());
-        return moveFigureToField(movingFigure, toField);
+        moveFigureToField(movingFigure, toField);
     }
 
     public List<Figure> moveFigureToField(Figure movingFigure, Field toField) {
@@ -237,10 +369,10 @@ public class Board {
     }
 
     public void logBoard() {
-        String logBoard = "";
+        StringBuilder logBoard = new StringBuilder();
         int counter = 1;
         for(int y = 8; y >= 1; y--) {
-            logBoard += y + ": ";
+            logBoard.append(y).append(": ");
             for (char x = 'a'; x <= 'h'; x++) {
                 Field logField = getFieldForPosition(new Position(x,y));
 
@@ -248,79 +380,78 @@ public class Board {
                     Figure logFigure = getFigureForPosition(new Position(x, y));
                     if(logFigure.getColor().equals(Color.BLACK)) {
                         if (logFigure.getType().equals("PAWN")) {
-                            logBoard += String.valueOf(Character.toChars(0x265F));
+                            logBoard.append(String.valueOf(Character.toChars(0x265F)));
                         }
                     }
                     else {
                         if (logFigure.getType().equals("PAWN")) {
-                            logBoard += String.valueOf(Character.toChars(0x2659));
+                            logBoard.append(String.valueOf(Character.toChars(0x2659)));
                         }
                     }
                     if(logFigure.getColor().equals(Color.BLACK)) {
                         if (logFigure.getType().equals("ROOK")) {
-                            logBoard += String.valueOf(Character.toChars(0x265C));
+                            logBoard.append(String.valueOf(Character.toChars(0x265C)));
                         }
                     }
                     else {
                         if (logFigure.getType().equals("ROOK")) {
-                            logBoard += String.valueOf(Character.toChars(0x2656));
+                            logBoard.append(String.valueOf(Character.toChars(0x2656)));
                         }
                     }
                     if(logFigure.getColor().equals(Color.BLACK)) {
                         if (logFigure.getType().equals("KNIGHT")) {
-                            logBoard += String.valueOf(Character.toChars(0x265E));
+                            logBoard.append(String.valueOf(Character.toChars(0x265E)));
                         }
                     }
                     else {
                         if (logFigure.getType().equals("KNIGHT")) {
-                            logBoard += String.valueOf(Character.toChars(0x2658));
+                            logBoard.append(String.valueOf(Character.toChars(0x2658)));
                         }
                     }
                     if(logFigure.getColor().equals(Color.BLACK)) {
                         if (logFigure.getType().equals("BISHOP")) {
-                            logBoard += String.valueOf(Character.toChars(0x265D));
+                            logBoard.append(String.valueOf(Character.toChars(0x265D)));
                         }
                     }
                     else {
                         if (logFigure.getType().equals("BISHOP")) {
-                            logBoard += String.valueOf(Character.toChars(0x2657));
+                            logBoard.append(String.valueOf(Character.toChars(0x2657)));
                         }
                     }
                     if(logFigure.getColor().equals(Color.BLACK)) {
                         if (logFigure.getType().equals("QUEEN")) {
-                            logBoard += String.valueOf(Character.toChars(0x265B));
+                            logBoard.append(String.valueOf(Character.toChars(0x265B)));
                         }
                     }
                     else {
                         if (logFigure.getType().equals("QUEEN")) {
-                            logBoard += String.valueOf(Character.toChars(0x2655));
+                            logBoard.append(String.valueOf(Character.toChars(0x2655)));
                         }
                     }
                     if(logFigure.getColor().equals(Color.BLACK)) {
                         if (logFigure.getType().equals("KING")) {
-                            logBoard += String.valueOf(Character.toChars(0x265A));
+                            logBoard.append(String.valueOf(Character.toChars(0x265A)));
                         }
                     }
                     else {
                         if (logFigure.getType().equals("KING")) {
-                            logBoard += String.valueOf(Character.toChars(0x2654));
+                            logBoard.append(String.valueOf(Character.toChars(0x2654)));
                         }
                     }
                 }
                 else if (logField.getColor().equals(Color.BLACK)) {
-                    logBoard += String.valueOf(Character.toChars(0x25AE));
+                    logBoard.append(String.valueOf(Character.toChars(0x25AE)));
                 }
                 else {
-                    logBoard += String.valueOf(Character.toChars(0x25AF));
+                    logBoard.append(String.valueOf(Character.toChars(0x25AF)));
                 }
                 if (counter % 8 == 0) {
-                    log.info(logBoard);
-                    logBoard = "";
+                    log.info(logBoard.toString());
+                    logBoard = new StringBuilder();
                 }
                 counter++;
             }
         }
         log.info("   --------------");
     }
-
 }

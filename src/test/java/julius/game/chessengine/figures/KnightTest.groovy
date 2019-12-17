@@ -6,10 +6,9 @@ import julius.game.chessengine.board.Field
 import julius.game.chessengine.board.Position
 import spock.lang.Specification
 
+import java.util.stream.IntStream
+
 class KnightTest extends Specification {
-
-
-
 
     def "GetPossibleFields"() {
         given:
@@ -71,4 +70,5 @@ class KnightTest extends Specification {
         then:
         board.getFigures().size() == 31
     }
+
 }
