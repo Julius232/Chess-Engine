@@ -1,17 +1,19 @@
 package julius.game.chessengine.board;
 
-import julius.game.chessengine.Color;
+import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.generator.FieldGenerator;
 import julius.game.chessengine.generator.FigureGenerator;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Data
 @Log4j2
+@Component
 public class Board {
 
     private final static String WHITE = "white";

@@ -1,12 +1,10 @@
 package julius.game.chessengine.figures
 
-import julius.game.chessengine.Color
+import julius.game.chessengine.utils.Color
 import julius.game.chessengine.board.Board
 import julius.game.chessengine.board.Field
 import julius.game.chessengine.board.Position
 import spock.lang.Specification
-
-import java.util.stream.IntStream
 
 class KnightTest extends Specification {
 

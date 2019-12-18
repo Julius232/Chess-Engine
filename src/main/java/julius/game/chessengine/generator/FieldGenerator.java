@@ -1,6 +1,6 @@
 package julius.game.chessengine.generator;
 
-import julius.game.chessengine.Color;
+import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
 

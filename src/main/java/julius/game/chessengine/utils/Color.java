@@ -1,4 +1,4 @@
-package julius.game.chessengine;
+package julius.game.chessengine.utils;
 
 public class Color {
     public static final String WHITE = "white";
