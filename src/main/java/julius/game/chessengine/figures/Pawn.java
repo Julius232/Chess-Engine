@@ -30,13 +30,12 @@ public class Pawn extends Figure {
                 .anyMatch(field -> toField.equals(field))) {
             board.moveFigureToField( this, toField);
             setHasMoved(true);
-            return board;
         }
         else {
             log.info("Move Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
-            return board;
         }
+        return board;
     }
 
     @Override

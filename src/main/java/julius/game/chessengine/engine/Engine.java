@@ -30,16 +30,10 @@ public class Engine {
 
     public void moveFigure(String fromPosition, String toPosition) {
         if(fromPosition.length() == 2 && toPosition.length() == 2) {
-            Figure figure = board.getFigureForPosition(new Position(fromPosition.charAt(0), fromPosition.charAt(1)));
-            figure.move(board, board.getFieldForPosition(new Position(toPosition.charAt(0), toPosition.charAt(1))));
+            Figure figure = board.getFigureForPosition(new Position(fromPosition.charAt(0), Character.getNumericValue(fromPosition.charAt(1))));
+            figure.move(board, board.getFieldForPosition(new Position(toPosition.charAt(0), Character.getNumericValue(toPosition.charAt(1)))));
         }
         else throw new RuntimeException("FromPosition " + fromPosition + " or " + "ToPosition " + toPosition + "is not valid");
-    }
-
-    public List<Field> getAllPossibleMoveFields() {
-        return board.getFigures().stream()
-                .flatMap(figure -> figure.getPossibleFields(board).stream())
-                .collect(Collectors.toList());
     }
 
     public List<Field> getAllPossibleMoveFieldsWhite() {

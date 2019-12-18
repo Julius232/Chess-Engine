@@ -69,17 +69,17 @@ public class Knight extends Figure {
         char x = getPosX();
         int y = getPosY();
 
-        Position twoForwardRight = new Position((char) (x + 1), (char)(y + 2));
-        Position twoForwardLeft = new Position((char) (x - 1), (char)(y + 2));
+        Position twoForwardRight = new Position((char) (x + 1), y + 2);
+        Position twoForwardLeft = new Position((char) (x - 1), y + 2);
 
-        Position twoRightForward = new Position((char) (x + 2), (char)(y + 1));
-        Position twoRightDownward = new Position((char) (x + 2), (char)(y - 1));
+        Position twoRightForward = new Position((char) (x + 2), y + 1);
+        Position twoRightDownward = new Position((char) (x + 2), y - 1);
 
-        Position twoDownwardRight = new Position((char) (x + 1), (char)(y - 2));
-        Position twoDownwardLeft = new Position((char) (x - 1), (char)(y - 2));
+        Position twoDownwardRight = new Position((char) (x + 1), y - 2);
+        Position twoDownwardLeft = new Position((char) (x - 1), y - 2);
 
-        Position twoLeftForward = new Position((char) (x - 2), (char)(y + 1));
-        Position twoLeftDownward = new Position((char) (x - 2), (char)(y - 1));
+        Position twoLeftForward = new Position((char) (x - 2), y + 1);
+        Position twoLeftDownward = new Position((char) (x - 2), y - 1);
 
         return Arrays.asList(
                 twoForwardRight,

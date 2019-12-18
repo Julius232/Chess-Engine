@@ -1,5 +1,6 @@
 package julius.game.chessengine.figures;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
@@ -28,14 +29,17 @@ public abstract class Figure {
 
     abstract public List<Field> getPossibleFields(Board board);
 
+    @JsonIgnore
     public Position getCurrentPosition() {
         return this.currentField.getPosition();
     }
 
+    @JsonIgnore
     public char getPosX() {
         return getCurrentPosition().getXAchse();
     }
 
+    @JsonIgnore
     public int getPosY() {
         return getCurrentPosition().getYAchse();
     }
