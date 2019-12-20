@@ -1,23 +1,18 @@
 package julius.game.chessengine.engine;
 
-import julius.game.chessengine.board.FrontendBoard;
-import julius.game.chessengine.figures.Knight;
-import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
+import julius.game.chessengine.board.FrontendBoard;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.Figure;
-import julius.game.chessengine.player.PlayerBlack;
-import julius.game.chessengine.player.PlayerWhite;
+import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.utils.Score;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @Data
 @Service
@@ -25,8 +20,9 @@ import java.util.stream.IntStream;
 public class Engine {
 
     private Board board = new Board();
-    private boolean whitesTurn = true;
     private Score score = new Score();
+
+    private boolean whitesTurn = true;
 
     public void startNewGame() {
         board = new Board();
@@ -91,7 +87,6 @@ public class Engine {
                         frontendBoard.append(count);
                         count = 0;
                     }
-
                 }
                 if (x == 'h' && count > 0) {
                     frontendBoard.append(count);

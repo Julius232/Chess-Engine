@@ -40,10 +40,6 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
     request.send();
     console.log('Source: ' + source)
     console.log('Target: ' + target)
-    console.log('Piece: ' + piece)
-    console.log('New position: ' + Chessboard.objToFen(newPos))
-    console.log('Old position: ' + Chessboard.objToFen(oldPos))
-    console.log('Orientation: ' + orientation)
     console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
     reload();
@@ -51,28 +47,27 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
 
 $('#resetBoard').on('click', function () {
     var request = new XMLHttpRequest()
-    request.open('PUT', 'http://localhost:8080/chess/reset')
+    request.open('PUT', 'http://localhost:8080/chess/reset', true)
     request.send();
     reload();
 })
 
 function reload() {
-    // Create a request variable and assign a new XMLHttpRequest object to it.
-var request = new XMLHttpRequest()
-
-// Open a new connection, using the GET request on the URL endpoint
-request.open('GET', 'http://localhost:8080/chess/figure/frontend', true)
-
-request.send();
-
-request.onload = function() {
-    // Begin accessing JSON data here
-    var data = JSON.parse(this.response)
-
-    console.log(data.renderBoard)
-
-    board.position(data.renderBoard)
-}
+    var request = new XMLHttpRequest()
+    request.open('GET', 'http://localhost:8080/chess/figure/frontend', true)
+    request.send();
+    request.onload = function(e) {
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                var data = JSON.parse(this.response)
+                console.log(data.renderBoard)
+                board.position(data.renderBoard)
+            }
+            else {
+                console.error(request.statusText)
+            }
+        }
+    };
 }
 
 var config = {
@@ -83,7 +78,5 @@ var config = {
 var board = Chessboard('board', config)
 
 reload()
-
-
 
 </script>
