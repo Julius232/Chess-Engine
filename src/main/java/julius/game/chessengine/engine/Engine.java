@@ -9,6 +9,7 @@ import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.player.PlayerBlack;
 import julius.game.chessengine.player.PlayerWhite;
+import julius.game.chessengine.utils.Score;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -25,10 +26,12 @@ public class Engine {
 
     private Board board = new Board();
     private boolean whitesTurn = true;
+    private Score score = new Score();
 
     public void startNewGame() {
         board = new Board();
         whitesTurn = true;
+        score = new Score();
     }
 
     public void moveFigure(String fromPosition, String toPosition) {
@@ -44,6 +47,7 @@ public class Engine {
                 if (playerColor.equals(Color.WHITE) == whitesTurn) {
                     if (board.isEnemyOnField(toField, playerColor)) {
                         figureToMove.attack(board, toField);
+                        score.add(board.getFigureForPosition(toField.getPosition()).getPoints(), playerColor);
                     } else {
                         figureToMove.move(board, toField);
                     }

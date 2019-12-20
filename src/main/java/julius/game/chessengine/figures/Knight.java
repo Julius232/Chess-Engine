@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 public class Knight extends Figure {
 
     public Knight(String color, Field field) {
-        super(color, "KNIGHT", field);
+        super(color, "KNIGHT", field, 3);
     }
 
     @Override

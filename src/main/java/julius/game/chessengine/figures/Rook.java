@@ -16,7 +16,7 @@ import java.util.List;
 public class Rook extends Figure {
 
     public Rook(String color, Field field) {
-        super(color, "ROOK", field);
+        super(color, "ROOK", field, 5);
     }
 
     @Override

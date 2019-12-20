@@ -11,7 +11,7 @@ import java.util.List;
 public class Queen extends Figure {
 
     public Queen(String color, Field field) {
-        super(color, "QUEEN", field);
+        super(color, "QUEEN", field, 9);
     }
 
     @Override

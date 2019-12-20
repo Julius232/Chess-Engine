@@ -11,7 +11,7 @@ import java.util.List;
 public class Bishop extends Figure {
 
     public Bishop(String color, Field field) {
-        super(color, "BISHOP", field);
+        super(color, "BISHOP", field, 3);
     }
 
     @Override

@@ -18,7 +18,7 @@ public class King extends Figure {
     private boolean hasMoved = false;
 
     public King(String color, Field field) {
-        super(color, "KING", field);
+        super(color, "KING", field, 1337);
     }
 
     @Override

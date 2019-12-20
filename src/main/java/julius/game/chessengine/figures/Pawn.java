@@ -20,7 +20,7 @@ public class Pawn extends Figure {
     private boolean hasMoved = false;
 
     public Pawn(String color, Field field) {
-        super(color, "PAWN", field);
+        super(color, "PAWN", field, 1);
     }
 
     @Override

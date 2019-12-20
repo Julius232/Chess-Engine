@@ -14,12 +14,14 @@ public abstract class Figure {
     private String type;
     private String color;
     private Field currentField;
+    private int points;
 
     //Constructor
-    public Figure(String color, String type, Field currentField) {
+    public Figure(String color, String type, Field currentField, int points) {
         this.color = color;
         this.type = type;
         this.currentField = currentField;
+        this.points = points;
     }
 
     //Methods
