@@ -2,15 +2,13 @@ package julius.game.chessengine.controller;
 
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
+import julius.game.chessengine.board.FrontendBoard;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.figures.Figure;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -20,6 +18,12 @@ import java.util.List;
 public class ChessController {
 
     private final Engine engine;
+
+    @PutMapping(value = "/reset")
+    public ResponseEntity<?> resetBoard() {
+        engine.startNewGame();
+        return ResponseEntity.ok().build();
+    }
 
     @GetMapping(value = "/field")
     public ResponseEntity<List<Field>> getFields() {
@@ -40,6 +44,9 @@ public class ChessController {
     public ResponseEntity<List<Figure>> getFigures() {
         return ResponseEntity.ok(engine.getBoard().getFigures());
     }
+
+    @GetMapping(value = "/figure/frontend")
+    public ResponseEntity<FrontendBoard> getFiguresFrontend() {return ResponseEntity.ok(engine.translateBoardToFrontend());}
 
     @PatchMapping(value="/figure/move/{from}/{to}")
     public ResponseEntity<?> moveFigure(@PathVariable("from") String from,

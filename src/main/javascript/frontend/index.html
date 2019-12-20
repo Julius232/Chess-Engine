@@ -1,0 +1,89 @@
+<!doctype html>
+<style></style>
+
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+
+    <title>The HTML5 Herald</title>
+    <meta name="description" content="The HTML5 Herald">
+    <meta name="author" content="SitePoint">
+    <link rel="stylesheet" href="css/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="css/styles.css?v=1.0">
+
+</head>
+
+<body>
+    <main>
+        <section style="margin:0 auto; width:1024px;">
+            <div style="margin:0 auto; width:500px;">
+                <div id="board" style="width: 500px"></div>
+            </div>
+            <button id = "resetBoard">Reset Board</button>
+        </section>
+    </main>
+</body>
+</html>
+
+<script src="js/jquery-3.4.1.min.js"></script>
+<script src="js/prettify.min.js"></script>
+<script src="js/chessboard-1.0.0.min.js"></script>
+<script>
+
+function onDrop (source, target, piece, newPos, oldPos, orientation) {
+
+    var request = new XMLHttpRequest()
+
+    // Open a new connection, using the GET request on the URL endpoint
+    request.open('PATCH', 'http://localhost:8080/chess/figure/move/' + source + '/' + target, true)
+
+    request.send();
+    console.log('Source: ' + source)
+    console.log('Target: ' + target)
+    console.log('Piece: ' + piece)
+    console.log('New position: ' + Chessboard.objToFen(newPos))
+    console.log('Old position: ' + Chessboard.objToFen(oldPos))
+    console.log('Orientation: ' + orientation)
+    console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+
+    reload();
+}
+
+$('#resetBoard').on('click', function () {
+    var request = new XMLHttpRequest()
+    request.open('PUT', 'http://localhost:8080/chess/reset')
+    request.send();
+    reload();
+})
+
+function reload() {
+    // Create a request variable and assign a new XMLHttpRequest object to it.
+var request = new XMLHttpRequest()
+
+// Open a new connection, using the GET request on the URL endpoint
+request.open('GET', 'http://localhost:8080/chess/figure/frontend', true)
+
+request.send();
+
+request.onload = function() {
+    // Begin accessing JSON data here
+    var data = JSON.parse(this.response)
+
+    console.log(data.renderBoard)
+
+    board.position(data.renderBoard)
+}
+}
+
+var config = {
+    draggable: true,
+    onDrop: onDrop,
+}
+
+var board = Chessboard('board', config)
+
+reload()
+
+
+
+</script>
