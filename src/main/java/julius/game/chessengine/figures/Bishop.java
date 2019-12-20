@@ -22,8 +22,8 @@ public class Bishop extends Figure {
             board.moveFigureToField( this, toField);
         }
         else {
-            log.info("Move Operation of Bishop from Position: " + getPosX() + getPosY() + " to position: "
-                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+            throw new IllegalStateException("Move Operation of Bishop from Position: " + getPosX() + getPosY() + " to position: "
+                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible.");
         }
         return board;
     }
@@ -36,7 +36,7 @@ public class Bishop extends Figure {
             board.hitFigureFromBoard(this, toField);
         }
         else {
-            log.info("Attack Operation of Bishop from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Attack Operation of Bishop from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
         }
         return board;

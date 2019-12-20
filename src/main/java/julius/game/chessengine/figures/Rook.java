@@ -27,7 +27,7 @@ public class Rook extends Figure {
             board.moveFigureToField( this, toField);
         }
         else {
-            log.info("Move Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Move Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
         }
         return board;
@@ -41,7 +41,7 @@ public class Rook extends Figure {
             board.hitFigureFromBoard(this, toField);
         }
         else {
-            log.info("Attack Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Attack Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
         }
         return board;

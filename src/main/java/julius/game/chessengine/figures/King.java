@@ -30,7 +30,7 @@ public class King extends Figure {
             hasMoved = true;
         }
         else {
-            log.info("Move Operation of King from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Move Operation of King from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
         }
         return board;
@@ -45,7 +45,7 @@ public class King extends Figure {
             hasMoved = true;
         }
         else {
-            log.info("Attack Operation of King from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Attack Operation of King from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
         }
         return board;

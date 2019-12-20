@@ -32,12 +32,26 @@ public class Engine {
     }
 
     public void moveFigure(String fromPosition, String toPosition) {
+        Figure figureToMove = board.getFigureForPosition(
+                new Position(fromPosition.charAt(0), Character.getNumericValue(fromPosition.charAt(1)))
+        );
+        Field toField = board.getFieldForPosition(
+                new Position(toPosition.charAt(0), Character.getNumericValue(toPosition.charAt(1)))
+        );
         if(fromPosition.length() == 2 && toPosition.length() == 2) {
-            Figure figure = board.getFigureForPosition(new Position(fromPosition.charAt(0), Character.getNumericValue(fromPosition.charAt(1))));
-            if(figure.getColor().equals(Color.WHITE) == whitesTurn) {
-                figure.move(board, board.getFieldForPosition(new Position(toPosition.charAt(0), Character.getNumericValue(toPosition.charAt(1)))));
-                whitesTurn = !whitesTurn;
-                board.logBoard();
+            try {
+                String playerColor = figureToMove.getColor();
+                if (playerColor.equals(Color.WHITE) == whitesTurn) {
+                    if (board.isEnemyOnField(toField, playerColor)) {
+                        figureToMove.attack(board, toField);
+                    } else {
+                        figureToMove.move(board, toField);
+                    }
+                    whitesTurn = !whitesTurn;
+                    board.logBoard();
+                }
+            } catch (IllegalStateException e) {
+                log.info(e.getMessage());
             }
         }
         else throw new RuntimeException("FromPosition " + fromPosition + " or " + "ToPosition " + toPosition + "is not valid");

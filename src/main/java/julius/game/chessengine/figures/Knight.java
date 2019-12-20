@@ -25,7 +25,7 @@ public class Knight extends Figure {
             board.moveFigureToField( this, toField);
         }
         else {
-            log.info("Move Operation of Knight from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Move Operation of Knight from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
         }
         return board;
@@ -37,13 +37,12 @@ public class Knight extends Figure {
                 .stream()
                 .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
-            return board;
         }
         else {
-            log.info("Attack Operation of Knight from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Attack Operation of Knight from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
-            return board;
         }
+        return board;
     }
 
     @Override

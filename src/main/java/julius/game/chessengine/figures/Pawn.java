@@ -32,7 +32,7 @@ public class Pawn extends Figure {
             setHasMoved(true);
         }
         else {
-            log.info("Move Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Move Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
         }
         return board;
@@ -45,13 +45,12 @@ public class Pawn extends Figure {
                 .anyMatch(field -> toField.equals(field))) {
             board.hitFigureFromBoard(this, toField);
             setHasMoved(true);
-            return board;
         }
         else {
-            log.info("Attack Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
+            throw new IllegalStateException("Attack Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
                     + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
-            return board;
         }
+        return board;
     }
 
     @Override
@@ -78,7 +77,7 @@ public class Pawn extends Figure {
         );
 
         Field attackRight = board.getFieldForPosition(
-                new Position((char) (getPosX() + 1), moveTwoForward)
+                new Position((char) (getPosX() + 1), moveOneForward)
         );
 
         if (Color.WHITE.equals(pawnColor) && moveOneForward <= 8 || Color.BLACK.equals(pawnColor) && moveOneForward >= 1) {
