@@ -1,5 +1,7 @@
 package julius.game.chessengine.board;
 
+import julius.game.chessengine.figures.King;
+import julius.game.chessengine.figures.Rook;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.generator.FieldGenerator;
@@ -368,6 +370,54 @@ public class Board {
             }
         }
         return figures;
+    }
+
+    public boolean isCastlingPossibleQueenSide(String playerColor) {
+        int yAxis = playerColor.equals(Color.WHITE) ? 1 : 8;
+        boolean isRookFieldOccupied;
+        boolean isEmpty0;
+        boolean isEmpty1;
+        boolean isEmpty2;
+        boolean isKingFieldOccupied;
+
+        isRookFieldOccupied = isOccupiedField(getFieldForPosition(new Position('a', yAxis)));
+        isEmpty0 = isEmptyField(getFieldForPosition(new Position('b', yAxis)));
+        isEmpty1 = isEmptyField(getFieldForPosition(new Position('c', yAxis)));
+        isEmpty2 = isEmptyField(getFieldForPosition(new Position('d', yAxis)));
+        isKingFieldOccupied = isOccupiedField(getFieldForPosition(new Position('e', yAxis)));
+        if(isRookFieldOccupied && isEmpty0 && isEmpty1 && isEmpty2 && isKingFieldOccupied) {
+            Figure isKing = getFigureForPosition(new Position('e', yAxis));
+            Figure isRook = getFigureForPosition(new Position('a', yAxis));
+            if(isKing.getType().equals("KING") && isRook.getType().equals("ROOK")) {
+                King king = (King) isKing;
+                Rook rook = (Rook) isRook;
+                return !king.isHasMoved() && !rook.isHasMoved();
+            }
+        }
+        return false;
+    }
+
+    public boolean isCastlingPossibleKingSide(String playerColor) {
+        int yAxis = playerColor.equals(Color.WHITE) ? 1 : 8;
+        boolean isRookFieldOccupied;
+        boolean isEmpty0;
+        boolean isEmpty1;
+        boolean isKingFieldOccupied;
+
+        isRookFieldOccupied = isOccupiedField(getFieldForPosition(new Position('h', yAxis)));
+        isEmpty0 = isEmptyField(getFieldForPosition(new Position('g', yAxis)));
+        isEmpty1 = isEmptyField(getFieldForPosition(new Position('f', yAxis)));
+        isKingFieldOccupied = isOccupiedField(getFieldForPosition(new Position('e', yAxis)));
+        if(isRookFieldOccupied && isEmpty0 && isEmpty1 && isKingFieldOccupied) {
+            Figure isKing = getFigureForPosition(new Position('e', yAxis));
+            Figure isRook = getFigureForPosition(new Position('h', yAxis));
+            if(isKing.getType().equals("KING") && isRook.getType().equals("ROOK")) {
+                King king = (King) isKing;
+                Rook rook = (Rook) isRook;
+                return !king.isHasMoved() && !rook.isHasMoved();
+            }
+        }
+        return false;
     }
 
     public void logBoard() {

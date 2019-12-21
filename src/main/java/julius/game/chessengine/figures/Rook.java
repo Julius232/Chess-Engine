@@ -15,6 +15,8 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 public class Rook extends Figure {
 
+    private boolean hasMoved = false;
+
     public Rook(String color, Field field) {
         super(color, "ROOK", field, 5);
     }
@@ -25,6 +27,7 @@ public class Rook extends Figure {
                 .stream()
                 .anyMatch(toField::equals)) {
             board.moveFigureToField( this, toField);
+            hasMoved = true;
         }
         else {
             throw new IllegalStateException("Move Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "
@@ -39,6 +42,7 @@ public class Rook extends Figure {
                 .stream()
                 .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
+            hasMoved = true;
         }
         else {
             throw new IllegalStateException("Attack Operation of Rook from Position: " + getPosX() + getPosY() + " to position: "

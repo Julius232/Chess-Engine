@@ -3,15 +3,19 @@ package julius.game.chessengine.figures;
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
+import julius.game.chessengine.utils.Color;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Data
 @Log4j2
+@EqualsAndHashCode(callSuper = true)
 public class King extends Figure {
 
     private boolean isInStateCheck = false;
@@ -26,7 +30,23 @@ public class King extends Figure {
         if(getPossibleFields(board)
                 .stream()
                 .anyMatch(toField::equals)) {
-            board.moveFigureToField( this, toField);
+            if(isQueenSideCastlingMove(toField)) {
+                int yAxis = this.getColor().equals(Color.WHITE) ? 1 : 8;
+                board.moveFigureToField(this, toField);
+                board.moveFigureToField(board.getFigureForPosition(new Position('a', yAxis)),
+                        board.getFieldForPosition(new Position('d', yAxis))
+                );
+            }
+            else if(isKingSideCastlingMove(toField)) {
+                int yAxis = this.getColor().equals(Color.WHITE) ? 1 : 8;
+                board.moveFigureToField(this, toField);
+                board.moveFigureToField(board.getFigureForPosition(new Position('h', yAxis)),
+                        board.getFieldForPosition(new Position('f', yAxis))
+                );
+            }
+            else {
+                board.moveFigureToField(this, toField);
+            }
             hasMoved = true;
         }
         else {
@@ -65,6 +85,14 @@ public class King extends Figure {
                 .map(board::getFieldForPosition)
                 .collect(Collectors.toList());
 
+        if(board.isCastlingPossibleKingSide(this.getColor())) {
+            moveFields.add(board.getFieldForPosition(new Position((char)(this.getPosX() + 2), this.getPosY())));
+        }
+
+        if(board.isCastlingPossibleQueenSide(this.getColor())) {
+            moveFields.add(board.getFieldForPosition(new Position((char)(this.getPosX() - 2), this.getPosY())));
+        }
+
         return Stream.concat(attackFields.stream(), moveFields.stream())
                 .collect(Collectors.toList());
     }
@@ -96,4 +124,18 @@ public class King extends Figure {
                 leftDown
         );
     }
+
+    private boolean isQueenSideCastlingMove(Field toField) {
+        Position currentPosition = getCurrentPosition();
+        Position toPosition = toField.getPosition();
+        return (char) (currentPosition.getXAchse() - 2) == toPosition.getXAchse();
+    }
+
+    private boolean isKingSideCastlingMove(Field toField) {
+        Position currentPosition = getCurrentPosition();
+        Position toPosition = toField.getPosition();
+        return (char) (currentPosition.getXAchse() + 2) == toPosition.getXAchse();
+    }
 }
+
+
