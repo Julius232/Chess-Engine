@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -112,4 +113,17 @@ public class Engine {
         return frontendChar;
     }
 
+    public List<Position> getPossibleMovesForPosition(String fromPosition) {
+        try {
+            Figure figure = board.getFigureForPosition(
+                    new Position(fromPosition.charAt(0), Character.getNumericValue(fromPosition.charAt(1)))
+            );
+            return figure.getPossibleFields(board).stream()
+                    .map(Field::getPosition)
+                    .collect(Collectors.toList());
+        } catch (RuntimeException e) {
+            log.info(e.getMessage());
+            return Collections.EMPTY_LIST;
+        }
+    }
 }

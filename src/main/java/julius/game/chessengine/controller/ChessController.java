@@ -3,15 +3,18 @@ package julius.game.chessengine.controller;
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.FrontendBoard;
+import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.figures.Figure;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Log4j2
 @Controller
 @RequestMapping(value = "/chess")
 @RequiredArgsConstructor
@@ -56,5 +59,17 @@ public class ChessController {
             return ResponseEntity.ok().build();
         }
         else return ResponseEntity.status(406).build();
+    }
+
+    @GetMapping(value = "/figure/move/possible/{from}")
+    public ResponseEntity<List<Position>> getPossibleToPositions(@PathVariable("from") String from) {
+        log.info(from);
+
+        if(from != null) {
+            return ResponseEntity.ok(engine.getPossibleMovesForPosition(from));
+        }
+        else return ResponseEntity
+                .status(406)
+                .build();
     }
 }

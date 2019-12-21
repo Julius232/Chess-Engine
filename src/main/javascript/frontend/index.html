@@ -70,9 +70,63 @@ function reload() {
     };
 }
 
+function greySquare (square) {
+
+  var whiteSquareGrey = '#a9a9a9'
+  var blackSquareGrey = '#696969'
+  var $square = $('#board .square-' + square)
+
+  var background = whiteSquareGrey
+  if ($square.hasClass('black-3c85d')) {
+    background = blackSquareGrey
+  }
+
+  $square.css('background', background)
+}
+
+function removeGreySquares () {
+  $('#board .square-55d63').css('background', '')
+}
+
+function onMouseoverSquare (square, piece) {
+  // get list of possible moves for this square
+  var request = new XMLHttpRequest()
+    request.open('GET', 'http://localhost:8080/chess/figure/move/possible/' + square, true)
+    request.send();
+    request.onload = function(e) {
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                var moves = JSON.parse(this.response)
+                console.log(moves)
+                
+                // exit if there are no moves available for this square
+                if (moves.length === 0) return
+
+                // highlight the square they moused over
+                greySquare(square)
+
+                // highlight the possible squares for this piece
+                for (var i = 0; i < moves.length; i++) {
+                    greySquare(moves[i].xachse + moves[i].yachse)
+                }
+
+            }
+            else {
+                console.error(request.statusText)
+            }
+        }
+    };
+}
+
+function onMouseoutSquare (square, piece) {
+  removeGreySquares()
+}
+
 var config = {
     draggable: true,
     onDrop: onDrop,
+    onMouseoverSquare: onMouseoverSquare,
+    onMouseoutSquare: onMouseoutSquare
 }
 
 var board = Chessboard('board', config)
