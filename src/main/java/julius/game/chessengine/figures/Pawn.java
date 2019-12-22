@@ -87,7 +87,7 @@ public class Pawn extends Figure {
             }
         }
 
-        if (!hasMoved) {
+        if (!hasMoved && board.isEmptyField(board.getFieldForPosition(new Position(getPosX(), moveOneForward)))) {
             Field field = board.getFieldForPosition(new Position(getPosX(), moveTwoForward));
             if (board.isEmptyField(field)) {
                 possibleFields.add(field);
