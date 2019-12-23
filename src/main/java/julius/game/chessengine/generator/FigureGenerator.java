@@ -1,6 +1,7 @@
 package julius.game.chessengine.generator;
 
 import julius.game.chessengine.board.Board;
+import julius.game.chessengine.board.Field;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.*;
@@ -65,6 +66,52 @@ public class FigureGenerator {
     private void generateKings(List<Figure> figures) {
         figures.add(new King(Color.WHITE, board.getFieldForPosition(new Position('e', 1))));
         figures.add(new King(Color.BLACK, board.getFieldForPosition(new Position('e', 8))));
+    }
+
+    public List<Figure> getFigures(String FEN) {
+        List<Figure> figures = new ArrayList<>();
+        String trimFEN = FEN.replace("/", "");
+        int count = 0;
+        for(int y = 8; y >= 1; y--) {
+            for(char x = 'a'; x <= 'h'; x++) {
+                Field f = board.getFieldForPosition(new Position(x, y));
+                if (Character.isLetter((trimFEN.charAt(count)))) {
+                    figures.add(convertToFigure(trimFEN.charAt(count), f));
+                }
+                else {
+                    x += Character.getNumericValue(trimFEN.charAt(count) - 1);
+                }
+                ++count;
+            }
+        }
+        return figures;
+
+    }
+
+    private Figure convertToFigure(char c, Field f) {
+        String color = Character.isUpperCase(c) ? Color.WHITE : Color.BLACK;
+        switch (Character.toUpperCase(c)) {
+            case 'P':
+                return new Pawn(color, f);
+
+            case 'R':
+                return new Rook(color, f);
+
+            case 'N':
+                return new Knight(color, f);
+
+            case 'B':
+                return new Bishop(color, f);
+
+            case 'Q':
+                return new Queen(color, f);
+
+            case 'K':
+                return new King(color, f);
+
+            default:
+                throw new RuntimeException("Invalid FEN");
+        }
     }
 
 }

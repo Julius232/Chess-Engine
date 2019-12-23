@@ -7,9 +7,14 @@ import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.generator.FieldGenerator;
 import julius.game.chessengine.generator.FigureGenerator;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,18 +26,18 @@ public class Board {
     private final static String WHITE = "white";
     private final static String BLACK = "black";
 
-    private final FieldGenerator fieldGenerator;
-    private final FigureGenerator figureGenerator;
+    private final FieldGenerator fieldGenerator = new FieldGenerator();
+    private final FigureGenerator figureGenerator = new FigureGenerator(this);
 
-    private final List<Field> fields;
+    private final List<Field> fields = fieldGenerator.generateFields();
     private List<Figure> figures;
 
     public Board(){
-        this.fieldGenerator = new FieldGenerator();
-        this.fields = fieldGenerator.generateFields();
-
-        this.figureGenerator = new FigureGenerator(this);
         this.figures = figureGenerator.initializeFigures();
+    }
+
+    public Board(String FEN) {
+        this.figures = figureGenerator.getFigures(FEN);
     }
 
     //FIGURE OPERATIONS
@@ -107,7 +112,6 @@ public class Board {
     }
 
     //X-AXIS OPERATIONS
-
     public List<Field> getAllFieldsXAxis(int y) {
         return fields.stream()
                 .filter(field -> y == field.getPosition().getYAchse())
@@ -379,6 +383,7 @@ public class Board {
         for(Figure figure : figures) {
             if(movingFigure.getCurrentPosition().equals(figure.getCurrentPosition())) {
                 figure.setCurrentField(toField);
+                getKings().forEach(king -> king.setInStateCheck(king.checkState(this)));
             }
         }
         return figures;

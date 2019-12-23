@@ -3,6 +3,7 @@ package julius.game.chessengine.figures;
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
+import julius.game.chessengine.engine.MoveField;
 import julius.game.chessengine.utils.Color;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -137,6 +138,15 @@ public class King extends Figure {
         Position currentPosition = getCurrentPosition();
         Position toPosition = toField.getPosition();
         return (char) (currentPosition.getXAchse() + 2) == toPosition.getXAchse();
+    }
+
+    public boolean checkState(Board board) {
+        return board.getFigures()
+                .stream()
+                .filter(figure -> !figure.getColor().equals(getColor()))
+                .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
+                .map(MoveField::getToField)
+                .anyMatch(toField -> toField.equals(getCurrentField()));
     }
 }
 

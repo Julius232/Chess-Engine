@@ -1,12 +1,12 @@
 package julius.game.chessengine.controller;
 
-import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
-import julius.game.chessengine.board.FrontendBoard;
+import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.MoveField;
 import julius.game.chessengine.figures.Figure;
+import julius.game.chessengine.utils.Color;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
@@ -36,12 +36,12 @@ public class ChessController {
 
     @GetMapping(value = "/field/possible/white")
     public ResponseEntity<List<MoveField>> getAllPossibleFieldsWhite() {
-        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsWhite());
+        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(Color.WHITE));
     }
 
     @GetMapping(value = "/field/possible/black")
     public ResponseEntity<List<MoveField>> getAllPossibleFieldsBlack() {
-        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsBlack());
+        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(Color.BLACK));
     }
 
     @GetMapping(value = "/figure")
@@ -50,7 +50,7 @@ public class ChessController {
     }
 
     @GetMapping(value = "/figure/frontend")
-    public ResponseEntity<FrontendBoard> getFiguresFrontend() {return ResponseEntity.ok(engine.translateBoardToFrontend());}
+    public ResponseEntity<FEN> getFiguresFrontend() {return ResponseEntity.ok(engine.translateBoardToFEN());}
 
     @PatchMapping(value="/figure/move/{from}/{to}")
     public ResponseEntity<?> moveFigure(@PathVariable("from") String from,

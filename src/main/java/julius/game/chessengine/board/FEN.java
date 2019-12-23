@@ -5,6 +5,6 @@ import lombok.RequiredArgsConstructor;
 
 @Data
 @RequiredArgsConstructor
-public class FrontendBoard {
+public class FEN {
     private final String renderBoard;
 }

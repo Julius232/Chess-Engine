@@ -2,9 +2,10 @@ package julius.game.chessengine.engine;
 
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
-import julius.game.chessengine.board.FrontendBoard;
+import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.Figure;
+import julius.game.chessengine.figures.King;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.utils.Score;
 import lombok.Data;
@@ -33,12 +34,13 @@ public class Engine {
     }
 
     public void moveRandomFigure(String color) {
-        List<MoveField> moveFields = color.equals(Color.WHITE) ? getAllPossibleMoveFieldsWhite() : getAllPossibleMoveFieldsBlack();
+        List<MoveField> moveFields = color.equals(Color.WHITE) ? getAllPossibleMoveFieldsForPlayerColor(Color.WHITE) :
+                getAllPossibleMoveFieldsForPlayerColor(Color.BLACK);
 
         Random rand = new Random();
         MoveField randomMoveField = rand
                 .ints(0, moveFields.size())
-                .mapToObj(i -> moveFields.get(i))
+                .mapToObj(moveFields::get)
                 .findAny().orElseThrow(() -> new RuntimeException("No random moves possible"));
 
         Figure randomFigure = board.getFigureForPosition(randomMoveField.getFromField().getPosition());
@@ -81,21 +83,15 @@ public class Engine {
         else throw new RuntimeException("FromPosition " + fromPosition + " or " + "ToPosition " + toPosition + "is not valid");
     }
 
-    public List<MoveField> getAllPossibleMoveFieldsWhite() {
+    public List<MoveField> getAllPossibleMoveFieldsForPlayerColor(String color) {
         return board.getFigures().stream()
-                .filter(figure -> Color.WHITE.equals(figure.getColor()))
+                .filter(figure -> color.equals(figure.getColor()))
                 .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
+                .filter(moveField -> !isInStateCheckAfterMove(moveField, color))
                 .collect(Collectors.toList());
     }
 
-    public List<MoveField> getAllPossibleMoveFieldsBlack() {
-        return board.getFigures().stream()
-                .filter(figure -> Color.BLACK.equals(figure.getColor()))
-                .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
-                .collect(Collectors.toList());
-    }
-
-    public FrontendBoard translateBoardToFrontend() {
+    public FEN translateBoardToFEN() {
         StringBuilder frontendBoard = new StringBuilder();
         for(int y = 8; y >= 1; y--) {
             int count = 0;
@@ -120,7 +116,7 @@ public class Engine {
                 frontendBoard.append('/');
             }
         }
-        return new FrontendBoard(frontendBoard.toString());
+        return new FEN(frontendBoard.toString());
     }
 
     private char convertToFrontendChar(Figure figure) {
@@ -142,7 +138,8 @@ public class Engine {
                     new Position(fromPosition.charAt(0), Character.getNumericValue(fromPosition.charAt(1)))
             );
             if(figure.getColor().equals(Color.WHITE) == whitesTurn) {
-                return figure.getPossibleFields(board).stream()
+                return figure.getPossibleMoveFields(board).stream()
+                        .map(MoveField::getToField)
                         .map(Field::getPosition)
                         .collect(Collectors.toList());
             }
@@ -153,5 +150,20 @@ public class Engine {
             log.info(e.getMessage());
             return Collections.EMPTY_LIST;
         }
+    }
+
+    private boolean isInStateCheckAfterMove(MoveField moveField, String color) {
+        Board checkBoard = new Board(translateBoardToFEN().getRenderBoard());
+        Field toField = moveField.getToField();
+        Figure figureToMove = checkBoard.getFigureForPosition(moveField.getFromField().getPosition());
+
+        if (checkBoard.isEnemyOnField(toField, color)) {
+            figureToMove.attack(checkBoard, toField);
+        } else {
+            figureToMove.move(checkBoard, toField);
+        }
+
+        return checkBoard.getKings().stream().filter(king -> color.equals(king.getColor()))
+                .anyMatch(King::isInStateCheck);
     }
 }
