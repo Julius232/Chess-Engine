@@ -4,9 +4,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
+import julius.game.chessengine.engine.MoveField;
 import lombok.Data;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 public abstract class Figure {
@@ -44,6 +46,12 @@ public abstract class Figure {
     @JsonIgnore
     public int getPosY() {
         return getCurrentPosition().getYAchse();
+    }
+
+    public List<MoveField> getPossibleMoveFields(Board board) {
+        return getPossibleFields(board).stream()
+                .map(toField -> new MoveField(currentField, toField))
+                .collect(Collectors.toList());
     }
 
 }

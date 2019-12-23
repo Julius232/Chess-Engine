@@ -1,16 +1,40 @@
+function makeRandomMove() {
+    var request = new XMLHttpRequest()
+    request.open('PATCH', 'http://localhost:8080/chess/figure/move/random/black', true)
+    request.send();
+    request.onload = function(e) {
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                reload();
+            }
+            else {
+                console.error(request.statusText)
+            }
+        }
+    };
+}
+
 function onDrop (source, target, piece, newPos, oldPos, orientation) {
 
     var request = new XMLHttpRequest()
 
     // Open a new connection, using the GET request on the URL endpoint
     request.open('PATCH', 'http://localhost:8080/chess/figure/move/' + source + '/' + target, true)
-
     request.send();
-    console.log('Source: ' + source)
-    console.log('Target: ' + target)
-    console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-
-    reload();
+    request.onload = function(e) {
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                console.log('Source: ' + source)
+                console.log('Target: ' + target)
+                console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+                reload();
+            }
+            else {
+                console.error(request.statusText)
+            }
+        }
+    };
+    window.setTimeout(makeRandomMove, 250)
 }
 
 $('#resetBoard').on('click', function () {

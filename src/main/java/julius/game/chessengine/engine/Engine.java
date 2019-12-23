@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Data
@@ -29,6 +30,33 @@ public class Engine {
         board = new Board();
         whitesTurn = true;
         score = new Score();
+    }
+
+    public void moveRandomFigure(String color) {
+        List<MoveField> moveFields = color.equals(Color.WHITE) ? getAllPossibleMoveFieldsWhite() : getAllPossibleMoveFieldsBlack();
+
+        Random rand = new Random();
+        MoveField randomMoveField = rand
+                .ints(0, moveFields.size())
+                .mapToObj(i -> moveFields.get(i))
+                .findAny().orElseThrow(() -> new RuntimeException("No random moves possible"));
+
+
+        /*MoveField randomMoveField = moveFields.stream()
+                .findAny()
+                .orElseThrow(() -> new RuntimeException("No random moves possible"));*/
+
+        Figure randomFigure = board.getFigureForPosition(randomMoveField.getFromField().getPosition());
+
+        log.info( randomFigure.getColor() + randomFigure.getType() +  " moves from " + randomFigure.getPosX()
+                + randomFigure.getPosY() + " to " + randomMoveField.getToField().getPosition().getXAchse()
+                + randomMoveField.getToField().getPosition().getYAchse());
+
+        String fromPosition = randomFigure.getPosX() + String.valueOf(randomFigure.getPosY());
+        String toPosition = randomMoveField.getToField().getPosition().getXAchse() +
+                String.valueOf(randomMoveField.getToField().getPosition().getYAchse());
+
+        moveFigure(fromPosition, toPosition);
     }
 
     public void moveFigure(String fromPosition, String toPosition) {
@@ -58,17 +86,17 @@ public class Engine {
         else throw new RuntimeException("FromPosition " + fromPosition + " or " + "ToPosition " + toPosition + "is not valid");
     }
 
-    public List<Field> getAllPossibleMoveFieldsWhite() {
+    public List<MoveField> getAllPossibleMoveFieldsWhite() {
         return board.getFigures().stream()
                 .filter(figure -> Color.WHITE.equals(figure.getColor()))
-                .flatMap(figure -> figure.getPossibleFields(board).stream())
+                .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
                 .collect(Collectors.toList());
     }
 
-    public List<Field> getAllPossibleMoveFieldsBlack() {
+    public List<MoveField> getAllPossibleMoveFieldsBlack() {
         return board.getFigures().stream()
                 .filter(figure -> Color.BLACK.equals(figure.getColor()))
-                .flatMap(figure -> figure.getPossibleFields(board).stream())
+                .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
                 .collect(Collectors.toList());
     }
 

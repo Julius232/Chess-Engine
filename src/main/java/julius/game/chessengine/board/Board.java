@@ -355,7 +355,6 @@ public class Board {
     }
 
     //MOVE && ATTACK OPERATIONS
-
     public void hitFigureFromBoard(Figure movingFigure, Field toField) {
         figures = figures.stream()
                 .filter(figure -> !toField.equals(figure.getCurrentField()))
