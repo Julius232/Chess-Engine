@@ -18,7 +18,7 @@ import java.util.stream.Stream;
 @EqualsAndHashCode(callSuper = true)
 public class King extends Figure {
 
-    private boolean isInStateCheck = false;
+    private boolean inStateCheck = false;
     private boolean hasMoved = false;
 
     public King(String color, Field field) {
@@ -86,11 +86,13 @@ public class King extends Figure {
                 .collect(Collectors.toList());
 
         if(board.isCastlingPossibleKingSide(this.getColor())) {
-            moveFields.add(board.getFieldForPosition(new Position((char)(this.getPosX() + 2), this.getPosY())));
+            Field castlingKingSide = board.getFieldForPosition(new Position((char)(this.getPosX() + 2), this.getPosY()));
+            moveFields.add(castlingKingSide);
         }
 
         if(board.isCastlingPossibleQueenSide(this.getColor())) {
-            moveFields.add(board.getFieldForPosition(new Position((char)(this.getPosX() - 2), this.getPosY())));
+            Field castlingQueenSide = board.getFieldForPosition(new Position((char)(this.getPosX() - 2), this.getPosY()));
+            moveFields.add(castlingQueenSide);
         }
 
         return Stream.concat(attackFields.stream(), moveFields.stream())

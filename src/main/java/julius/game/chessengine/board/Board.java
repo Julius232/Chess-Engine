@@ -74,6 +74,19 @@ public class Board {
                 .collect(Collectors.toList());
     }
 
+    public List<King> getKings() {
+        return figures.stream()
+                .filter(figure -> figure instanceof King)
+                .map(king -> (King) king)
+                .collect(Collectors.toList());
+    }
+
+    public boolean isPlayerInStateCheck(String color) {
+        return getKings().stream()
+                .filter(king -> color.equals(king.getColor()))
+                .anyMatch(King::isInStateCheck);
+    }
+
     //FIELD OPERATIONS
 
     public Field getFieldForPosition(Position position) {

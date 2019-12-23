@@ -41,11 +41,6 @@ public class Engine {
                 .mapToObj(i -> moveFields.get(i))
                 .findAny().orElseThrow(() -> new RuntimeException("No random moves possible"));
 
-
-        /*MoveField randomMoveField = moveFields.stream()
-                .findAny()
-                .orElseThrow(() -> new RuntimeException("No random moves possible"));*/
-
         Figure randomFigure = board.getFigureForPosition(randomMoveField.getFromField().getPosition());
 
         log.info( randomFigure.getColor() + randomFigure.getType() +  " moves from " + randomFigure.getPosX()
@@ -146,9 +141,14 @@ public class Engine {
             Figure figure = board.getFigureForPosition(
                     new Position(fromPosition.charAt(0), Character.getNumericValue(fromPosition.charAt(1)))
             );
-            return figure.getPossibleFields(board).stream()
-                    .map(Field::getPosition)
-                    .collect(Collectors.toList());
+            if(figure.getColor().equals(Color.WHITE) == whitesTurn) {
+                return figure.getPossibleFields(board).stream()
+                        .map(Field::getPosition)
+                        .collect(Collectors.toList());
+            }
+            else {
+                return Collections.EMPTY_LIST;
+            }
         } catch (RuntimeException e) {
             log.info(e.getMessage());
             return Collections.EMPTY_LIST;
