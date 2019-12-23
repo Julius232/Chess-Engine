@@ -50,7 +50,7 @@ public class ChessController {
     }
 
     @GetMapping(value = "/figure/frontend")
-    public ResponseEntity<FEN> getFiguresFrontend() {return ResponseEntity.ok(engine.translateBoardToFEN());}
+    public ResponseEntity<FEN> getFiguresFrontend() {return ResponseEntity.ok(FEN.translateBoardToFEN(engine.getBoard()));}
 
     @PatchMapping(value="/figure/move/{from}/{to}")
     public ResponseEntity<?> moveFigure(@PathVariable("from") String from,

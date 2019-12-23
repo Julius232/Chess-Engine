@@ -2,9 +2,11 @@ package julius.game.chessengine.figures;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import julius.game.chessengine.board.Board;
+import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.MoveField;
+import julius.game.chessengine.utils.Color;
 import lombok.Data;
 
 import java.util.List;

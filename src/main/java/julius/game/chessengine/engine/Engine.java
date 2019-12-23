@@ -1,8 +1,8 @@
 package julius.game.chessengine.engine;
 
 import julius.game.chessengine.board.Board;
-import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.FEN;
+import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.figures.King;
@@ -66,7 +66,7 @@ public class Engine {
         if(fromPosition.length() == 2 && toPosition.length() == 2) {
             try {
                 String playerColor = figureToMove.getColor();
-                if (playerColor.equals(Color.WHITE) == whitesTurn) {
+                if (playerColor.equals(Color.WHITE) == whitesTurn && !isInStateCheckAfterMove(new MoveField(figureToMove.getCurrentField(), toField), playerColor)) {
                     if (board.isEnemyOnField(toField, playerColor)) {
                         figureToMove.attack(board, toField);
                         score.add(board.getFigureForPosition(toField.getPosition()).getPoints(), playerColor);
@@ -91,47 +91,6 @@ public class Engine {
                 .collect(Collectors.toList());
     }
 
-    public FEN translateBoardToFEN() {
-        StringBuilder frontendBoard = new StringBuilder();
-        for(int y = 8; y >= 1; y--) {
-            int count = 0;
-            for(char x = 'a'; x <= 'h'; x++) {
-                Field f = board.getFieldForPosition(new Position(x, y));
-                Field nextF = board.getFieldForPosition(new Position((char)(x + 1), y));
-                if (board.isOccupiedField(f)) {
-                    frontendBoard.append(convertToFrontendChar(board.getFigureForPosition(f.getPosition())));
-                }
-                else {
-                    ++count;
-                    if (board.isOccupiedField(nextF)) {
-                        frontendBoard.append(count);
-                        count = 0;
-                    }
-                }
-                if (x == 'h' && count > 0) {
-                    frontendBoard.append(count);
-                }
-            }
-            if(y > 1) {
-                frontendBoard.append('/');
-            }
-        }
-        return new FEN(frontendBoard.toString());
-    }
-
-    private char convertToFrontendChar(Figure figure) {
-        String type = figure.getType();
-        String color = figure.getColor();
-        char frontendChar = type.charAt(0);
-        if(type.equals("KNIGHT")) {
-            frontendChar = 'N';
-        }
-        if(color.equals(Color.BLACK)) {
-            frontendChar = Character.toLowerCase(frontendChar);
-        }
-        return frontendChar;
-    }
-
     public List<Position> getPossibleMovesForPosition(String fromPosition) {
         try {
             Figure figure = board.getFigureForPosition(
@@ -139,6 +98,7 @@ public class Engine {
             );
             if(figure.getColor().equals(Color.WHITE) == whitesTurn) {
                 return figure.getPossibleMoveFields(board).stream()
+                        .filter(moveField -> !isInStateCheckAfterMove(moveField, figure.getColor()))
                         .map(MoveField::getToField)
                         .map(Field::getPosition)
                         .collect(Collectors.toList());
@@ -153,14 +113,13 @@ public class Engine {
     }
 
     private boolean isInStateCheckAfterMove(MoveField moveField, String color) {
-        Board checkBoard = new Board(translateBoardToFEN().getRenderBoard());
-        Field toField = moveField.getToField();
+        Board checkBoard = new Board(FEN.translateBoardToFEN(board).getRenderBoard());
         Figure figureToMove = checkBoard.getFigureForPosition(moveField.getFromField().getPosition());
 
-        if (checkBoard.isEnemyOnField(toField, color)) {
-            figureToMove.attack(checkBoard, toField);
+        if (checkBoard.isEnemyOnField(moveField.getToField(), color)) {
+            figureToMove.attack(checkBoard, moveField.getToField());
         } else {
-            figureToMove.move(checkBoard, toField);
+            figureToMove.move(checkBoard, moveField.getToField());
         }
 
         return checkBoard.getKings().stream().filter(king -> color.equals(king.getColor()))
