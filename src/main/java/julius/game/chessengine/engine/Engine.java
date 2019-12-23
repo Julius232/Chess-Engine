@@ -68,8 +68,8 @@ public class Engine {
                 String playerColor = figureToMove.getColor();
                 if (playerColor.equals(Color.WHITE) == whitesTurn && !isInStateCheckAfterMove(new MoveField(figureToMove.getCurrentField(), toField), playerColor)) {
                     if (board.isEnemyOnField(toField, playerColor)) {
-                        figureToMove.attack(board, toField);
                         score.add(board.getFigureForPosition(toField.getPosition()).getPoints(), playerColor);
+                        figureToMove.attack(board, toField);
                     } else {
                         figureToMove.move(board, toField);
                     }
@@ -113,13 +113,21 @@ public class Engine {
     }
 
     private boolean isInStateCheckAfterMove(MoveField moveField, String color) {
-        Board checkBoard = new Board(FEN.translateBoardToFEN(board).getRenderBoard());
+        String fen = FEN.translateBoardToFEN(board).getRenderBoard();
+        Board checkBoard = new Board(fen);
         Figure figureToMove = checkBoard.getFigureForPosition(moveField.getFromField().getPosition());
-
-        if (checkBoard.isEnemyOnField(moveField.getToField(), color)) {
-            figureToMove.attack(checkBoard, moveField.getToField());
-        } else {
-            figureToMove.move(checkBoard, moveField.getToField());
+        try {
+            if (checkBoard.isEnemyOnField(moveField.getToField(), color)) {
+                figureToMove.attack(checkBoard, moveField.getToField());
+            } else {
+                figureToMove.move(checkBoard, moveField.getToField());
+            }
+        } catch (IllegalStateException e) {
+            checkBoard.logBoard();
+            log.error(figureToMove.getType() + figureToMove.getColor() + " wanted to move from " +
+                    moveField.getFromField().getPosition().getXAchse() + moveField.getFromField().getPosition().getYAchse() + " to "
+                    + moveField.getToField().getPosition().getXAchse() + moveField.getToField().getPosition().getYAchse()
+                    + " color is " + color + " FEN = " + fen);
         }
 
         return checkBoard.getKings().stream().filter(king -> color.equals(king.getColor()))

@@ -1,21 +1,17 @@
 package julius.game.chessengine.board;
 
+import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.figures.King;
 import julius.game.chessengine.figures.Rook;
-import julius.game.chessengine.utils.Color;
-import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.generator.FieldGenerator;
 import julius.game.chessengine.generator.FigureGenerator;
+import julius.game.chessengine.utils.Color;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Data

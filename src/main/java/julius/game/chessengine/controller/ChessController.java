@@ -7,6 +7,7 @@ import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.MoveField;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.utils.Color;
+import julius.game.chessengine.utils.Score;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,11 @@ import java.util.List;
 public class ChessController {
 
     private final Engine engine;
+
+    @GetMapping(value = "/score")
+    public ResponseEntity<Score> getScore(){
+        return ResponseEntity.ok(engine.getScore());
+    }
 
     @PutMapping(value = "/reset")
     public ResponseEntity<?> resetBoard() {
@@ -73,7 +79,6 @@ public class ChessController {
 
     @GetMapping(value = "/figure/move/possible/{from}")
     public ResponseEntity<List<Position>> getPossibleToPositions(@PathVariable("from") String from) {
-        log.info(from);
 
         if(from != null) {
             return ResponseEntity.ok(engine.getPossibleMovesForPosition(from));
