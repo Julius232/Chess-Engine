@@ -52,7 +52,7 @@ public class King extends Figure {
         }
         else {
             throw new IllegalStateException("Move Operation of King from Position: " + getPosX() + getPosY() + " to position: "
-                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+                    + toField.getPosition().getX() + toField.getPosition().getY() + " was not possible." );
         }
         return board;
     }
@@ -67,7 +67,7 @@ public class King extends Figure {
         }
         else {
             throw new IllegalStateException("Attack Operation of King from Position: " + getPosX() + getPosY() + " to position: "
-                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+                    + toField.getPosition().getX() + toField.getPosition().getY() + " was not possible." );
         }
         return board;
     }
@@ -131,13 +131,13 @@ public class King extends Figure {
     private boolean isQueenSideCastlingMove(Field toField) {
         Position currentPosition = getCurrentPosition();
         Position toPosition = toField.getPosition();
-        return (char) (currentPosition.getXAchse() - 2) == toPosition.getXAchse();
+        return (char) (currentPosition.getX() - 2) == toPosition.getX();
     }
 
     private boolean isKingSideCastlingMove(Field toField) {
         Position currentPosition = getCurrentPosition();
         Position toPosition = toField.getPosition();
-        return (char) (currentPosition.getXAchse() + 2) == toPosition.getXAchse();
+        return (char) (currentPosition.getX() + 2) == toPosition.getX();
     }
 
     public boolean checkState(Board board) {

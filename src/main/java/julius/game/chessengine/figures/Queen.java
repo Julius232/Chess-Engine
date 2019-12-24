@@ -23,7 +23,7 @@ public class Queen extends Figure {
         }
         else {
             throw new IllegalStateException("Move Operation of Queen from Position: " + getPosX() + getPosY() + " to position: "
-                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+                    + toField.getPosition().getX() + toField.getPosition().getY() + " was not possible." );
         }
         return board;
     }
@@ -37,7 +37,7 @@ public class Queen extends Figure {
         }
         else {
             throw new IllegalStateException("Attack Operation of Queen from Position: " + getPosX() + getPosY() + " to position: "
-                    + toField.getPosition().getXAchse() + toField.getPosition().getYAchse() + " was not possible." );
+                    + toField.getPosition().getX() + toField.getPosition().getY() + " was not possible." );
         }
         return board;
     }

@@ -6,6 +6,7 @@ import julius.game.chessengine.figures.Rook;
 import julius.game.chessengine.generator.FieldGenerator;
 import julius.game.chessengine.generator.FigureGenerator;
 import julius.game.chessengine.utils.Color;
+import julius.game.chessengine.utils.Score;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 @Log4j2
 @Component
 public class Board {
+    private Score score = new Score();
 
     private final static String WHITE = "white";
     private final static String BLACK = "black";
@@ -32,22 +34,27 @@ public class Board {
         this.figures = figureGenerator.initializeFigures();
     }
 
-    public Board(String FEN) {
+    public Board(String FEN, Score score) {
         this.figures = figureGenerator.getFigures(FEN);
+        this.score = score;
     }
 
     //FIGURE OPERATIONS
-
-    public void addFigure(Figure figure) {
-        this.figures.add(figure);
-    }
 
     public Figure getFigureForPosition(Position position) {
         return figures.stream()
                 .filter(figure -> position.equals(figure.getCurrentField().getPosition()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No Figure at Position: " +
-                        position.getXAchse() + position.getYAchse()));
+                        position.getX() + position.getY()));
+    }
+
+    public Figure getFigureForString(String position) {
+        log.info(position);
+        if(position.length() == 2) {
+            return getFigureForPosition(new Position(position.charAt(0), Character.getNumericValue(position.charAt(1))));
+        }
+        else throw new IllegalStateException("Position " + position + " is not valid");
     }
 
     public boolean isEmptyField(Field field) {
@@ -97,6 +104,13 @@ public class Board {
                 .orElse(new Field("offsideTheBoard", position));
     }
 
+    public Field getFieldForString(String position) {
+        if(position.length() == 2) {
+            return getFieldForPosition(new Position(position.charAt(0), Character.getNumericValue(position.charAt(1))));
+        }
+        else throw new IllegalStateException("Position " + position + " is not valid");
+    }
+
     public List<Field> getAllEmptyFields() {
         return fields.stream()
                 .filter(this::isEmptyField)
@@ -110,7 +124,7 @@ public class Board {
     //X-AXIS OPERATIONS
     public List<Field> getAllFieldsXAxis(int y) {
         return fields.stream()
-                .filter(field -> y == field.getPosition().getYAchse())
+                .filter(field -> y == field.getPosition().getY())
                 .collect(Collectors.toList());
     }
 
@@ -169,7 +183,7 @@ public class Board {
     //Y-AXIS OPERATIONS
     public List<Field> getAllFieldsYAxis(char x) {
         return fields.stream()
-                .filter(field -> x == field.getPosition().getXAchse())
+                .filter(field -> x == field.getPosition().getX())
                 .collect(Collectors.toList());
     }
 
@@ -227,8 +241,8 @@ public class Board {
     public List<Field> getAllFieldsDiagonalLDRU(Position position) {
         List<Field> allDiagonalLDRUfields = new ArrayList<>();
 
-        char posXCountUp = position.getXAchse();
-        int posYCountUp = position.getYAchse();
+        char posXCountUp = position.getX();
+        int posYCountUp = position.getY();
 
         while(posXCountUp <= 'h' && posYCountUp <= 8) {
             posXCountUp++;
@@ -236,8 +250,8 @@ public class Board {
             allDiagonalLDRUfields.add(getFieldForPosition(new Position(posXCountUp, posYCountUp)));
         }
 
-        char posXCountDown = position.getXAchse();
-        int posYCountDown = position.getYAchse();
+        char posXCountDown = position.getX();
+        int posYCountDown = position.getY();
 
         while(posXCountDown >= 'a' && posYCountDown >= 1) {
             posXCountDown--;
@@ -299,8 +313,8 @@ public class Board {
     public List<Field> getAllFieldsDiagonalRDLU(Position position) {
         List<Field> allDiagonalRDLUfields = new ArrayList<>();
 
-        char posXCountUp = position.getXAchse();
-        int posYCountUp = position.getYAchse();
+        char posXCountUp = position.getX();
+        int posYCountUp = position.getY();
 
         while(posXCountUp - 1 >= 'a' && posYCountUp + 1 <= 8) {
             posXCountUp--;
@@ -308,8 +322,8 @@ public class Board {
             allDiagonalRDLUfields.add(getFieldForPosition(new Position(posXCountUp, posYCountUp)));
         }
 
-        char posXCountDown = position.getXAchse();
-        int posYCountDown = position.getYAchse();
+        char posXCountDown = position.getX();
+        int posYCountDown = position.getY();
 
         while(posXCountDown + 1 <= 'h' && posYCountDown - 1 >= 1) {
             posXCountDown++;

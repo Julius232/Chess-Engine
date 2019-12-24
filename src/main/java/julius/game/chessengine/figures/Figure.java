@@ -2,11 +2,9 @@ package julius.game.chessengine.figures;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import julius.game.chessengine.board.Board;
-import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.MoveField;
-import julius.game.chessengine.utils.Color;
 import lombok.Data;
 
 import java.util.List;
@@ -42,13 +40,16 @@ public abstract class Figure {
 
     @JsonIgnore
     public char getPosX() {
-        return getCurrentPosition().getXAchse();
+        return getCurrentPosition().getX();
     }
 
     @JsonIgnore
     public int getPosY() {
-        return getCurrentPosition().getYAchse();
+        return getCurrentPosition().getY();
     }
+
+    @JsonIgnore
+    public String positionToString() {return getCurrentField().positionToString();}
 
     public List<MoveField> getPossibleMoveFields(Board board) {
         return getPossibleFields(board).stream()

@@ -25,14 +25,16 @@ function makeRandomMove(color) {
     request.onload = function(e) {
         if (request.readyState == 4) {
             if (request.status == 200) {
+                var data = JSON.parse(this.response)
+                console.log(data)
                 reload();
-            
             }
             else {
                 console.error(request.statusText)
             }
         }
     };
+
 }
 
 function onDrop (source, target, piece, newPos, oldPos, orientation) {
@@ -45,9 +47,8 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
     request.onload = function(e) {
         if (request.readyState == 4) {
             if (request.status == 200) {
-                console.log('Source: ' + source)
-                console.log('Target: ' + target)
-                console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+                var data = JSON.parse(this.response)
+                console.log(data)
                 reload();
                 
             }
@@ -56,7 +57,7 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
             }
         }
     };
-    window.setTimeout(makeRandomMove("black"), 500)
+    window.setTimeout(makeRandomMove("black"), 2000)
 }
 
 $('#resetBoard').on('click', function () {
@@ -88,8 +89,8 @@ function reload() {
 
 function greySquare (square) {
 
-  var whiteSquareGrey = '#A9F5A9'
-  var blackSquareGrey = '#04B404'
+  var whiteSquareGrey = '#FFCCCB'
+  var blackSquareGrey = '#FF0000'
   var $square = $('#board .square-' + square)
 
   var background = whiteSquareGrey
@@ -123,7 +124,7 @@ function onMouseoverSquare (square, piece) {
 
                 // highlight the possible squares for this piece
                 for (var i = 0; i < moves.length; i++) {
-                    greySquare(moves[i].xachse + moves[i].yachse)
+                    greySquare(moves[i].x + moves[i].y)
                 }
 
             }

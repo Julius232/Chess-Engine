@@ -14,4 +14,8 @@ public class Field {
         this.position = position;
     }
 
+    public String positionToString() {
+        return position.toString();
+    }
+
 }

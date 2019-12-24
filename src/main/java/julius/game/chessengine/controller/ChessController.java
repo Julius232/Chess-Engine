@@ -4,6 +4,7 @@ import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
+import julius.game.chessengine.engine.GameState;
 import julius.game.chessengine.engine.MoveField;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.utils.Color;
@@ -26,7 +27,7 @@ public class ChessController {
 
     @GetMapping(value = "/score")
     public ResponseEntity<Score> getScore(){
-        return ResponseEntity.ok(engine.getScore());
+        return ResponseEntity.ok(engine.getBoard().getScore());
     }
 
     @PutMapping(value = "/reset")
@@ -59,17 +60,17 @@ public class ChessController {
     public ResponseEntity<FEN> getFiguresFrontend() {return ResponseEntity.ok(FEN.translateBoardToFEN(engine.getBoard()));}
 
     @PatchMapping(value="/figure/move/{from}/{to}")
-    public ResponseEntity<?> moveFigure(@PathVariable("from") String from,
-                                        @PathVariable("to") String to) {
+    public ResponseEntity<GameState> moveFigure(@PathVariable("from") String from,
+                                                @PathVariable("to") String to) {
+        log.info(from + " " + to);
         if(from != null && to != null) {
-            engine.moveFigure(from, to);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(engine.moveFigure(from, to));
         }
         else return ResponseEntity.status(406).build();
     }
 
     @PatchMapping(value="/figure/move/random/{color}")
-    public ResponseEntity<?> moveRandomFigure(@PathVariable("color") String color) {
+    public ResponseEntity<GameState> moveRandomFigure(@PathVariable("color") String color) {
         if(color != null) {
             engine.moveRandomFigure(color);
             return ResponseEntity.ok().build();
@@ -79,7 +80,7 @@ public class ChessController {
 
     @GetMapping(value = "/figure/move/possible/{from}")
     public ResponseEntity<List<Position>> getPossibleToPositions(@PathVariable("from") String from) {
-
+        log.info(from);
         if(from != null) {
             return ResponseEntity.ok(engine.getPossibleMovesForPosition(from));
         }

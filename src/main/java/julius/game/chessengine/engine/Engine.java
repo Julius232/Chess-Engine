@@ -23,19 +23,17 @@ import java.util.stream.Collectors;
 public class Engine {
 
     private Board board = new Board();
-    private Score score = new Score();
-
+    private GameState gameState;
     private boolean whitesTurn = true;
 
     public void startNewGame() {
         board = new Board();
         whitesTurn = true;
-        score = new Score();
+        gameState = new GameState();
     }
 
-    public void moveRandomFigure(String color) {
-        List<MoveField> moveFields = color.equals(Color.WHITE) ? getAllPossibleMoveFieldsForPlayerColor(Color.WHITE) :
-                getAllPossibleMoveFieldsForPlayerColor(Color.BLACK);
+    public GameState moveRandomFigure(String color) {
+        List<MoveField> moveFields = getAllPossibleMoveFieldsForPlayerColor(color);
 
         Random rand = new Random();
         MoveField randomMoveField = rand
@@ -43,44 +41,27 @@ public class Engine {
                 .mapToObj(moveFields::get)
                 .findAny().orElseThrow(() -> new RuntimeException("No random moves possible"));
 
-        Figure randomFigure = board.getFigureForPosition(randomMoveField.getFromField().getPosition());
+        Figure randomFigure = board.getFigureForPosition(randomMoveField.getFromPosition());
+        String fromPosition = randomFigure.positionToString();
+        String toPosition = randomMoveField.toPositionToString();
 
-        log.info( randomFigure.getColor() + randomFigure.getType() +  " moves from " + randomFigure.getPosX()
-                + randomFigure.getPosY() + " to " + randomMoveField.getToField().getPosition().getXAchse()
-                + randomMoveField.getToField().getPosition().getYAchse());
-
-        String fromPosition = randomFigure.getPosX() + String.valueOf(randomFigure.getPosY());
-        String toPosition = randomMoveField.getToField().getPosition().getXAchse() +
-                String.valueOf(randomMoveField.getToField().getPosition().getYAchse());
-
-        moveFigure(fromPosition, toPosition);
+        return moveFigure(fromPosition, toPosition);
     }
 
-    public void moveFigure(String fromPosition, String toPosition) {
-        Figure figureToMove = board.getFigureForPosition(
-                new Position(fromPosition.charAt(0), Character.getNumericValue(fromPosition.charAt(1)))
-        );
-        Field toField = board.getFieldForPosition(
-                new Position(toPosition.charAt(0), Character.getNumericValue(toPosition.charAt(1)))
-        );
-        if(fromPosition.length() == 2 && toPosition.length() == 2) {
-            try {
-                String playerColor = figureToMove.getColor();
-                if (playerColor.equals(Color.WHITE) == whitesTurn && !isInStateCheckAfterMove(new MoveField(figureToMove.getCurrentField(), toField), playerColor)) {
-                    if (board.isEnemyOnField(toField, playerColor)) {
-                        score.add(board.getFigureForPosition(toField.getPosition()).getPoints(), playerColor);
-                        figureToMove.attack(board, toField);
-                    } else {
-                        figureToMove.move(board, toField);
-                    }
-                    whitesTurn = !whitesTurn;
-                    board.logBoard();
-                }
-            } catch (IllegalStateException e) {
-                log.info(e.getMessage());
+    public GameState moveFigure(String fromPosition, String toPosition) {
+        Figure figureToMove = board.getFigureForString(fromPosition);
+        Field toField = board.getFieldForString(toPosition);
+        try {
+            if (isPlayersTurnAndIsNotInStateCheckAfterMove(figureToMove, toField)) {
+                moveOrAttackFigure(board, figureToMove, toField);
+                whitesTurn = !whitesTurn;
+                board.logBoard();
             }
+        } catch (IllegalStateException e) {
+            log.info(e.getMessage());
         }
-        else throw new RuntimeException("FromPosition " + fromPosition + " or " + "ToPosition " + toPosition + "is not valid");
+        updateGameState();
+        return gameState;
     }
 
     public List<MoveField> getAllPossibleMoveFieldsForPlayerColor(String color) {
@@ -93,9 +74,7 @@ public class Engine {
 
     public List<Position> getPossibleMovesForPosition(String fromPosition) {
         try {
-            Figure figure = board.getFigureForPosition(
-                    new Position(fromPosition.charAt(0), Character.getNumericValue(fromPosition.charAt(1)))
-            );
+            Figure figure = board.getFigureForString(fromPosition);
             if(figure.getColor().equals(Color.WHITE) == whitesTurn) {
                 return figure.getPossibleMoveFields(board).stream()
                         .filter(moveField -> !isInStateCheckAfterMove(moveField, figure.getColor()))
@@ -112,25 +91,49 @@ public class Engine {
         }
     }
 
-    private boolean isInStateCheckAfterMove(MoveField moveField, String color) {
-        String fen = FEN.translateBoardToFEN(board).getRenderBoard();
-        Board checkBoard = new Board(fen);
-        Figure figureToMove = checkBoard.getFigureForPosition(moveField.getFromField().getPosition());
-        try {
-            if (checkBoard.isEnemyOnField(moveField.getToField(), color)) {
-                figureToMove.attack(checkBoard, moveField.getToField());
-            } else {
-                figureToMove.move(checkBoard, moveField.getToField());
-            }
-        } catch (IllegalStateException e) {
-            checkBoard.logBoard();
-            log.error(figureToMove.getType() + figureToMove.getColor() + " wanted to move from " +
-                    moveField.getFromField().getPosition().getXAchse() + moveField.getFromField().getPosition().getYAchse() + " to "
-                    + moveField.getToField().getPosition().getXAchse() + moveField.getToField().getPosition().getYAchse()
-                    + " color is " + color + " FEN = " + fen);
-        }
-
-        return checkBoard.getKings().stream().filter(king -> color.equals(king.getColor()))
+    private boolean isInStateCheck(Board board, String color) {
+        return board.getKings().stream().filter(king -> color.equals(king.getColor()))
                 .anyMatch(King::isInStateCheck);
     }
+
+    private boolean isInStateCheckAfterMove(MoveField moveField, String color) {
+        Board checkBoard = generateDummyBoard(board);
+        Figure figureToMove = checkBoard.getFigureForPosition(moveField.getFromPosition());
+        moveOrAttackFigure(checkBoard, figureToMove, moveField.getToField());
+        return isInStateCheck(checkBoard, color);
+    }
+
+    private void moveOrAttackFigure(Board board, Figure figureToMove, Field toField) {
+        String color = figureToMove.getColor();
+        if (board.isEnemyOnField(toField, color)) {
+            board.getScore().add(board.getFigureForPosition(toField.getPosition()).getPoints(), color);
+            figureToMove.attack(board, toField);
+        } else {
+            figureToMove.move(board, toField);
+        }
+    }
+
+    private Board generateDummyBoard(Board board) {
+        String fen = FEN.translateBoardToFEN(board).getRenderBoard();
+        Score copyScore = new Score(board.getScore().getScoreWhite(), board.getScore().getScoreBlack());
+        return new Board(fen, copyScore);
+    }
+
+    private boolean isPlayersTurnAndIsNotInStateCheckAfterMove(Figure figureToMove, Field toField) {
+        String playerColor = figureToMove.getColor();
+        return playerColor.equals(Color.WHITE) == whitesTurn && !isInStateCheckAfterMove(new MoveField(figureToMove.getCurrentField(), toField), playerColor);
+    }
+
+    private void updateGameState() {
+        if (getAllPossibleMoveFieldsForPlayerColor(Color.WHITE).size() == 0 && isInStateCheck(board, Color.WHITE)) {
+            gameState.setBlackWon(true);
+        }
+        else if (getAllPossibleMoveFieldsForPlayerColor(Color.BLACK).size() == 0 && isInStateCheck(board, Color.BLACK)) {
+            gameState.setWhiteWon(true);
+        }
+        else if(getAllPossibleMoveFieldsForPlayerColor(Color.WHITE).size() == 0 || getAllPossibleMoveFieldsForPlayerColor(Color.BLACK).size() == 0) {
+            gameState.setDraw(true);
+        }
+    }
+
 }
