@@ -52,7 +52,7 @@ public abstract class Figure {
     public String positionToString() {return getCurrentField().positionToString();}
 
     public List<MoveField> getPossibleMoveFields(Board board) {
-        return getPossibleFields(board).stream()
+        return getPossibleFields(board).parallelStream()
                 .map(toField -> new MoveField(currentField, toField))
                 .collect(Collectors.toList());
     }

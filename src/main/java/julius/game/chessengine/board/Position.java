@@ -18,7 +18,7 @@ public class Position {
     }
 
     public boolean isPositionInFields(List<Field> fields) {
-        return fields.stream()
+        return fields.parallelStream()
                 .anyMatch(field -> this.equals(field.getPosition()));
     }
 

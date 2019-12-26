@@ -17,7 +17,7 @@ public class Bishop extends Figure {
     @Override
     public Board move(Board board, Field toField) {
         if(getPossibleFields(board)
-                .stream()
+                .parallelStream()
                 .anyMatch(toField::equals)) {
             board.moveFigureToField( this, toField);
         }
@@ -31,7 +31,7 @@ public class Bishop extends Figure {
     @Override
     public Board attack(Board board, Field toField) {
         if(getPossibleFields(board)
-                .stream()
+                .parallelStream()
                 .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
         }

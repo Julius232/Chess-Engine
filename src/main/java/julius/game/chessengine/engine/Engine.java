@@ -65,7 +65,7 @@ public class Engine {
     }
 
     public List<MoveField> getAllPossibleMoveFieldsForPlayerColor(Board board, String color) {
-        return board.getFigures().stream()
+        return board.getFigures().parallelStream()
                 .filter(figure -> color.equals(figure.getColor()))
                 .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
                 .filter(moveField -> !isInStateCheckAfterMove(board, moveField, color))
@@ -76,7 +76,7 @@ public class Engine {
         try {
             Figure figure = board.getFigureForString(fromPosition);
             if(figure.getColor().equals(Color.WHITE) == whitesTurn) {
-                return figure.getPossibleMoveFields(board).stream()
+                return figure.getPossibleMoveFields(board).parallelStream()
                         .filter(moveField -> !isInStateCheckAfterMove(board, moveField, figure.getColor()))
                         .map(MoveField::getToField)
                         .map(Field::getPosition)
@@ -92,7 +92,7 @@ public class Engine {
     }
 
     private boolean isInStateCheck(Board board, String color) {
-        return board.getKings().stream().filter(king -> color.equals(king.getColor()))
+        return board.getKings().parallelStream().filter(king -> color.equals(king.getColor()))
                 .anyMatch(King::isInStateCheck);
     }
 
@@ -105,7 +105,9 @@ public class Engine {
         efficiency += scoreDifference;
 
         while (iteration < levelOfDepth && efficiency >= mostEfficientMove) {
-            log.info("Iteration: (" + (iteration + 1) + "/" + levelOfDepth + ")");
+
+
+            //log.info("Iteration: (" + (iteration + 1) + "/" + levelOfDepth + ")");
             double mostEfficientMoveScoreDifference =
                     getMostEfficientMoveScoreDifference(Color.getOpponentColor(color), levelOfDepth, currentPlayerColor, simulatedBoard, efficiency);
 
@@ -117,8 +119,8 @@ public class Engine {
             iteration++;
         }
 
-        log.info("Efficiency: " + efficiency + " From: " + moveField.fromPositionToString() + " To: " + moveField.toPositionToString() + " Player: " + color +
-                " MostEfficientMove: " + mostEfficientMove);
+        /*log.info("Efficiency: " + efficiency + " From: " + moveField.fromPositionToString() + " To: " + moveField.toPositionToString() + " Player: " + color +
+                " MostEfficientMove: " + mostEfficientMove);*/
 
         return efficiency;
     }

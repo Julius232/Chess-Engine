@@ -42,7 +42,7 @@ public class Board {
     //FIGURE OPERATIONS
 
     public Figure getFigureForPosition(Position position) {
-        return figures.stream()
+        return figures.parallelStream()
                 .filter(figure -> position.equals(figure.getCurrentField().getPosition()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No Figure at Position: " +
@@ -57,39 +57,39 @@ public class Board {
     }
 
     public boolean isEmptyField(Field field) {
-        return figures.stream()
+        return figures.parallelStream()
                 .noneMatch(figure -> field.equals(figure.getCurrentField()));
     }
 
     public List<Field> getAllOccupiedFields() {
-        return figures.stream()
+        return figures.parallelStream()
                 .filter(figure -> isOccupiedField(figure.getCurrentField()))
                 .map(Figure::getCurrentField)
                 .collect(Collectors.toList());
     }
 
     public boolean isEnemyOnField(Field field, String currentPlayerColor) {
-        return figures.stream()
+        return figures.parallelStream()
                 .filter(figure -> field.equals(figure.getCurrentField()))
                 .anyMatch(figure -> ! currentPlayerColor.equals(figure.getColor()));
     }
 
     public List<Field> getAllEnemyFields(String currentPlayerColor) {
-        return figures.stream()
+        return figures.parallelStream()
                 .filter(figure -> isEnemyOnField(figure.getCurrentField(), currentPlayerColor))
                 .map(Figure::getCurrentField)
                 .collect(Collectors.toList());
     }
 
     public List<King> getKings() {
-        return figures.stream()
+        return figures.parallelStream()
                 .filter(figure -> figure instanceof King)
                 .map(king -> (King) king)
                 .collect(Collectors.toList());
     }
 
     public boolean isPlayerInStateCheck(String color) {
-        return getKings().stream()
+        return getKings().parallelStream()
                 .filter(king -> color.equals(king.getColor()))
                 .anyMatch(King::isInStateCheck);
     }
@@ -97,7 +97,7 @@ public class Board {
     //FIELD OPERATIONS
 
     public Field getFieldForPosition(Position position) {
-        return fields.stream()
+        return fields.parallelStream()
                 .filter(field -> field.getPosition().equals(position))
                 .findAny()
                 .orElse(new Field("offsideTheBoard", position));
@@ -111,7 +111,7 @@ public class Board {
     }
 
     public List<Field> getAllEmptyFields() {
-        return fields.stream()
+        return fields.parallelStream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
@@ -122,25 +122,25 @@ public class Board {
 
     //X-AXIS OPERATIONS
     public List<Field> getAllFieldsXAxis(int y) {
-        return fields.stream()
+        return fields.parallelStream()
                 .filter(field -> y == field.getPosition().getY())
                 .collect(Collectors.toList());
     }
 
     public List<Field> getEmptyFieldsXAxis(int y) {
-        return getAllFieldsXAxis(y).stream()
+        return getAllFieldsXAxis(y).parallelStream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
 
     public List<Field> getOccupiedFieldsXAxis(int y) {
-        return getAllFieldsXAxis(y).stream()
+        return getAllFieldsXAxis(y).parallelStream()
                 .filter(this::isOccupiedField)
                 .collect(Collectors.toList());
     }
 
     public List<Field> getEnemyFieldsXAxis(int y, String currentPlayerColor) {
-        return getAllFieldsXAxis(y).stream()
+        return getAllFieldsXAxis(y).parallelStream()
                 .filter(field -> isEnemyOnField(field, currentPlayerColor))
                 .collect(Collectors.toList());
     }
@@ -181,25 +181,25 @@ public class Board {
 
     //Y-AXIS OPERATIONS
     public List<Field> getAllFieldsYAxis(char x) {
-        return fields.stream()
+        return fields.parallelStream()
                 .filter(field -> x == field.getPosition().getX())
                 .collect(Collectors.toList());
     }
 
     public List<Field> getEmptyFieldsYAxis(char x) {
-        return getAllFieldsYAxis(x).stream()
+        return getAllFieldsYAxis(x).parallelStream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
 
     public List<Field> getOccupiedFieldsYAxis(char x) {
-        return getAllFieldsYAxis(x).stream()
+        return getAllFieldsYAxis(x).parallelStream()
                 .filter(this::isOccupiedField)
                 .collect(Collectors.toList());
     }
 
     public List<Field> getEnemyFieldsYAxis(char x, String currentPlayerColor) {
-        return getAllFieldsYAxis(x).stream()
+        return getAllFieldsYAxis(x).parallelStream()
                 .filter(field -> isEnemyOnField(field, currentPlayerColor))
                 .collect(Collectors.toList());
     }
@@ -262,7 +262,7 @@ public class Board {
     }
 
     public List<Field> getEmptyFieldsDiagonalLDRU(Position position) {
-        return getAllFieldsDiagonalLDRU(position).stream()
+        return getAllFieldsDiagonalLDRU(position).parallelStream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
@@ -334,7 +334,7 @@ public class Board {
     }
 
     public List<Field> getEmptyFieldsDiagonalRDLU(Position position) {
-        return getAllFieldsDiagonalRDLU(position).stream()
+        return getAllFieldsDiagonalRDLU(position).parallelStream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
@@ -382,7 +382,7 @@ public class Board {
 
     //MOVE && ATTACK OPERATIONS
     public void hitFigureFromBoard(Figure movingFigure, Field toField) {
-        figures = figures.stream()
+        figures = figures.parallelStream()
                 .filter(figure -> !toField.equals(figure.getCurrentField()))
                 .collect(Collectors.toList());
         moveFigureToField(movingFigure, toField);

@@ -29,7 +29,7 @@ public class King extends Figure {
     @Override
     public Board move(Board board, Field toField) {
         if(getPossibleFields(board)
-                .stream()
+                .parallelStream()
                 .anyMatch(toField::equals)) {
             if(isQueenSideCastlingMove(toField)) {
                 int yAxis = this.getColor().equals(Color.WHITE) ? 1 : 8;
@@ -60,7 +60,7 @@ public class King extends Figure {
     @Override
     public Board attack(Board board, Field toField) {
         if(getPossibleFields(board)
-                .stream()
+                .parallelStream()
                 .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
             hasMoved = true;
@@ -75,13 +75,13 @@ public class King extends Figure {
     @Override
     public List<Field> getPossibleFields(Board board) {
         List<Field> attackFields = getAllPositionMoves()
-                .stream()
+                .parallelStream()
                 .filter(position -> position.isPositionInFields(board.getAllEnemyFields(getColor())))
                 .map(board::getFieldForPosition)
                 .collect(Collectors.toList());
 
         List<Field> moveFields = getAllPositionMoves()
-                .stream()
+                .parallelStream()
                 .filter(position -> position.isPositionInFields(board.getAllEmptyFields()))
                 .map(board::getFieldForPosition)
                 .collect(Collectors.toList());
@@ -142,7 +142,7 @@ public class King extends Figure {
 
     public boolean checkState(Board board) {
         return board.getFigures()
-                .stream()
+                .parallelStream()
                 .filter(figure -> !figure.getColor().equals(getColor()))
                 .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
                 .map(MoveField::getToField)
