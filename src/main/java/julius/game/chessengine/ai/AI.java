@@ -5,6 +5,8 @@ import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
 import julius.game.chessengine.engine.MoveField;
+import julius.game.chessengine.utils.Color;
+import julius.game.chessengine.utils.Score;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
@@ -30,10 +32,8 @@ public class AI {
 
     private MoveField calculateMove(Board board, String color) {
         String fenBoard = FEN.translateBoardToFEN(board).getRenderBoard();
-        int levelOfDepth = 1;
+        int levelOfDepth = 2;
         String filePath = "src/main/resources/best.moves.level" + levelOfDepth;
-
-        List<MoveField> moveFields = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
 
         try {
             Map<String, MoveField> bestMoves = new HashMap<>();
@@ -48,19 +48,9 @@ public class AI {
                 return bestMove;
             }
 
-            Map<MoveField, Double> calculatedMoveMap = moveFields.parallelStream()
-                    .collect(Collectors.toMap(moveField -> moveField, moveField ->
-                    {
-                        log.info("Calculating:" + moveField.toString() + " + levelOfDepth = " + levelOfDepth);
-                        double efficiency = engine.simulateMoveAndGetEfficiency(board, moveField, color, color, levelOfDepth, -3333);
-                        log.info("Efficiency for Move: " + moveField.toString() + " was " + efficiency);
-                        return efficiency;
-                    }));
+            List<MoveField> moves = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
 
-            MoveField calculatedMoveField = calculatedMoveMap.entrySet().parallelStream()
-                    .max(Comparator.comparing(Map.Entry::getValue))
-                    .map(Map.Entry::getKey)
-                    .orElseThrow(() -> new RuntimeException("No possible movefields for AI"));
+            MoveField calculatedMoveField = getMaxScoreMoveOfAllPossibleMoves(board, moves, color, levelOfDepth);
 
             log.info("Calculated Move is From: " + calculatedMoveField.fromPositionToString()
                     + " To: " + calculatedMoveField.toPositionToString());
@@ -81,7 +71,36 @@ public class AI {
 
     }
 
+    private MoveField getMaxScoreMoveOfAllPossibleMoves(Board board, List<MoveField> moves, String color, int level) {
+        double max = -3333;
+        MoveField bestMove = moves.get(0);
+        for(MoveField move: moves) {
+            double min = getMinScoreForPredictingNextMovesAfterMove(board, move, color, max, level);
+            if(min > max) {
+                max = min;
+                bestMove = move;
+            }
+        }
+        return bestMove;
+    }
 
+    private double getMinScoreForPredictingNextMovesAfterMove(Board board, MoveField move, String color, double max, int level) {
+       Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
+       double minScore = 3333;
 
+       double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color);
+       if(scoreAfterFirstMove > max) {
+           List<MoveField> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color));
+           for (MoveField opponentMove : opponentMoves) {
+               Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
+               double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color);
+               if (scoreAfterSecondMove < minScore) {
+                   minScore = scoreAfterSecondMove;
+               }
+           }
 
+           return minScore;
+       }
+       return scoreAfterFirstMove;
+    }
 }

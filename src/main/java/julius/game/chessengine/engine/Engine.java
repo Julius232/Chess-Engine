@@ -104,7 +104,7 @@ public class Engine {
         int scoreDifference = simulatedBoard.getScore().getScoreDifference(color);
         efficiency += scoreDifference;
 
-        while (iteration < levelOfDepth && efficiency >= mostEfficientMove) {
+        while (iteration < levelOfDepth && efficiency > mostEfficientMove) {
 
 
             //log.info("Iteration: (" + (iteration + 1) + "/" + levelOfDepth + ")");
@@ -133,7 +133,7 @@ public class Engine {
     }
 
 
-    private Board simulateMoveAndGetDummyBoard(Board board, MoveField moveField) {
+    public Board simulateMoveAndGetDummyBoard(Board board, MoveField moveField) {
         Board dummyBoard = generateDummyBoard(board);
         Figure figureToMove = dummyBoard.getFigureForPosition(moveField.getFromPosition());
         moveOrAttackFigure(dummyBoard, figureToMove, moveField.getToField());
