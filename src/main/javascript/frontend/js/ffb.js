@@ -1,12 +1,17 @@
+function checkState(state) {
+    if(state != "PLAY") {
+        document.getElementById("header").innerHTML=state;
+    }
+}
+
 function updateScore() {
     var request = new XMLHttpRequest()
     request.open('GET', 'http://localhost:8080/chess/score', true)
-    request.send();
     request.onload = function(e) {
         if (request.readyState == 4) {
             if (request.status == 200) {
                 var data = JSON.parse(this.response)
-                console.log(data.scoreWhite)
+               
                 document.getElementById("scoreWhite").innerHTML= "WHITE: " + data.scoreWhite;
                 document.getElementById("scoreBlack").innerHTML= "BLACK: " + data.scoreBlack;
             
@@ -16,25 +21,47 @@ function updateScore() {
             }
         }
     };
+    request.send();
 }
 
-function makeRandomMove(color) {
+function makeIntelligentMove(color) {
     var request = new XMLHttpRequest()
-    request.open('PATCH', 'http://localhost:8080/chess/figure/move/random/' + color, true)
-    request.send();
-    request.onload = function(e) {
+    request.open('PATCH', 'http://localhost:8080/chess/figure/move/intelligent/' + color, true)
+    request.onreadystatechange = function(e) {
         if (request.readyState == 4) {
             if (request.status == 200) {
                 var data = JSON.parse(this.response)
-                console.log(data)
+                console.log(data.state)
+                checkState(data.state);
                 reload();
+            
             }
             else {
                 console.error(request.statusText)
             }
         }
     };
+    request.send();
+}
 
+function makeRandomMove(color) {
+    var request = new XMLHttpRequest()
+    request.open('PATCH', 'http://localhost:8080/chess/figure/move/random/' + color, true)
+    request.onload = function(e) {
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                var data = JSON.parse(this.response)
+                console.log(data.state)
+                checkState(data.state);
+                reload();
+            
+            }
+            else {
+                console.error(request.statusText)
+            }
+        }
+    };
+    request.send();
 }
 
 function onDrop (source, target, piece, newPos, oldPos, orientation) {
@@ -43,8 +70,7 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
 
     // Open a new connection, using the GET request on the URL endpoint
     request.open('PATCH', 'http://localhost:8080/chess/figure/move/' + source + '/' + target, true)
-    request.send();
-    request.onload = function(e) {
+    request.onreadystatechange = function(e) {
         if (request.readyState == 4) {
             if (request.status == 200) {
                 var data = JSON.parse(this.response)
@@ -57,7 +83,8 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
             }
         }
     };
-    window.setTimeout(makeRandomMove("black"), 2000)
+    request.send();
+    window.setTimeout(makeIntelligentMove("black"), 500)
 }
 
 $('#resetBoard').on('click', function () {
@@ -71,7 +98,6 @@ $('#resetBoard').on('click', function () {
 function reload() {
     var request = new XMLHttpRequest()
     request.open('GET', 'http://localhost:8080/chess/figure/frontend', true)
-    request.send();
     request.onload = function(e) {
         if (request.readyState == 4) {
             if (request.status == 200) {
@@ -85,12 +111,13 @@ function reload() {
             }
         }
     };
+    request.send();
 }
 
 function greySquare (square) {
 
-  var whiteSquareGrey = '#FFCCCB'
-  var blackSquareGrey = '#FF0000'
+  var whiteSquareGrey = 'blue'
+  var blackSquareGrey = 'lightskyblue'
   var $square = $('#board .square-' + square)
 
   var background = whiteSquareGrey
@@ -109,7 +136,6 @@ function onMouseoverSquare (square, piece) {
   // get list of possible moves for this square
   var request = new XMLHttpRequest()
     request.open('GET', 'http://localhost:8080/chess/figure/move/possible/' + square, true)
-    request.send();
     request.onload = function(e) {
         if (request.readyState == 4) {
             if (request.status == 200) {
@@ -133,6 +159,7 @@ function onMouseoverSquare (square, piece) {
             }
         }
     };
+    request.send();
 }
 
 function onMouseoutSquare (square, piece) {

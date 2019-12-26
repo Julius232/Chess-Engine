@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class Engine {
 
     private Board board = new Board();
-    private GameState gameState;
+    private GameState gameState = new GameState();
     private boolean whitesTurn = true;
 
     public void startNewGame() {
@@ -33,7 +33,7 @@ public class Engine {
     }
 
     public GameState moveRandomFigure(String color) {
-        List<MoveField> moveFields = getAllPossibleMoveFieldsForPlayerColor(color);
+        List<MoveField> moveFields = getAllPossibleMoveFieldsForPlayerColor(board, color);
 
         Random rand = new Random();
         MoveField randomMoveField = rand
@@ -45,14 +45,14 @@ public class Engine {
         String fromPosition = randomFigure.positionToString();
         String toPosition = randomMoveField.toPositionToString();
 
-        return moveFigure(fromPosition, toPosition);
+        return moveFigure(board, fromPosition, toPosition);
     }
 
-    public GameState moveFigure(String fromPosition, String toPosition) {
+    public GameState moveFigure(Board board, String fromPosition, String toPosition) {
         Figure figureToMove = board.getFigureForString(fromPosition);
         Field toField = board.getFieldForString(toPosition);
         try {
-            if (isPlayersTurnAndIsNotInStateCheckAfterMove(figureToMove, toField)) {
+            if (isPlayersTurnAndIsNotInStateCheckAfterMove(board, figureToMove, toField)) {
                 moveOrAttackFigure(board, figureToMove, toField);
                 whitesTurn = !whitesTurn;
                 board.logBoard();
@@ -64,20 +64,20 @@ public class Engine {
         return gameState;
     }
 
-    public List<MoveField> getAllPossibleMoveFieldsForPlayerColor(String color) {
+    public List<MoveField> getAllPossibleMoveFieldsForPlayerColor(Board board, String color) {
         return board.getFigures().stream()
                 .filter(figure -> color.equals(figure.getColor()))
                 .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
-                .filter(moveField -> !isInStateCheckAfterMove(moveField, color))
+                .filter(moveField -> !isInStateCheckAfterMove(board, moveField, color))
                 .collect(Collectors.toList());
     }
 
-    public List<Position> getPossibleMovesForPosition(String fromPosition) {
+    public List<Position> getPossibleMovesForPosition(Board board, String fromPosition) {
         try {
             Figure figure = board.getFigureForString(fromPosition);
             if(figure.getColor().equals(Color.WHITE) == whitesTurn) {
                 return figure.getPossibleMoveFields(board).stream()
-                        .filter(moveField -> !isInStateCheckAfterMove(moveField, figure.getColor()))
+                        .filter(moveField -> !isInStateCheckAfterMove(board, moveField, figure.getColor()))
                         .map(MoveField::getToField)
                         .map(Field::getPosition)
                         .collect(Collectors.toList());
@@ -96,10 +96,44 @@ public class Engine {
                 .anyMatch(King::isInStateCheck);
     }
 
-    private boolean isInStateCheckAfterMove(MoveField moveField, String color) {
-        Board checkBoard = generateDummyBoard(board);
-        Figure figureToMove = checkBoard.getFigureForPosition(moveField.getFromPosition());
-        moveOrAttackFigure(checkBoard, figureToMove, moveField.getToField());
+    public double simulateMoveAndGetEfficiency(Board board, MoveField moveField, String color, int levelOfDepth) {
+        double efficiency = 0;
+        int iteration = 0;
+
+        Board simulatedBoard = simulateMoveAndGetDummyBoard(board, moveField, color);
+        int scoreDifference = simulatedBoard.getScore().getScoreDifference(color);
+
+        while (iteration < levelOfDepth) {
+            log.info("Iteration: (" + (iteration + 1) + "/" + levelOfDepth + ")");
+            List<MoveField> opponentMoves = getAllPossibleMoveFieldsForPlayerColor(simulatedBoard, Color.getOpponentColor(color));
+            double averageScoreOfAllOpponentMoves = opponentMoves.stream()
+                    .mapToDouble(move -> simulateMoveAndGetEfficiency(simulatedBoard, move, Color.getOpponentColor(color), levelOfDepth-1))
+                    .sum() / opponentMoves.size();
+
+            iteration++;
+            log.info("Score difference for " + color + " is " + scoreDifference + " From: " + moveField.fromPositionToString()
+                + " To: " + moveField.toPositionToString() + " average score of all opponent moves: " + averageScoreOfAllOpponentMoves);
+
+            efficiency -= averageScoreOfAllOpponentMoves;
+
+        }
+        efficiency += scoreDifference;
+        /*log.info("Efficiency: " + efficiency + " From: " + moveField.fromPositionToString()
+                + " To: " + moveField.toPositionToString());*/
+
+        return efficiency;
+    }
+
+
+    private Board simulateMoveAndGetDummyBoard(Board board, MoveField moveField, String color) {
+        Board dummyBoard = generateDummyBoard(board);
+        Figure figureToMove = dummyBoard.getFigureForPosition(moveField.getFromPosition());
+        moveOrAttackFigure(dummyBoard, figureToMove, moveField.getToField());
+        return dummyBoard;
+    }
+
+    private boolean isInStateCheckAfterMove(Board board, MoveField moveField, String color) {
+        Board checkBoard = simulateMoveAndGetDummyBoard(board, moveField, color);
         return isInStateCheck(checkBoard, color);
     }
 
@@ -119,20 +153,20 @@ public class Engine {
         return new Board(fen, copyScore);
     }
 
-    private boolean isPlayersTurnAndIsNotInStateCheckAfterMove(Figure figureToMove, Field toField) {
+    private boolean isPlayersTurnAndIsNotInStateCheckAfterMove(Board board, Figure figureToMove, Field toField) {
         String playerColor = figureToMove.getColor();
-        return playerColor.equals(Color.WHITE) == whitesTurn && !isInStateCheckAfterMove(new MoveField(figureToMove.getCurrentField(), toField), playerColor);
+        return playerColor.equals(Color.WHITE) == whitesTurn && !isInStateCheckAfterMove(board, new MoveField(figureToMove.getCurrentField(), toField), playerColor);
     }
 
     private void updateGameState() {
-        if (getAllPossibleMoveFieldsForPlayerColor(Color.WHITE).size() == 0 && isInStateCheck(board, Color.WHITE)) {
-            gameState.setBlackWon(true);
+        if (getAllPossibleMoveFieldsForPlayerColor(board, Color.WHITE).size() == 0 && isInStateCheck(board, Color.WHITE)) {
+            gameState.setState("BLACK WON");
         }
-        else if (getAllPossibleMoveFieldsForPlayerColor(Color.BLACK).size() == 0 && isInStateCheck(board, Color.BLACK)) {
-            gameState.setWhiteWon(true);
+        else if (getAllPossibleMoveFieldsForPlayerColor(board, Color.BLACK).size() == 0 && isInStateCheck(board, Color.BLACK)) {
+            gameState.setState("WHITE WON");
         }
-        else if(getAllPossibleMoveFieldsForPlayerColor(Color.WHITE).size() == 0 || getAllPossibleMoveFieldsForPlayerColor(Color.BLACK).size() == 0) {
-            gameState.setDraw(true);
+        else if(getAllPossibleMoveFieldsForPlayerColor(board, Color.WHITE).size() == 0 || getAllPossibleMoveFieldsForPlayerColor(board, Color.BLACK).size() == 0) {
+            gameState.setState("DRAW");
         }
     }
 

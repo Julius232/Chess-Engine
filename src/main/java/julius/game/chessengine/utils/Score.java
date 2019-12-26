@@ -22,11 +22,13 @@ public class Score {
     public void add(int add, String playerColor) {
         if(playerColor.equals(Color.WHITE)) {
             scoreWhite += add;
-            log.info("White's score: " + scoreWhite);
         }
         else {
             scoreBlack += add;
-            log.info("Black's score: " + scoreBlack);
         }
+    }
+
+    public int getScoreDifference(String color) {
+        return color.equals(Color.WHITE) ? getScoreWhite() - getScoreBlack() : getScoreBlack() - getScoreWhite();
     }
 }

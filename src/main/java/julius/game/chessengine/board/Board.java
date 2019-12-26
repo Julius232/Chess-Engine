@@ -50,7 +50,6 @@ public class Board {
     }
 
     public Figure getFigureForString(String position) {
-        log.info(position);
         if(position.length() == 2) {
             return getFigureForPosition(new Position(position.charAt(0), Character.getNumericValue(position.charAt(1))));
         }

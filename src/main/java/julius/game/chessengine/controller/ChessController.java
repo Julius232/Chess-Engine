@@ -1,5 +1,6 @@
 package julius.game.chessengine.controller;
 
+import julius.game.chessengine.ai.AI;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Position;
@@ -23,6 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ChessController {
 
+    private final AI ai;
     private final Engine engine;
 
     @GetMapping(value = "/score")
@@ -43,12 +45,12 @@ public class ChessController {
 
     @GetMapping(value = "/field/possible/white")
     public ResponseEntity<List<MoveField>> getAllPossibleFieldsWhite() {
-        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(Color.WHITE));
+        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(engine.getBoard(), Color.WHITE));
     }
 
     @GetMapping(value = "/field/possible/black")
     public ResponseEntity<List<MoveField>> getAllPossibleFieldsBlack() {
-        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(Color.BLACK));
+        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(engine.getBoard(), Color.BLACK));
     }
 
     @GetMapping(value = "/figure")
@@ -62,9 +64,16 @@ public class ChessController {
     @PatchMapping(value="/figure/move/{from}/{to}")
     public ResponseEntity<GameState> moveFigure(@PathVariable("from") String from,
                                                 @PathVariable("to") String to) {
-        log.info(from + " " + to);
         if(from != null && to != null) {
-            return ResponseEntity.ok(engine.moveFigure(from, to));
+            return ResponseEntity.ok(engine.moveFigure(engine.getBoard(), from, to));
+        }
+        else return ResponseEntity.status(406).build();
+    }
+
+    @PatchMapping(value="/figure/move/intelligent/{color}")
+    public ResponseEntity<GameState> calculateMoveForColor(@PathVariable("color") String color) {
+        if(color != null) {
+            return ResponseEntity.ok(ai.executeCalculatedMove(color));
         }
         else return ResponseEntity.status(406).build();
     }
@@ -72,17 +81,15 @@ public class ChessController {
     @PatchMapping(value="/figure/move/random/{color}")
     public ResponseEntity<GameState> moveRandomFigure(@PathVariable("color") String color) {
         if(color != null) {
-            engine.moveRandomFigure(color);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(engine.moveRandomFigure(color));
         }
         else return ResponseEntity.status(406).build();
     }
 
     @GetMapping(value = "/figure/move/possible/{from}")
     public ResponseEntity<List<Position>> getPossibleToPositions(@PathVariable("from") String from) {
-        log.info(from);
         if(from != null) {
-            return ResponseEntity.ok(engine.getPossibleMovesForPosition(from));
+            return ResponseEntity.ok(engine.getPossibleMovesForPosition(engine.getBoard(), from));
         }
         else return ResponseEntity
                 .status(406)
