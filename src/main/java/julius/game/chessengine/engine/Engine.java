@@ -96,36 +96,42 @@ public class Engine {
                 .anyMatch(King::isInStateCheck);
     }
 
-    public double simulateMoveAndGetEfficiency(Board board, MoveField moveField, String color, int levelOfDepth) {
+    public double simulateMoveAndGetEfficiency(Board board, MoveField moveField, String currentPlayerColor, String color, int levelOfDepth, double mostEfficientMove) {
         double efficiency = 0;
         int iteration = 0;
 
-        Board simulatedBoard = simulateMoveAndGetDummyBoard(board, moveField, color);
+        Board simulatedBoard = simulateMoveAndGetDummyBoard(board, moveField);
         int scoreDifference = simulatedBoard.getScore().getScoreDifference(color);
-
-        while (iteration < levelOfDepth) {
-            log.info("Iteration: (" + (iteration + 1) + "/" + levelOfDepth + ")");
-            List<MoveField> opponentMoves = getAllPossibleMoveFieldsForPlayerColor(simulatedBoard, Color.getOpponentColor(color));
-            double averageScoreOfAllOpponentMoves = opponentMoves.stream()
-                    .mapToDouble(move -> simulateMoveAndGetEfficiency(simulatedBoard, move, Color.getOpponentColor(color), levelOfDepth-1))
-                    .sum() / opponentMoves.size();
-
-            iteration++;
-            log.info("Score difference for " + color + " is " + scoreDifference + " From: " + moveField.fromPositionToString()
-                + " To: " + moveField.toPositionToString() + " average score of all opponent moves: " + averageScoreOfAllOpponentMoves);
-
-            efficiency -= averageScoreOfAllOpponentMoves;
-
-        }
         efficiency += scoreDifference;
-        /*log.info("Efficiency: " + efficiency + " From: " + moveField.fromPositionToString()
-                + " To: " + moveField.toPositionToString());*/
+
+        while (iteration < levelOfDepth && efficiency >= mostEfficientMove) {
+            log.info("Iteration: (" + (iteration + 1) + "/" + levelOfDepth + ")");
+            double mostEfficientMoveScoreDifference =
+                    getMostEfficientMoveScoreDifference(Color.getOpponentColor(color), levelOfDepth, currentPlayerColor, simulatedBoard, efficiency);
+
+            if (Color.getOpponentColor(color).equals(currentPlayerColor)) {
+                efficiency += mostEfficientMoveScoreDifference;
+            } else {
+                efficiency -= mostEfficientMoveScoreDifference;
+            }
+            iteration++;
+        }
+
+        log.info("Efficiency: " + efficiency + " From: " + moveField.fromPositionToString() + " To: " + moveField.toPositionToString() + " Player: " + color +
+                " MostEfficientMove: " + mostEfficientMove);
 
         return efficiency;
     }
 
+    private double getMostEfficientMoveScoreDifference(String color, int levelOfDepth, String currentPlayerColor, Board simulatedBoard, double mostEfficientMove) {
+        List<MoveField> opponentMoves = getAllPossibleMoveFieldsForPlayerColor(simulatedBoard, color);
+        return opponentMoves.parallelStream()
+                        .mapToDouble(move -> simulateMoveAndGetEfficiency(simulatedBoard, move, currentPlayerColor, color, levelOfDepth-1, mostEfficientMove))
+                        .max().orElseThrow(() -> new RuntimeException("No moves available for " + color));
+    }
 
-    private Board simulateMoveAndGetDummyBoard(Board board, MoveField moveField, String color) {
+
+    private Board simulateMoveAndGetDummyBoard(Board board, MoveField moveField) {
         Board dummyBoard = generateDummyBoard(board);
         Figure figureToMove = dummyBoard.getFigureForPosition(moveField.getFromPosition());
         moveOrAttackFigure(dummyBoard, figureToMove, moveField.getToField());
@@ -133,7 +139,7 @@ public class Engine {
     }
 
     private boolean isInStateCheckAfterMove(Board board, MoveField moveField, String color) {
-        Board checkBoard = simulateMoveAndGetDummyBoard(board, moveField, color);
+        Board checkBoard = simulateMoveAndGetDummyBoard(board, moveField);
         return isInStateCheck(checkBoard, color);
     }
 

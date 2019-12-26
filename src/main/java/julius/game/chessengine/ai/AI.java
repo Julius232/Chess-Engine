@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Log4j2
 @Component
@@ -27,9 +29,12 @@ public class AI {
 
     private MoveField calculateMove(Board board, String color) {
         List<MoveField> moveFields = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
+        Map<MoveField, Double> calculatedMoveMap = moveFields.parallelStream()
+                .collect(Collectors.toMap(moveField -> moveField, moveField -> engine.simulateMoveAndGetEfficiency(board, moveField, color, color, 1, -3333)));
 
-        MoveField calculatedMoveField = moveFields.stream()
-                .max(Comparator.comparing(moveField -> engine.simulateMoveAndGetEfficiency(board, moveField, color, 2)))
+        MoveField calculatedMoveField = calculatedMoveMap.entrySet().stream()
+                .max(Comparator.comparing(Map.Entry::getValue))
+                .map(Map.Entry::getKey)
                 .orElseThrow(() -> new RuntimeException("No possible movefields for AI"));
 
         log.info("Calculated Move is From: " + calculatedMoveField.fromPositionToString()
