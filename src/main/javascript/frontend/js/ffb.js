@@ -84,8 +84,14 @@ function onDrop (source, target, piece, newPos, oldPos, orientation) {
         }
     };
     request.send();
-    window.setTimeout(makeIntelligentMove("black"), 500)
+    
 }
+
+
+$('#computerMove').on('click', function() {
+    makeIntelligentMove("black");
+})
+
 
 $('#resetBoard').on('click', function () {
     var request = new XMLHttpRequest()

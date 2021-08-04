@@ -6,14 +6,15 @@ import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
 import julius.game.chessengine.engine.MoveField;
 import julius.game.chessengine.utils.Color;
-import julius.game.chessengine.utils.Score;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
 @Log4j2
 @Component
@@ -72,11 +73,13 @@ public class AI {
     }
 
     private MoveField getMaxScoreMoveOfAllPossibleMoves(Board board, List<MoveField> moves, String color, int level) {
+        double min = 3333;
         double max = -3333;
         MoveField bestMove = moves.get(0);
         for(MoveField move: moves) {
-            double min = getMinScoreForPredictingNextMovesAfterMove(board, move, color, max, level);
+            min = getMinScoreForPredictingNextMovesAfterMove(board, move, color, min, max, level, moves.size()/20.0);
             if(min > max) {
+                log.info("max was " + max + " now is " + min);
                 max = min;
                 bestMove = move;
             }
@@ -84,23 +87,46 @@ public class AI {
         return bestMove;
     }
 
-    private double getMinScoreForPredictingNextMovesAfterMove(Board board, MoveField move, String color, double max, int level) {
-       Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
-       double minScore = 3333;
+    private double getMaxScoreOfAllPossibleMoves(Board board, List<MoveField> moves, String color, double min, double max, int level) {
+        double maximum = max;
+        double minimum = min;
+        for(MoveField move : moves) {
+            minimum = getMinScoreForPredictingNextMovesAfterMove(board, move, color, minimum, maximum, level, moves.size()/20.0);
+            if(minimum > maximum) {
+                log.info("booya maximum was " + maximum + " now is " + minimum);
+                maximum = minimum;
+            }
+        }
+        return maximum;
+    }
 
-       double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color);
-       if(scoreAfterFirstMove > max) {
+    private double getMinScoreForPredictingNextMovesAfterMove(Board board, MoveField move, String color, double min, double max, int level, double sizeOfMoves) {
+       Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
+       double minScore = min;
+       log.info("Level" + level);
+
+       double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color) + sizeOfMoves;
+       if(scoreAfterFirstMove >= max) {
            List<MoveField> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color));
            for (MoveField opponentMove : opponentMoves) {
                Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
-               double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color);
-               if (scoreAfterSecondMove < minScore) {
+               double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color) + sizeOfMoves;
+               if (scoreAfterSecondMove < minScore && scoreAfterSecondMove >= max) {
                    minScore = scoreAfterSecondMove;
+                   if(level > 1) {
+                       List<MoveField> nMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color);;
+                       log.info("minscore: " + minScore + "going into recursion");
+                       minScore = getMaxScoreOfAllPossibleMoves(boardAfterSecondMove, nMoves, color, minScore, max, level - 1);
+                   }
+                   //boardAfterSecondMove.logBoard();
                }
            }
-
-           return minScore;
+           if(level <= 1) {
+               log.info("minscore: " + minScore + " maxscore: " + max + " " + move.toString());
+               return minScore;
+           }
        }
+       log.info("scoreAfterFirstMove: " + scoreAfterFirstMove + " " + move.toString());
        return scoreAfterFirstMove;
     }
 }
