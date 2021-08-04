@@ -55,7 +55,7 @@ public class Engine {
             if (isPlayersTurnAndIsNotInStateCheckAfterMove(board, figureToMove, toField)) {
                 moveOrAttackFigure(board, figureToMove, toField);
                 whitesTurn = !whitesTurn;
-                board.logBoard();
+                //board.logBoard();
             }
         } catch (IllegalStateException e) {
             log.info(e.getMessage());
