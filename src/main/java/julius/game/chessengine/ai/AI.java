@@ -78,27 +78,29 @@ public class AI {
     }
 
     private MoveField getMaxScoreMoveOfAllPossibleMoves(Board board, List<MoveField> moves, String color, int level) {
-        double min = 3333;
+        double min;
         double max = -3333;
         MoveField bestMove = moves.stream()
                 .findAny()
                 .orElseThrow(() -> new IllegalStateException(String.format("Player [%s] has no moves", color)));
         for (MoveField move : moves) {
-            min = getMinScoreForPredictingNextMovesAfterMove(board, move, color, min, max, level);
+            min = getMinScoreForPredictingNextMovesAfterMove(board, move, color, max, level);
             if (min > max) {
                 log.info("max was " + max + " now is " + min);
                 max = min;
                 bestMove = move;
             }
         }
+
         return bestMove;
     }
 
     private double getMaxScoreOfAllPossibleMoves(Board board, List<MoveField> moves, String color, double min, double max, int level) {
         double maximum = max;
         double minimum = min;
+
         for (MoveField move : moves) {
-            minimum = getMinScoreForPredictingNextMovesAfterMove(board, move, color, minimum, maximum, level);
+            minimum = getMinScoreForPredictingNextMovesAfterMove(board, move, color, maximum, level);
             if (minimum > maximum) {
                 log.info("booya maximum was " + maximum + " now is " + minimum);
                 maximum = minimum;
@@ -107,7 +109,7 @@ public class AI {
         return maximum;
     }
 
-    private double getMinScoreForPredictingNextMovesAfterMove(Board board, MoveField move, String color, double min, double max, int level) {
+    private double getMinScoreForPredictingNextMovesAfterMove(Board board, MoveField move, String color, double max, int level) {
         log.info("-------------------------------------------------------------");
         log.info("Move is " + move.toString());
         Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
@@ -116,7 +118,7 @@ public class AI {
         double amountOfMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, color).size();
         double opponentAmountOfMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color)).size();
 
-        double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color) + amountOfMoves - opponentAmountOfMoves;
+        double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color) + ((amountOfMoves - opponentAmountOfMoves) / 7);
         log.info(String.format("Score after First Move [%s]", scoreAfterFirstMove));
 
         if (scoreAfterFirstMove >= max) {
@@ -133,7 +135,7 @@ public class AI {
                 double opponentAmountOfMoves2 = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, Color.getOpponentColor(color)).size();
                 log.info(String.format("Opponent Amount of Moves: [%s]", opponentAmountOfMoves2));
 
-                double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color) + amountOfMoves2 - opponentAmountOfMoves2;
+                double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color) + ((amountOfMoves2 - opponentAmountOfMoves2)/7);
                 log.info(String.format("Score after Second Move: [%s]", scoreAfterSecondMove));
 
                 if (scoreAfterSecondMove < minScore) {
