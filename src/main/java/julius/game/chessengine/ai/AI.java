@@ -11,10 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 @Log4j2
 @Component
@@ -60,7 +57,7 @@ public class AI {
 
             log.info("Calculated Move is From: " + calculatedMoveField.fromPositionToString()
                     + " To: " + calculatedMoveField.toPositionToString());
-            bestMoves.put(FEN.translateBoardToFEN(board).getRenderBoard(), calculatedMoveField);
+            //bestMoves.put(FEN.translateBoardToFEN(board).getRenderBoard(), calculatedMoveField);
 
             for (Map.Entry<String, MoveField> entry : bestMoves.entrySet()) {
                 properties.put(entry.getKey(), entry.getValue().toString());
@@ -80,7 +77,7 @@ public class AI {
     private MoveField getMaxScoreMoveOfAllPossibleMoves(Board board, List<MoveField> moves, String color, int level) {
         double min;
         double max = -3333;
-        MoveField bestMove = moves.stream()
+        MoveField bestMove = moves.parallelStream()
                 .findAny()
                 .orElseThrow(() -> new IllegalStateException(String.format("Player [%s] has no moves", color)));
         for (MoveField move : moves) {
@@ -97,15 +94,12 @@ public class AI {
 
     private double getMaxScoreOfAllPossibleMoves(Board board, List<MoveField> moves, String color, double min, double max, int level) {
         double maximum = max;
-        double minimum = min;
 
-        for (MoveField move : moves) {
-            minimum = getMinScoreForPredictingNextMovesAfterMove(board, move, color, maximum, level);
-            if (minimum > maximum) {
-                log.info("booya maximum was " + maximum + " now is " + minimum);
-                maximum = minimum;
-            }
-        }
+        double finalMaximum = maximum;
+        maximum = moves.parallelStream()
+                .map(m -> getMinScoreForPredictingNextMovesAfterMove(board, m, color, finalMaximum, level))
+                .max(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No max value found."));
+
         return maximum;
     }
 
@@ -114,49 +108,60 @@ public class AI {
         log.info("Move is " + move.toString());
         Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
         double minScore = 3333;
+        boolean lookFurther = true;
 
         double amountOfMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, color).size();
         double opponentAmountOfMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color)).size();
 
         double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color) + ((amountOfMoves - opponentAmountOfMoves) / 7);
-        log.info(String.format("Score after First Move [%s]", scoreAfterFirstMove));
+        log.trace(String.format("Score after First Move [%s]", scoreAfterFirstMove));
 
         if (scoreAfterFirstMove >= max) {
-            log.info(String.format("Score after First Move was >= max [%s]", scoreAfterFirstMove));
+            log.trace(String.format("Score after First Move was >= max [%s]", scoreAfterFirstMove));
 
             List<MoveField> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color));
+
+            double finalMinScore = minScore;
+            minScore = opponentMoves.parallelStream()
+                    .map(m -> calculateOpponent(color, max, level, boardAfterMove, finalMinScore, m))
+                    .min(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No min value found."));
+
             for (MoveField opponentMove : opponentMoves) {
-                log.info(String.format("Opponent Move: [%s]", opponentMove.toString()));
-
-                Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
-                double amountOfMoves2 = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color).size();
-                log.info(String.format("Amount of Moves: [%s]", amountOfMoves2));
-
-                double opponentAmountOfMoves2 = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, Color.getOpponentColor(color)).size();
-                log.info(String.format("Opponent Amount of Moves: [%s]", opponentAmountOfMoves2));
-
-                double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color) + ((amountOfMoves2 - opponentAmountOfMoves2)/7);
-                log.info(String.format("Score after Second Move: [%s]", scoreAfterSecondMove));
-
-                if (scoreAfterSecondMove < minScore) {
-                    //log.info(String.format("[%s] move: Score after Second Move was < minScore and >= max [%s]", opponentMove.toString(), scoreAfterFirstMove));
-                    log.info("MinScore is now: " + scoreAfterSecondMove);
-                    minScore = scoreAfterSecondMove;
-                    if (level > 1) {
-                        List<MoveField> nMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color);
-
-                        log.info("minscore: " + minScore + "going into recursion");
-                        minScore = getMaxScoreOfAllPossibleMoves(boardAfterSecondMove, nMoves, color, minScore, max, level - 1);
-                    }
-                    //boardAfterSecondMove.logBoard();
-                }
+                minScore = calculateOpponent(color, max, level, boardAfterMove, minScore, opponentMove);
             }
             if (level <= 1) {
                 log.info("minscore: " + minScore + " maxscore: " + max + " " + move.toString());
                 return minScore;
             }
         }
-        log.info("Returns scoreAfterFirstMove: " + scoreAfterFirstMove + " " + move.toString());
+        log.trace("Returns scoreAfterFirstMove: " + scoreAfterFirstMove + " " + move.toString());
         return scoreAfterFirstMove;
+    }
+
+    private double calculateOpponent(String color, double max, int level, Board boardAfterMove, double minScore, MoveField opponentMove) {
+        log.info(String.format("Opponent Move: [%s]", opponentMove.toString()));
+
+        Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
+        double amountOfMoves2 = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color).size();
+        log.trace(String.format("Amount of Moves: [%s]", amountOfMoves2));
+
+        double opponentAmountOfMoves2 = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, Color.getOpponentColor(color)).size();
+        log.trace(String.format("Opponent Amount of Moves: [%s]", opponentAmountOfMoves2));
+
+        double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color) + ((amountOfMoves2 - opponentAmountOfMoves2) / 7);
+        log.trace(String.format("Score after Second Move: [%s]", scoreAfterSecondMove));
+
+        if (scoreAfterSecondMove < minScore) {
+            log.trace("MinScore is now: " + scoreAfterSecondMove);
+            minScore = scoreAfterSecondMove;
+            if (level > 1) {
+                List<MoveField> nMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color);
+
+                log.trace("minscore: " + minScore + "going into recursion");
+                minScore = getMaxScoreOfAllPossibleMoves(boardAfterSecondMove, nMoves, color, minScore, max, level - 1);
+            }
+            //boardAfterSecondMove.logBoard();
+        }
+        return minScore;
     }
 }

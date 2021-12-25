@@ -1,13 +1,12 @@
 package julius.game.chessengine.engine;
 
+import com.jcabi.aspects.Cacheable;
 import julius.game.chessengine.board.Board;
-import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.figures.King;
 import julius.game.chessengine.utils.Color;
-import julius.game.chessengine.utils.Score;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Data
@@ -64,10 +64,11 @@ public class Engine {
         return gameState;
     }
 
+    @Cacheable(lifetime = 30, unit = TimeUnit.SECONDS)
     public List<MoveField> getAllPossibleMoveFieldsForPlayerColor(Board board, String color) {
         return board.getFigures().parallelStream()
                 .filter(figure -> color.equals(figure.getColor()))
-                .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
+                .flatMap(figure -> figure.getPossibleMoveFields(board).parallelStream())
                 .filter(moveField -> !isInStateCheckAfterMove(board, moveField, color))
                 .collect(Collectors.toList());
     }
@@ -140,6 +141,7 @@ public class Engine {
         return dummyBoard;
     }
 
+    @Cacheable(lifetime = 30, unit = TimeUnit.SECONDS)
     private boolean isInStateCheckAfterMove(Board board, MoveField moveField, String color) {
         Board checkBoard = simulateMoveAndGetDummyBoard(board, moveField);
         return isInStateCheck(checkBoard, color);

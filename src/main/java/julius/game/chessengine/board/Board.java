@@ -38,7 +38,7 @@ public class Board {
     }*/
 
     public Board(Board board) {
-        this.figures = board.getFigures().stream()
+        this.figures = board.getFigures().parallelStream()
                 .map(f -> {
                             if (f instanceof Pawn) {
                                 return new Pawn(f.getColor(), f.getCurrentField(), ((Pawn) f).isHasMoved());

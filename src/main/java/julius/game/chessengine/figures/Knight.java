@@ -60,7 +60,7 @@ public class Knight extends Figure {
                 .map(board::getFieldForPosition)
                 .collect(Collectors.toList());
 
-        return Stream.concat(attackFields.stream(), moveFields.stream())
+        return Stream.concat(attackFields.parallelStream(), moveFields.parallelStream())
                 .collect(Collectors.toList());
     }
 
