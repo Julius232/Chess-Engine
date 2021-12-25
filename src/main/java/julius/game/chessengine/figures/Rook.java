@@ -2,23 +2,19 @@ package julius.game.chessengine.figures;
 
 import julius.game.chessengine.board.Board;
 import julius.game.chessengine.board.Field;
-
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
-@Log4j2
-@EqualsAndHashCode(callSuper = true)
 public class Rook extends Figure {
 
-    private boolean hasMoved = false;
+    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(Rook.class);
+    private boolean hasMoved;
 
-    public Rook(String color, Field field) {
+    public Rook(String color, Field field, boolean hasMoved) {
         super(color, "ROOK", field, 5);
+        this.hasMoved = hasMoved;
     }
 
     @Override
@@ -57,6 +53,39 @@ public class Rook extends Figure {
         possibleFields.addAll(board.getPossibleFieldsYAxis(this));
         possibleFields.addAll(board.getPossibleFieldsXAxis(this));
         return possibleFields;
+    }
+
+    public boolean isHasMoved() {
+        return this.hasMoved;
+    }
+
+    public void setHasMoved(boolean hasMoved) {
+        this.hasMoved = hasMoved;
+    }
+
+    public String toString() {
+        return "Rook(hasMoved=" + this.isHasMoved() + ")";
+    }
+
+    public boolean equals(final Object o) {
+        if (o == this) return true;
+        if (!(o instanceof Rook)) return false;
+        final Rook other = (Rook) o;
+        if (!other.canEqual((Object) this)) return false;
+        if (!super.equals(o)) return false;
+        if (this.isHasMoved() != other.isHasMoved()) return false;
+        return true;
+    }
+
+    protected boolean canEqual(final Object other) {
+        return other instanceof Rook;
+    }
+
+    public int hashCode() {
+        final int PRIME = 59;
+        int result = super.hashCode();
+        result = result * PRIME + (this.isHasMoved() ? 79 : 97);
+        return result;
     }
 }
 

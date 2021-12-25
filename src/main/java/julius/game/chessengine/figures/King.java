@@ -5,25 +5,23 @@ import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.MoveField;
 import julius.game.chessengine.utils.Color;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Data
-@Log4j2
-@EqualsAndHashCode(callSuper = true)
 public class King extends Figure {
 
-    private boolean inStateCheck = false;
-    private boolean hasMoved = false;
+    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(King.class);
+    private boolean inStateCheck;
+    private boolean hasMoved;
 
-    public King(String color, Field field) {
+    public King(String color, Field field, boolean hasMoved, boolean inStateCheck) {
         super(color, "KING", field, 1337);
+        this.hasMoved = hasMoved;
+        this.inStateCheck = inStateCheck;
     }
 
     @Override
@@ -147,6 +145,49 @@ public class King extends Figure {
                 .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
                 .map(MoveField::getToField)
                 .anyMatch(toField -> toField.equals(getCurrentField()));
+    }
+
+    public boolean isInStateCheck() {
+        return this.inStateCheck;
+    }
+
+    public boolean isHasMoved() {
+        return this.hasMoved;
+    }
+
+    public void setInStateCheck(boolean inStateCheck) {
+        this.inStateCheck = inStateCheck;
+    }
+
+    public void setHasMoved(boolean hasMoved) {
+        this.hasMoved = hasMoved;
+    }
+
+    public String toString() {
+        return "King(inStateCheck=" + this.isInStateCheck() + ", hasMoved=" + this.isHasMoved() + ")";
+    }
+
+    public boolean equals(final Object o) {
+        if (o == this) return true;
+        if (!(o instanceof King)) return false;
+        final King other = (King) o;
+        if (!other.canEqual((Object) this)) return false;
+        if (!super.equals(o)) return false;
+        if (this.isInStateCheck() != other.isInStateCheck()) return false;
+        if (this.isHasMoved() != other.isHasMoved()) return false;
+        return true;
+    }
+
+    protected boolean canEqual(final Object other) {
+        return other instanceof King;
+    }
+
+    public int hashCode() {
+        final int PRIME = 59;
+        int result = super.hashCode();
+        result = result * PRIME + (this.isInStateCheck() ? 79 : 97);
+        result = result * PRIME + (this.isHasMoved() ? 79 : 97);
+        return result;
     }
 }
 

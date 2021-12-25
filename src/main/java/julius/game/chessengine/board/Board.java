@@ -1,8 +1,6 @@
 package julius.game.chessengine.board;
 
-import julius.game.chessengine.figures.Figure;
-import julius.game.chessengine.figures.King;
-import julius.game.chessengine.figures.Rook;
+import julius.game.chessengine.figures.*;
 import julius.game.chessengine.generator.FieldGenerator;
 import julius.game.chessengine.generator.FigureGenerator;
 import julius.game.chessengine.utils.Color;
@@ -34,9 +32,37 @@ public class Board {
         this.figures = figureGenerator.initializeFigures();
     }
 
-    public Board(String FEN, Score score) {
+    /*public Board(String FEN, Score score) {
         this.figures = figureGenerator.getFigures(FEN);
         this.score = score;
+    }*/
+
+    public Board(Board board) {
+        this.figures = board.getFigures().stream()
+                .map(f -> {
+                            if (f instanceof Pawn) {
+                                return new Pawn(f.getColor(), f.getCurrentField(), ((Pawn) f).isHasMoved());
+                            }
+                            if (f instanceof Bishop) {
+                                return new Bishop(f.getColor(), f.getCurrentField());
+                            }
+                            if (f instanceof Knight) {
+                                return new Knight(f.getColor(), f.getCurrentField());
+                            }
+                            if (f instanceof Rook) {
+                                return new Rook(f.getColor(), f.getCurrentField(), ((Rook) f).isHasMoved());
+                            }
+                            if (f instanceof Queen) {
+                                return new Queen(f.getColor(), f.getCurrentField());
+                            }
+                            if (f instanceof King) {
+                                return new King(f.getColor(), f.getCurrentField(), ((King) f).isHasMoved(), ((King) f).isInStateCheck());
+                            }
+                            else throw new IllegalStateException("Unknown Figure: " + f.getClass().getCanonicalName());
+                        }
+                )
+                .collect(Collectors.toList());
+        this.score = new Score(score.getScoreWhite(), score.getScoreBlack());
     }
 
     //FIGURE OPERATIONS
@@ -532,4 +558,5 @@ public class Board {
         }
         log.info("   --------------");
     }
+
 }

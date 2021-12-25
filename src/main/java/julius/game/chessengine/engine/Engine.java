@@ -83,11 +83,11 @@ public class Engine {
                         .collect(Collectors.toList());
             }
             else {
-                return Collections.EMPTY_LIST;
+                return Collections.emptyList();
             }
         } catch (RuntimeException e) {
             log.info(e.getMessage());
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
     }
 
@@ -155,10 +155,14 @@ public class Engine {
         }
     }
 
-    private Board generateDummyBoard(Board board) {
+   /* private Board generateDummyBoard(Board board) {
         String fen = FEN.translateBoardToFEN(board).getRenderBoard();
         Score copyScore = new Score(board.getScore().getScoreWhite(), board.getScore().getScoreBlack());
         return new Board(fen, copyScore);
+    }*/
+
+    private Board generateDummyBoard(Board board) {
+        return new Board(board);
     }
 
     private boolean isPlayersTurnAndIsNotInStateCheckAfterMove(Board board, Figure figureToMove, Field toField) {

@@ -30,18 +30,18 @@ public class FigureGenerator {
 
     private void generatePawns(List<Figure> figures) {
         for (char x = 'a'; x <= 'h'; x++) {
-            figures.add(new Pawn(Color.WHITE, board.getFieldForPosition(new Position(x, 2))));
+            figures.add(new Pawn(Color.WHITE, board.getFieldForPosition(new Position(x, 2)), false));
         }
         for (char x = 'a'; x <= 'h'; x++) {
-            figures.add(new Pawn(Color.BLACK, board.getFieldForPosition(new Position(x, 7))));
+            figures.add(new Pawn(Color.BLACK, board.getFieldForPosition(new Position(x, 7)), false));
         }
     }
 
     private void generateRooks(List<Figure> figures) {
-        figures.add(new Rook(Color.WHITE, board.getFieldForPosition(new Position('a', 1))));
-        figures.add(new Rook(Color.WHITE, board.getFieldForPosition(new Position('h', 1))));
-        figures.add(new Rook(Color.BLACK, board.getFieldForPosition(new Position('a', 8))));
-        figures.add(new Rook(Color.BLACK, board.getFieldForPosition(new Position('h', 8))));
+        figures.add(new Rook(Color.WHITE, board.getFieldForPosition(new Position('a', 1)), false));
+        figures.add(new Rook(Color.WHITE, board.getFieldForPosition(new Position('h', 1)), false));
+        figures.add(new Rook(Color.BLACK, board.getFieldForPosition(new Position('a', 8)), false));
+        figures.add(new Rook(Color.BLACK, board.getFieldForPosition(new Position('h', 8)), false));
     }
 
     private void generateKnights(List<Figure> figures) {
@@ -64,11 +64,11 @@ public class FigureGenerator {
     }
 
     private void generateKings(List<Figure> figures) {
-        figures.add(new King(Color.WHITE, board.getFieldForPosition(new Position('e', 1))));
-        figures.add(new King(Color.BLACK, board.getFieldForPosition(new Position('e', 8))));
+        figures.add(new King(Color.WHITE, board.getFieldForPosition(new Position('e', 1)), false, false));
+        figures.add(new King(Color.BLACK, board.getFieldForPosition(new Position('e', 8)), false, false));
     }
 
-    public List<Figure> getFigures(String FEN) {
+    /*public List<Figure> getFigures(String FEN) {
         List<Figure> figures = new ArrayList<>();
         String trimFEN = FEN.replace("/", "");
         int count = 0;
@@ -86,9 +86,9 @@ public class FigureGenerator {
         }
         return figures;
 
-    }
+    }*/
 
-    private Figure convertToFigure(char c, Field f) {
+    /*private Figure convertToFigure(char c, Field f) {
         String color = Character.isUpperCase(c) ? Color.WHITE : Color.BLACK;
         switch (Character.toUpperCase(c)) {
             case 'P':
@@ -112,6 +112,6 @@ public class FigureGenerator {
             default:
                 throw new RuntimeException("Invalid FEN");
         }
-    }
+    }*/
 
 }

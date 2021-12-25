@@ -1,54 +1,48 @@
 package julius.game.chessengine.figures;
 
 import julius.game.chessengine.board.Board;
-import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.board.Field;
 import julius.game.chessengine.board.Position;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.extern.log4j.Log4j2;
+import julius.game.chessengine.utils.Color;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
-
-@Data
-@Log4j2
-@EqualsAndHashCode(callSuper = true)
 public class Pawn extends Figure {
 
-    private boolean hasMoved = false;
+    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(Pawn.class);
+    private boolean hasMoved;
 
-    public Pawn(String color, Field field) {
+    public Pawn(String color, Field field, boolean hasMoved) {
         super(color, "PAWN", field, 1);
+        this.hasMoved = hasMoved;
     }
 
     @Override
     public Board move(Board board, Field toField) {
-        if(getPossibleFields(board)
+        if (getPossibleFields(board)
                 .parallelStream()
-                .anyMatch(field -> toField.equals(field))) {
-            board.moveFigureToField( this, toField);
+                .anyMatch(toField::equals)) {
+            board.moveFigureToField(this, toField);
             setHasMoved(true);
-        }
-        else {
+        } else {
             throw new IllegalStateException("Move Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
-                    + toField.getPosition().getX() + toField.getPosition().getY() + " was not possible." );
+                    + toField.getPosition().getX() + toField.getPosition().getY() + " was not possible.");
         }
         return board;
     }
 
     @Override
     public Board attack(Board board, Field toField) {
-        if(getPossibleFields(board)
+        if (getPossibleFields(board)
                 .parallelStream()
-                .anyMatch(field -> toField.equals(field))) {
+                .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
             setHasMoved(true);
-        }
-        else {
+        } else {
             throw new IllegalStateException("Attack Operation of Pawn from Position: " + getPosX() + getPosY() + " to position: "
-                    + toField.getPosition().getX() + toField.getPosition().getY() + " was not possible." );
+                    + toField.getPosition().getX() + toField.getPosition().getY() + " was not possible.");
         }
         return board;
     }
@@ -64,13 +58,10 @@ public class Pawn extends Figure {
         if (Color.WHITE.equals(pawnColor)) {
             moveOneForward = getPosY() + 1;
             moveTwoForward = getPosY() + 2;
-        }
-        else if (Color.BLACK.equals(pawnColor)) {
+        } else if (Color.BLACK.equals(pawnColor)) {
             moveOneForward = getPosY() - 1;
             moveTwoForward = getPosY() - 2;
-        }
-
-        else throw new RuntimeException(String.format("Color %s is not a valid color.", pawnColor));
+        } else throw new RuntimeException(String.format("Color %s is not a valid color.", pawnColor));
 
         Field attackLeft = board.getFieldForPosition(
                 new Position((char) (getPosX() - 1), moveOneForward)
@@ -94,16 +85,48 @@ public class Pawn extends Figure {
             }
         }
 
-        if(board.isEnemyOnField(attackLeft, pawnColor)) {
+        if (board.isEnemyOnField(attackLeft, pawnColor)) {
             possibleFields.add(attackLeft);
         }
 
-        if(board.isEnemyOnField(attackRight, pawnColor)) {
+        if (board.isEnemyOnField(attackRight, pawnColor)) {
             possibleFields.add(attackRight);
         }
 
         return possibleFields;
     }
 
+    public boolean isHasMoved() {
+        return this.hasMoved;
+    }
+
+    public void setHasMoved(boolean hasMoved) {
+        this.hasMoved = hasMoved;
+    }
+
+    public String toString() {
+        return "Pawn(hasMoved=" + this.isHasMoved() + ")";
+    }
+
+    public boolean equals(final Object o) {
+        if (o == this) return true;
+        if (!(o instanceof Pawn)) return false;
+        final Pawn other = (Pawn) o;
+        if (!other.canEqual((Object) this)) return false;
+        if (!super.equals(o)) return false;
+        if (this.isHasMoved() != other.isHasMoved()) return false;
+        return true;
+    }
+
+    protected boolean canEqual(final Object other) {
+        return other instanceof Pawn;
+    }
+
+    public int hashCode() {
+        final int PRIME = 59;
+        int result = super.hashCode();
+        result = result * PRIME + (this.isHasMoved() ? 79 : 97);
+        return result;
+    }
 }
 
