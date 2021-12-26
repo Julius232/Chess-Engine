@@ -62,7 +62,7 @@ public class Board {
                         }
                 )
                 .collect(Collectors.toList());
-        this.score = new Score(score.getScoreWhite(), score.getScoreBlack());
+        this.score = new Score(board.getScore().getScoreWhite(), board.getScore().getScoreBlack());
     }
 
     //FIGURE OPERATIONS

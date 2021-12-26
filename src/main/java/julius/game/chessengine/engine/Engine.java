@@ -98,7 +98,7 @@ public class Engine {
                 .anyMatch(King::isInStateCheck);
     }
 
-    private boolean isInStateCheckMate(Board board, String color) {
+    public boolean isInStateCheckMate(Board board, String color) {
         return isInStateCheck(board, color) && getAllPossibleMoveFieldsForPlayerColor(board, color).size() == 0 ;
     }
 
@@ -143,6 +143,7 @@ public class Engine {
         Board dummyBoard = generateDummyBoard(board);
         Figure figureToMove = dummyBoard.getFigureForPosition(moveField.getFromPosition());
         moveOrAttackFigure(dummyBoard, figureToMove, moveField.getToField());
+
         return dummyBoard;
     }
 
@@ -160,10 +161,6 @@ public class Engine {
         } else {
             figureToMove.move(board, toField);
         }
-        /*if(isInStateCheckMate(board, Color.getOpponentColor(color))) {
-            //I can get any king as I only want to add the points
-            board.getScore().add(board.getKings().get(0).getPoints(), color);
-        }*/
     }
 
    /* private Board generateDummyBoard(Board board) {

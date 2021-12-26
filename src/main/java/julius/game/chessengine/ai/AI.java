@@ -81,7 +81,7 @@ public class AI {
         double max = -3333;
         double finalMax = max;
         Map<MoveField, Double> moveMap =
-                moves.parallelStream()
+                moves.stream()
                         .collect(Collectors.toMap(m -> m, m -> getMinScoreForPredictingNextMovesAfterMove(board, m, color, finalMax, level)));
 
         max = moveMap.values().stream()
@@ -111,7 +111,7 @@ public class AI {
 
         double finalMaximum = maximum;
         long startTime = System.nanoTime();
-        maximum = moves.parallelStream()
+        maximum = moves.stream()
                 .map(m -> getMinScoreForPredictingNextMovesAfterMove(board, m, color, finalMaximum, level))
                 .max(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No max value found."));
         long stopTime = System.nanoTime();
@@ -124,9 +124,14 @@ public class AI {
         long startTime = System.nanoTime();
         log.info("Move is " + move.toString());
         Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
+
         double minScore = 3333;
 
         double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color);
+        if(engine.isInStateCheckMate(boardAfterMove, Color.getOpponentColor(color))) {
+            scoreAfterFirstMove += boardAfterMove.getKings().get(0).getPoints();
+        }
+
         log.trace(String.format("Score after First Move [%s]", scoreAfterFirstMove));
 
         if (scoreAfterFirstMove >= max) {
@@ -135,7 +140,7 @@ public class AI {
             List<MoveField> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color));
 
             double finalMinScore = minScore;
-            minScore = opponentMoves.parallelStream()
+            minScore = opponentMoves.stream()
                     .map(m -> calculateOpponent(color, max, level, boardAfterMove, finalMinScore, m))
                     .min(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No min value found."));
 
@@ -159,6 +164,9 @@ public class AI {
         Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
 
         double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color);
+        if(engine.isInStateCheckMate(boardAfterSecondMove, color)) {
+            scoreAfterSecondMove -= boardAfterSecondMove.getKings().get(0).getPoints();
+        }
         log.trace(String.format("Score after Second Move: [%s]", scoreAfterSecondMove));
 
         if (scoreAfterSecondMove < minScore) {
