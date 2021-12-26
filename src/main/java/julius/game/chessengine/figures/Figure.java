@@ -55,7 +55,7 @@ public abstract class Figure {
     public String positionToString() {return getCurrentField().positionToString();}
 
     public List<MoveField> getPossibleMoveFields(Board board) {
-        return getPossibleFields(board).parallelStream()
+        return getPossibleFields(board).stream()
                 .map(toField -> new MoveField(currentField, toField))
                 .collect(Collectors.toList());
     }

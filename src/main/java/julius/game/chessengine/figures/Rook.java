@@ -20,7 +20,7 @@ public class Rook extends Figure {
     @Override
     public Board move(Board board, Field toField) {
         if(getPossibleFields(board)
-                .parallelStream()
+                .stream()
                 .anyMatch(toField::equals)) {
             board.moveFigureToField( this, toField);
             hasMoved = true;
@@ -35,7 +35,7 @@ public class Rook extends Figure {
     @Override
     public Board attack(Board board, Field toField) {
         if(getPossibleFields(board)
-                .parallelStream()
+                .stream()
                 .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
             hasMoved = true;

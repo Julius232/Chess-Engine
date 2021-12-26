@@ -22,7 +22,7 @@ public class Pawn extends Figure {
     @Override
     public Board move(Board board, Field toField) {
         if (getPossibleFields(board)
-                .parallelStream()
+                .stream()
                 .anyMatch(toField::equals)) {
             board.moveFigureToField(this, toField);
             setHasMoved(true);
@@ -36,7 +36,7 @@ public class Pawn extends Figure {
     @Override
     public Board attack(Board board, Field toField) {
         if (getPossibleFields(board)
-                .parallelStream()
+                .stream()
                 .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
             setHasMoved(true);

@@ -94,7 +94,7 @@ public class King extends Figure {
             moveFields.add(castlingQueenSide);
         }
 
-        return Stream.concat(attackFields.parallelStream(), moveFields.parallelStream())
+        return Stream.concat(attackFields.stream(), moveFields.stream())
                 .collect(Collectors.toList());
     }
 
@@ -140,9 +140,9 @@ public class King extends Figure {
 
     public boolean checkState(Board board) {
         return board.getFigures()
-                .parallelStream()
+                .stream()
                 .filter(figure -> !figure.getColor().equals(getColor()))
-                .flatMap(figure -> figure.getPossibleMoveFields(board).parallelStream())
+                .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
                 .map(MoveField::getToField)
                 .anyMatch(toField -> toField.equals(getCurrentField()));
     }

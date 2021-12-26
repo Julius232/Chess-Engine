@@ -20,7 +20,7 @@ public class Knight extends Figure {
     @Override
     public Board move(Board board, Field toField) {
         if(getPossibleFields(board)
-                .parallelStream()
+                .stream()
                 .anyMatch(toField::equals)) {
             board.moveFigureToField( this, toField);
         }
@@ -34,7 +34,7 @@ public class Knight extends Figure {
     @Override
     public Board attack(Board board, Field toField) {
         if(getPossibleFields(board)
-                .parallelStream()
+                .stream()
                 .anyMatch(toField::equals)) {
             board.hitFigureFromBoard(this, toField);
         }
@@ -49,18 +49,18 @@ public class Knight extends Figure {
     public List<Field> getPossibleFields(Board board) {
 
         List<Field> attackFields = getAllPositionMoves()
-                .parallelStream()
+                .stream()
                 .filter(position -> position.isPositionInFields(board.getAllEnemyFields(getColor())))
                 .map(board::getFieldForPosition)
                 .collect(Collectors.toList());
 
         List<Field> moveFields = getAllPositionMoves()
-                .parallelStream()
+                .stream()
                 .filter(position -> position.isPositionInFields(board.getAllEmptyFields()))
                 .map(board::getFieldForPosition)
                 .collect(Collectors.toList());
 
-        return Stream.concat(attackFields.parallelStream(), moveFields.parallelStream())
+        return Stream.concat(attackFields.stream(), moveFields.stream())
                 .collect(Collectors.toList());
     }
 

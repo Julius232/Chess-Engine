@@ -66,9 +66,10 @@ public class Engine {
 
     @Cacheable(lifetime = 30, unit = TimeUnit.SECONDS)
     public List<MoveField> getAllPossibleMoveFieldsForPlayerColor(Board board, String color) {
-        return board.getFigures().parallelStream()
+
+        return board.getFigures().stream()
                 .filter(figure -> color.equals(figure.getColor()))
-                .flatMap(figure -> figure.getPossibleMoveFields(board).parallelStream())
+                .flatMap(figure -> figure.getPossibleMoveFields(board).stream())
                 .filter(moveField -> !isInStateCheckAfterMove(board, moveField, color))
                 .collect(Collectors.toList());
     }
@@ -77,7 +78,7 @@ public class Engine {
         try {
             Figure figure = board.getFigureForString(fromPosition);
             if(figure.getColor().equals(Color.WHITE) == whitesTurn) {
-                return figure.getPossibleMoveFields(board).parallelStream()
+                return figure.getPossibleMoveFields(board).stream()
                         .filter(moveField -> !isInStateCheckAfterMove(board, moveField, figure.getColor()))
                         .map(MoveField::getToField)
                         .map(Field::getPosition)
@@ -93,8 +94,12 @@ public class Engine {
     }
 
     private boolean isInStateCheck(Board board, String color) {
-        return board.getKings().parallelStream().filter(king -> color.equals(king.getColor()))
+        return board.getKings().stream().filter(king -> color.equals(king.getColor()))
                 .anyMatch(King::isInStateCheck);
+    }
+
+    private boolean isInStateCheckMate(Board board, String color) {
+        return isInStateCheck(board, color) && getAllPossibleMoveFieldsForPlayerColor(board, color).size() == 0 ;
     }
 
     public double simulateMoveAndGetEfficiency(Board board, MoveField moveField, String currentPlayerColor, String color, int levelOfDepth, double mostEfficientMove) {
@@ -128,7 +133,7 @@ public class Engine {
 
     private double getMostEfficientMoveScoreDifference(String color, int levelOfDepth, String currentPlayerColor, Board simulatedBoard, double mostEfficientMove) {
         List<MoveField> opponentMoves = getAllPossibleMoveFieldsForPlayerColor(simulatedBoard, color);
-        return opponentMoves.parallelStream()
+        return opponentMoves.stream()
                         .mapToDouble(move -> simulateMoveAndGetEfficiency(simulatedBoard, move, currentPlayerColor, color, levelOfDepth-1, mostEfficientMove))
                         .max().orElseThrow(() -> new RuntimeException("No moves available for " + color));
     }
@@ -155,6 +160,10 @@ public class Engine {
         } else {
             figureToMove.move(board, toField);
         }
+        /*if(isInStateCheckMate(board, Color.getOpponentColor(color))) {
+            //I can get any king as I only want to add the points
+            board.getScore().add(board.getKings().get(0).getPoints(), color);
+        }*/
     }
 
    /* private Board generateDummyBoard(Board board) {

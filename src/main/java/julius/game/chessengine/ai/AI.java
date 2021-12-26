@@ -13,6 +13,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Log4j2
 @Component
@@ -76,21 +77,33 @@ public class AI {
     }
 
     private MoveField getMaxScoreMoveOfAllPossibleMoves(Board board, List<MoveField> moves, String color, int level) {
-        double min;
+        long startTime = System.nanoTime();
         double max = -3333;
-        MoveField bestMove = moves.parallelStream()
-                .findAny()
-                .orElseThrow(() -> new IllegalStateException(String.format("Player [%s] has no moves", color)));
-        for (MoveField move : moves) {
+        double finalMax = max;
+        Map<MoveField, Double> moveMap =
+                moves.parallelStream()
+                        .collect(Collectors.toMap(m -> m, m -> getMinScoreForPredictingNextMovesAfterMove(board, m, color, finalMax, level)));
+
+        max = moveMap.values().stream()
+                .max(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No max value found."));
+
+        Set<MoveField> bestMoveFields = getKeysByValue(moveMap, max);
+
+
+        /*for (MoveField move : moves) {
             min = getMinScoreForPredictingNextMovesAfterMove(board, move, color, max, level);
             if (min > max) {
                 log.info("max was " + max + " now is " + min);
                 max = min;
                 bestMove = move;
             }
-        }
+        }*/
+        Random r = new Random();
+        long stopTime = System.nanoTime();
+        log.info(String.format("### All moves took [%s Seconds] ###", TimeUnit.NANOSECONDS.toSeconds((stopTime-startTime))));
 
-        return bestMove;
+        return bestMoveFields.stream().skip(r.nextInt(bestMoveFields.size())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("No best move found."));
     }
 
     private double getMaxScoreOfAllPossibleMoves(Board board, List<MoveField> moves, String color, double min, double max, int level) {
@@ -112,12 +125,8 @@ public class AI {
         log.info("Move is " + move.toString());
         Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
         double minScore = 3333;
-        boolean lookFurther = true;
 
-        double amountOfMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, color).size();
-        double opponentAmountOfMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color)).size();
-
-        double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color) + ((amountOfMoves - opponentAmountOfMoves) / 7);
+        double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color);
         log.trace(String.format("Score after First Move [%s]", scoreAfterFirstMove));
 
         if (scoreAfterFirstMove >= max) {
@@ -130,9 +139,6 @@ public class AI {
                     .map(m -> calculateOpponent(color, max, level, boardAfterMove, finalMinScore, m))
                     .min(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No min value found."));
 
-            for (MoveField opponentMove : opponentMoves) {
-                minScore = calculateOpponent(color, max, level, boardAfterMove, minScore, opponentMove);
-            }
             if (level <= 1) {
                 log.info("minscore: " + minScore + " maxscore: " + max + " " + move.toString());
                 long stopTime = System.nanoTime();
@@ -142,6 +148,7 @@ public class AI {
         }
         log.trace("Returns scoreAfterFirstMove: " + scoreAfterFirstMove + " " + move.toString());
         long stopTime = System.nanoTime();
+
         log.info(String.format("### Move: [%s] took [%sms] ###", move.toString(), TimeUnit.NANOSECONDS.toMillis((stopTime-startTime))));
         return scoreAfterFirstMove;
     }
@@ -150,13 +157,8 @@ public class AI {
         long startTime = System.nanoTime();
 
         Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
-        double amountOfMoves2 = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color).size();
-        log.trace(String.format("Amount of Moves: [%s]", amountOfMoves2));
 
-        double opponentAmountOfMoves2 = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, Color.getOpponentColor(color)).size();
-        log.trace(String.format("Opponent Amount of Moves: [%s]", opponentAmountOfMoves2));
-
-        double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color) + ((amountOfMoves2 - opponentAmountOfMoves2) / 7);
+        double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color);
         log.trace(String.format("Score after Second Move: [%s]", scoreAfterSecondMove));
 
         if (scoreAfterSecondMove < minScore) {
@@ -174,5 +176,13 @@ public class AI {
         log.info(String.format("Opponent Move: [%s] took [%sms]", opponentMove.toString(), TimeUnit.NANOSECONDS.toMillis((stopTime-startTime))));
 
         return minScore;
+    }
+
+    public static <T, E> Set<T> getKeysByValue(Map<T, E> map, E value) {
+        return map.entrySet()
+                .stream()
+                .filter(entry -> Objects.equals(entry.getValue(), value))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
     }
 }

@@ -38,7 +38,7 @@ public class Board {
     }*/
 
     public Board(Board board) {
-        this.figures = board.getFigures().parallelStream()
+        this.figures = board.getFigures().stream()
                 .map(f -> {
                             if (f instanceof Pawn) {
                                 return new Pawn(f.getColor(), f.getCurrentField(), ((Pawn) f).isHasMoved());
@@ -68,7 +68,7 @@ public class Board {
     //FIGURE OPERATIONS
 
     public Figure getFigureForPosition(Position position) {
-        return figures.parallelStream()
+        return figures.stream()
                 .filter(figure -> position.equals(figure.getCurrentField().getPosition()))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No Figure at Position: " +
@@ -83,39 +83,39 @@ public class Board {
     }
 
     public boolean isEmptyField(Field field) {
-        return figures.parallelStream()
+        return figures.stream()
                 .noneMatch(figure -> field.equals(figure.getCurrentField()));
     }
 
     public List<Field> getAllOccupiedFields() {
-        return figures.parallelStream()
+        return figures.stream()
                 .filter(figure -> isOccupiedField(figure.getCurrentField()))
                 .map(Figure::getCurrentField)
                 .collect(Collectors.toList());
     }
 
     public boolean isEnemyOnField(Field field, String currentPlayerColor) {
-        return figures.parallelStream()
+        return figures.stream()
                 .filter(figure -> field.equals(figure.getCurrentField()))
                 .anyMatch(figure -> ! currentPlayerColor.equals(figure.getColor()));
     }
 
     public List<Field> getAllEnemyFields(String currentPlayerColor) {
-        return figures.parallelStream()
+        return figures.stream()
                 .filter(figure -> isEnemyOnField(figure.getCurrentField(), currentPlayerColor))
                 .map(Figure::getCurrentField)
                 .collect(Collectors.toList());
     }
 
     public List<King> getKings() {
-        return figures.parallelStream()
+        return figures.stream()
                 .filter(figure -> figure instanceof King)
                 .map(king -> (King) king)
                 .collect(Collectors.toList());
     }
 
     public boolean isPlayerInStateCheck(String color) {
-        return getKings().parallelStream()
+        return getKings().stream()
                 .filter(king -> color.equals(king.getColor()))
                 .anyMatch(King::isInStateCheck);
     }
@@ -123,7 +123,7 @@ public class Board {
     //FIELD OPERATIONS
 
     public Field getFieldForPosition(Position position) {
-        return fields.parallelStream()
+        return fields.stream()
                 .filter(field -> field.getPosition().equals(position))
                 .findAny()
                 .orElse(new Field("offsideTheBoard", position));
@@ -137,7 +137,7 @@ public class Board {
     }
 
     public List<Field> getAllEmptyFields() {
-        return fields.parallelStream()
+        return fields.stream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
@@ -148,25 +148,25 @@ public class Board {
 
     //X-AXIS OPERATIONS
     public List<Field> getAllFieldsXAxis(int y) {
-        return fields.parallelStream()
+        return fields.stream()
                 .filter(field -> y == field.getPosition().getY())
                 .collect(Collectors.toList());
     }
 
     public List<Field> getEmptyFieldsXAxis(int y) {
-        return getAllFieldsXAxis(y).parallelStream()
+        return getAllFieldsXAxis(y).stream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
 
     public List<Field> getOccupiedFieldsXAxis(int y) {
-        return getAllFieldsXAxis(y).parallelStream()
+        return getAllFieldsXAxis(y).stream()
                 .filter(this::isOccupiedField)
                 .collect(Collectors.toList());
     }
 
     public List<Field> getEnemyFieldsXAxis(int y, String currentPlayerColor) {
-        return getAllFieldsXAxis(y).parallelStream()
+        return getAllFieldsXAxis(y).stream()
                 .filter(field -> isEnemyOnField(field, currentPlayerColor))
                 .collect(Collectors.toList());
     }
@@ -207,25 +207,25 @@ public class Board {
 
     //Y-AXIS OPERATIONS
     public List<Field> getAllFieldsYAxis(char x) {
-        return fields.parallelStream()
+        return fields.stream()
                 .filter(field -> x == field.getPosition().getX())
                 .collect(Collectors.toList());
     }
 
     public List<Field> getEmptyFieldsYAxis(char x) {
-        return getAllFieldsYAxis(x).parallelStream()
+        return getAllFieldsYAxis(x).stream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
 
     public List<Field> getOccupiedFieldsYAxis(char x) {
-        return getAllFieldsYAxis(x).parallelStream()
+        return getAllFieldsYAxis(x).stream()
                 .filter(this::isOccupiedField)
                 .collect(Collectors.toList());
     }
 
     public List<Field> getEnemyFieldsYAxis(char x, String currentPlayerColor) {
-        return getAllFieldsYAxis(x).parallelStream()
+        return getAllFieldsYAxis(x).stream()
                 .filter(field -> isEnemyOnField(field, currentPlayerColor))
                 .collect(Collectors.toList());
     }
@@ -288,7 +288,7 @@ public class Board {
     }
 
     public List<Field> getEmptyFieldsDiagonalLDRU(Position position) {
-        return getAllFieldsDiagonalLDRU(position).parallelStream()
+        return getAllFieldsDiagonalLDRU(position).stream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
@@ -360,7 +360,7 @@ public class Board {
     }
 
     public List<Field> getEmptyFieldsDiagonalRDLU(Position position) {
-        return getAllFieldsDiagonalRDLU(position).parallelStream()
+        return getAllFieldsDiagonalRDLU(position).stream()
                 .filter(this::isEmptyField)
                 .collect(Collectors.toList());
     }
@@ -408,7 +408,7 @@ public class Board {
 
     //MOVE && ATTACK OPERATIONS
     public void hitFigureFromBoard(Figure movingFigure, Field toField) {
-        figures = figures.parallelStream()
+        figures = figures.stream()
                 .filter(figure -> !toField.equals(figure.getCurrentField()))
                 .collect(Collectors.toList());
         moveFigureToField(movingFigure, toField);
