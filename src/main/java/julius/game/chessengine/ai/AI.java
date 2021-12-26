@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Log4j2
 @Component
@@ -96,15 +97,18 @@ public class AI {
         double maximum = max;
 
         double finalMaximum = maximum;
+        long startTime = System.nanoTime();
         maximum = moves.parallelStream()
                 .map(m -> getMinScoreForPredictingNextMovesAfterMove(board, m, color, finalMaximum, level))
                 .max(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No max value found."));
-
+        long stopTime = System.nanoTime();
+        log.info(String.format("### All Moves: took [%ss] ###", TimeUnit.NANOSECONDS.toSeconds((stopTime-startTime))));
         return maximum;
     }
 
     private double getMinScoreForPredictingNextMovesAfterMove(Board board, MoveField move, String color, double max, int level) {
         log.info("-------------------------------------------------------------");
+        long startTime = System.nanoTime();
         log.info("Move is " + move.toString());
         Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
         double minScore = 3333;
@@ -131,15 +135,19 @@ public class AI {
             }
             if (level <= 1) {
                 log.info("minscore: " + minScore + " maxscore: " + max + " " + move.toString());
+                long stopTime = System.nanoTime();
+                log.info(String.format("### Move: [%s] took [%sms] ###", move.toString(), TimeUnit.NANOSECONDS.toMillis((stopTime-startTime))));
                 return minScore;
             }
         }
         log.trace("Returns scoreAfterFirstMove: " + scoreAfterFirstMove + " " + move.toString());
+        long stopTime = System.nanoTime();
+        log.info(String.format("### Move: [%s] took [%sms] ###", move.toString(), TimeUnit.NANOSECONDS.toMillis((stopTime-startTime))));
         return scoreAfterFirstMove;
     }
 
     private double calculateOpponent(String color, double max, int level, Board boardAfterMove, double minScore, MoveField opponentMove) {
-        log.info(String.format("Opponent Move: [%s]", opponentMove.toString()));
+        long startTime = System.nanoTime();
 
         Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
         double amountOfMoves2 = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color).size();
@@ -162,6 +170,9 @@ public class AI {
             }
             //boardAfterSecondMove.logBoard();
         }
+        long stopTime = System.nanoTime();
+        log.info(String.format("Opponent Move: [%s] took [%sms]", opponentMove.toString(), TimeUnit.NANOSECONDS.toMillis((stopTime-startTime))));
+
         return minScore;
     }
 }
