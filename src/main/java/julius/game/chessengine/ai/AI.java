@@ -142,7 +142,7 @@ public class AI {
             double finalMinScore = minScore;
             minScore = opponentMoves.stream()
                     .map(m -> calculateOpponent(color, max, level, boardAfterMove, finalMinScore, m))
-                    .min(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No min value found."));
+                    .min(Comparator.naturalOrder()).orElse(Double.MAX_VALUE);
 
             if (level <= 1) {
                 log.info("minscore: " + minScore + " maxscore: " + max + " " + move.toString());
