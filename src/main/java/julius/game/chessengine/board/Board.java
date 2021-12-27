@@ -466,7 +466,7 @@ public class Board {
             if(isKing.getType().equals("KING") && isRook.getType().equals("ROOK")) {
                 King king = (King) isKing;
                 Rook rook = (Rook) isRook;
-                return !king.isHasMoved() && !rook.isHasMoved();
+                return !king.isHasMoved() && !rook.isHasMoved() && !king.isInStateCheck();
             }
         }
         return false;
