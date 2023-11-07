@@ -19,7 +19,6 @@ import static java.lang.Double.MAX_VALUE;
 @Component
 public class AI {
 
-
     private final double MIN_SCORE = Double.NEGATIVE_INFINITY;
     private final double CHECKMATE_SCORE = 10000; // or some other large positive value
 
@@ -101,22 +100,11 @@ public class AI {
         return sortedMoves;
     }
 
-
-    static <K, V> void orderByValue(
-            LinkedHashMap<K, V> m, Comparator<? super V> c) {
-        List<Map.Entry<K, V>> entries = new ArrayList<>(m.entrySet());
-        m.clear();
-        entries.stream()
-                .sorted(Map.Entry.comparingByValue(c))
-                .forEachOrdered(e -> m.put(e.getKey(), e.getValue()));
-    }
-
     private Move getBestMove(BitBoard board, LinkedList<Move> moves, Color color, int levelOfDepth) {
         Move bestMove = null;
         double bestScore = MIN_SCORE;
         double alpha = MIN_SCORE;
-        double MAX_SCORE = Double.POSITIVE_INFINITY;
-        double beta = MAX_SCORE;
+        double beta = Double.POSITIVE_INFINITY;
 
         for (Move move : moves) {
             double value = getMinScore(board, move, color, levelOfDepth - 1, alpha, beta);
@@ -144,8 +132,7 @@ public class AI {
     private double getMaxScore(BitBoard board, Color color, int depth, double alpha, double beta) {
         if (engine.isInStateCheckMate(board, color)) {
             // negative for opponent's checkmate
-            double CHECKMATE_SCORE_NEG = -CHECKMATE_SCORE;
-            return CHECKMATE_SCORE_NEG; // Negative value for opponent's checkmate
+            return -CHECKMATE_SCORE; // Negative value for opponent's checkmate
         }
         if (depth == 0) {
             return board.getScore().getScoreDifference(color);
@@ -167,123 +154,4 @@ public class AI {
         return maxScore;
     }
 
-
-
-    /*private Move getMaxScoreMoveOfAllPossibleMoves(Board board, List<MoveField> moves, String color, int level) {
-        long startTime = System.nanoTime();
-        double max = -3333;
-        double finalMax = max;
-        Map<MoveField, Double> moveMap =
-                moves.stream()
-                        .collect(Collectors.toMap(m -> m, m -> getMinScoreForPredictingNextMovesAfterMove(board, m, color, finalMax, level)));
-
-        max = moveMap.values().stream()
-                .max(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No max value found."));
-
-        Set<MoveField> bestMoveFields = getKeysByValue(moveMap, max);
-
-
-        *//*for (Move move : moves) {
-            min = getMinScoreForPredictingNextMovesAfterMove(board, move, color, max, level);
-            if (min > max) {
-                log.info("max was " + max + " now is " + min);
-                max = min;
-                bestMove = move;
-            }
-        }*//*
-        Random r = new Random();
-        long stopTime = System.nanoTime();
-        log.info(String.format("### All moves took [%s Seconds] ###", TimeUnit.NANOSECONDS.toSeconds((stopTime-startTime))));
-
-        return bestMoveFields.stream().skip(r.nextInt(bestMoveFields.size())).findFirst()
-                .orElseThrow(() -> new IllegalStateException("No best move found."));
-    }*/
-
-    private double getMaxScoreOfAllPossibleMoves(BitBoard board, List<Move> moves, Color color, double min, double max, int level) {
-        double maximum = max;
-
-        double finalMaximum = maximum;
-        long startTime = System.nanoTime();
-        maximum = moves.stream()
-                .map(m -> getMinScoreForPredictingNextMovesAfterMove(board, m, color, finalMaximum, level))
-                .max(Comparator.naturalOrder()).orElseThrow(() -> new IllegalStateException("No max value found."));
-        long stopTime = System.nanoTime();
-        log.info(String.format("### All Moves: took [%ss] ###", TimeUnit.NANOSECONDS.toSeconds((stopTime - startTime))));
-        return maximum;
-    }
-
-    private double getMinScoreForPredictingNextMovesAfterMove(BitBoard board, Move move, Color color, double max, int level) {
-        log.info("-------------------------------------------------------------");
-        long startTime = System.nanoTime();
-        log.info("Move is " + move.toString());
-        BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
-
-        double minScore = 3333;
-
-        double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color);
-        if (engine.isInStateCheckMate(boardAfterMove, Color.getOpponentColor(color))) {
-            scoreAfterFirstMove += 1337;
-        }
-
-        log.trace(String.format("Score after First Move [%s]", scoreAfterFirstMove));
-
-        if (scoreAfterFirstMove >= max) {
-            log.trace(String.format("Score after First Move was >= max [%s]", scoreAfterFirstMove));
-
-            List<Move> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color));
-
-            double finalMinScore = minScore;
-            minScore = opponentMoves.stream()
-                    .map(m -> calculateOpponent(color, max, level, boardAfterMove, finalMinScore, m))
-                    .min(Comparator.naturalOrder()).orElse(MAX_VALUE);
-
-            if (level <= 1) {
-                log.info("minscore: " + minScore + " maxscore: " + max + " " + move.toString());
-                long stopTime = System.nanoTime();
-                log.info(String.format("### Move: [%s] took [%sms] ###", move.toString(), TimeUnit.NANOSECONDS.toMillis((stopTime - startTime))));
-                return minScore;
-            }
-        }
-        log.trace("Returns scoreAfterFirstMove: " + scoreAfterFirstMove + " " + move.toString());
-        long stopTime = System.nanoTime();
-
-        log.info(String.format("### Move: [%s] took [%sms] ###", move.toString(), TimeUnit.NANOSECONDS.toMillis((stopTime - startTime))));
-        return scoreAfterFirstMove;
-    }
-
-    private double calculateOpponent(Color color, double max, int level, BitBoard boardAfterMove, double minScore, Move opponentMove) {
-        long startTime = System.nanoTime();
-
-        BitBoard boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
-
-        double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color);
-        if (engine.isInStateCheckMate(boardAfterSecondMove, color)) {
-            scoreAfterSecondMove -= 1337;
-        }
-        log.trace(String.format("Score after Second Move: [%s]", scoreAfterSecondMove));
-
-        if (scoreAfterSecondMove < minScore) {
-            log.trace("MinScore is now: " + scoreAfterSecondMove);
-            minScore = scoreAfterSecondMove;
-            if (level > 1) {
-                List<Move> nMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color);
-
-                log.trace("minscore: " + minScore + "going into recursion");
-                minScore = getMaxScoreOfAllPossibleMoves(boardAfterSecondMove, nMoves, color, minScore, max, level - 1);
-            }
-            //boardAfterSecondMove.logBoard();
-        }
-        long stopTime = System.nanoTime();
-        log.info(String.format("Opponent Move: [%s] took [%sms]", opponentMove.toString(), TimeUnit.NANOSECONDS.toMillis((stopTime - startTime))));
-
-        return minScore;
-    }
-
-    public static <T, E> Set<T> getKeysByValue(Map<T, E> map, E value) {
-        return map.entrySet()
-                .stream()
-                .filter(entry -> Objects.equals(entry.getValue(), value))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
-    }
 }

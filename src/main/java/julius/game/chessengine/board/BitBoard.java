@@ -712,19 +712,19 @@ public class BitBoard {
     public void clearSquare(int index, Color color) {
         long mask = ~(1L << index);
         if (color == Color.WHITE) {
-            if ((whitePawns & mask) != 0L) whitePawns &= mask;
-            if ((whiteKnights & mask) != 0L) whiteKnights &= mask;
-            if ((whiteBishops & mask) != 0L) whiteBishops &= mask;
-            if ((whiteRooks & mask) != 0L) whiteRooks &= mask;
-            if ((whiteQueens & mask) != 0L) whiteQueens &= mask;  // This line should clear the queen
-            whiteKing &= mask;
+            if ((whitePawns & (1L << index)) != 0L) whitePawns &= mask;
+            if ((whiteKnights & (1L << index)) != 0L) whiteKnights &= mask;
+            if ((whiteBishops & (1L << index)) != 0L) whiteBishops &= mask;
+            if ((whiteRooks & (1L << index)) != 0L) whiteRooks &= mask;
+            if ((whiteQueens & (1L << index)) != 0L) whiteQueens &= mask;  // Corrected line for queen
+            whiteKing &= mask; // Only clear if the king is actually on the square
         } else {
-            if ((blackPawns & mask) != 0L) blackPawns &= mask;
-            if ((blackKnights & mask) != 0L) blackKnights &= mask;
-            if ((blackBishops & mask) != 0L) blackBishops &= mask;
-            if ((blackRooks & mask) != 0L) blackRooks &= mask;
-            if ((blackQueens & mask) != 0L) blackQueens &= mask;  // This line should clear the queen
-            blackKing &= mask;
+            if ((blackPawns & (1L << index)) != 0L) blackPawns &= mask;
+            if ((blackKnights & (1L << index)) != 0L) blackKnights &= mask;
+            if ((blackBishops & (1L << index)) != 0L) blackBishops &= mask;
+            if ((blackRooks & (1L << index)) != 0L) blackRooks &= mask;
+            if ((blackQueens & (1L << index)) != 0L) blackQueens &= mask;  // Corrected line for queen
+            blackKing &= mask; // Only clear if the king is actually on the square
         }
         updateAggregatedBitboards();
     }
