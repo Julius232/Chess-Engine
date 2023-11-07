@@ -1,184 +1,84 @@
-function checkState(state) {
-    if(state != "PLAY") {
-        document.getElementById("header").innerHTML=state;
-    }
-}
-
-function updateScore() {
-    var request = new XMLHttpRequest()
-    request.open('GET', 'http://localhost:8080/chess/score', true)
-    request.onload = function(e) {
-        if (request.readyState == 4) {
-            if (request.status == 200) {
-                var data = JSON.parse(this.response)
-               
-                document.getElementById("scoreWhite").innerHTML= "WHITE: " + data.scoreWhite;
-                document.getElementById("scoreBlack").innerHTML= "BLACK: " + data.scoreBlack;
-            
-            }
-            else {
-                console.error(request.statusText)
-            }
-        }
-    };
-    request.send();
-}
-
-function makeIntelligentMove(color) {
-    var request = new XMLHttpRequest()
-    request.open('PATCH', 'http://localhost:8080/chess/figure/move/intelligent/' + color, true)
-    request.onreadystatechange = function(e) {
-        if (request.readyState == 4) {
-            if (request.status == 200) {
-                var data = JSON.parse(this.response)
-                console.log(data.state)
-                checkState(data.state);
-                reload();
-            
-            }
-            else {
-                console.error(request.statusText)
-            }
-        }
-    };
-    request.send();
-}
-
-function makeRandomMove(color) {
-    var request = new XMLHttpRequest()
-    request.open('PATCH', 'http://localhost:8080/chess/figure/move/random/' + color, true)
-    request.onload = function(e) {
-        if (request.readyState == 4) {
-            if (request.status == 200) {
-                var data = JSON.parse(this.response)
-                console.log(data.state)
-                checkState(data.state);
-                reload();
-            
-            }
-            else {
-                console.error(request.statusText)
-            }
-        }
-    };
-    request.send();
-}
-
-function onDrop (source, target, piece, newPos, oldPos, orientation) {
-
-    var request = new XMLHttpRequest()
-
-    // Open a new connection, using the GET request on the URL endpoint
-    request.open('PATCH', 'http://localhost:8080/chess/figure/move/' + source + '/' + target, true)
-    request.onreadystatechange = function(e) {
-        if (request.readyState == 4) {
-            if (request.status == 200) {
-                var data = JSON.parse(this.response)
-                console.log(data)
-                reload();
-                
-            }
-            else {
-                console.error(request.statusText)
-            }
-        }
-    };
-    request.send();
-    
-}
-
-
-$('#computerMove').on('click', function() {
-    makeIntelligentMove("black");
-})
-
-
-$('#resetBoard').on('click', function () {
-    var request = new XMLHttpRequest()
-    request.open('PUT', 'http://localhost:8080/chess/reset', true)
-    request.send();
-    reload();
-    
-})
-
-function reload() {
-    var request = new XMLHttpRequest()
-    request.open('GET', 'http://localhost:8080/chess/figure/frontend', true)
-    request.onload = function(e) {
-        if (request.readyState == 4) {
-            if (request.status == 200) {
-                var data = JSON.parse(this.response)
-                console.log(data.renderBoard)
-                board.position(data.renderBoard)
-                updateScore();
-            }
-            else {
-                console.error(request.statusText)
-            }
-        }
-    };
-    request.send();
-}
-
-function greySquare (square) {
-
-  var whiteSquareGrey = 'blue'
-  var blackSquareGrey = 'lightskyblue'
-  var $square = $('#board .square-' + square)
-
-  var background = whiteSquareGrey
-  if ($square.hasClass('black-3c85d')) {
-    background = blackSquareGrey
+const makeRequest = async (method, url, callback) => {
+  try {
+    const response = await fetch(url, { method });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    if (callback) callback(data);
+  } catch (error) {
+    console.error('Request failed:', error);
   }
+};
 
-  $square.css('background', background)
-}
+const checkState = (state) => {
+  if (state !== "PLAY") {
+    document.getElementById("header").textContent = state;
+  }
+};
 
-function removeGreySquares () {
-  $('#board .square-55d63').css('background', '')
-}
+const updateScore = () => {
+  makeRequest('GET', 'http://localhost:8080/chess/score', (data) => {
+    document.getElementById("scoreWhite").textContent = `WHITE: ${data.scoreWhite}`;
+    document.getElementById("scoreBlack").textContent = `BLACK: ${data.scoreBlack}`;
+  });
+};
 
-function onMouseoverSquare (square, piece) {
-  // get list of possible moves for this square
-  var request = new XMLHttpRequest()
-    request.open('GET', 'http://localhost:8080/chess/figure/move/possible/' + square, true)
-    request.onload = function(e) {
-        if (request.readyState == 4) {
-            if (request.status == 200) {
-                var moves = JSON.parse(this.response)
-                console.log(moves)
-                
-                // exit if there are no moves available for this square
-                if (moves.length === 0) return
+const makeMove = (type, color) => {
+  makeRequest('PATCH', `http://localhost:8080/chess/figure/move/${type}/${color}`, (data) => {
+    checkState(data.state);
+    reloadBoard();
+  });
+};
 
-                // highlight the square they moused over
-                greySquare(square)
+const onDrop = (source, target) => {
+  makeRequest('PATCH', `http://localhost:8080/chess/figure/move/${source}/${target}`, reloadBoard);
+};
 
-                // highlight the possible squares for this piece
-                for (var i = 0; i < moves.length; i++) {
-                    greySquare(moves[i].x + moves[i].y)
-                }
+const reloadBoard = () => {
+  makeRequest('GET', 'http://localhost:8080/chess/figure/frontend', (data) => {
+    board.position(data.renderBoard);
+    updateScore();
+  });
+};
 
-            }
-            else {
-                console.error(request.statusText)
-            }
-        }
-    };
-    request.send();
-}
+const highlightSquare = (square, highlight) => {
+  const $square = $(`#board .square-${square}`);
+  const background = $square.hasClass('black-3c85d') ? 'lightskyblue' : 'blue';
+  $square.css('background', highlight ? background : '');
+};
 
-function onMouseoutSquare (square, piece) {
-  removeGreySquares()
-}
+const onMouseoverSquare = (square) => {
+  makeRequest('GET', `http://localhost:8080/chess/figure/move/possible/${square}`, (moves) => {
+    if (moves.length === 0) return;
+    highlightSquare(square, true);
+    moves.forEach(move => highlightSquare(move.x + move.y, true));
+  });
+};
 
-var config = {
-    draggable: true,
-    onDrop: onDrop,
-    onMouseoverSquare: onMouseoverSquare,
-    onMouseoutSquare: onMouseoutSquare
-}
+const onMouseoutSquare = () => {
+  $('#board .square-55d63').css('background', '');
+};
 
-var board = Chessboard('board', config)
+const initEventListeners = () => {
+  $('#computerMove').on('click', () => makeMove('intelligent', 'black'));
+  $('#resetBoard').on('click', () => makeRequest('PUT', 'http://localhost:8080/chess/reset', reloadBoard));
+};
 
-reload()
+const boardConfig = {
+  draggable: true,
+  onDrop: (source, target) => onDrop(source, target),
+  onMouseoverSquare: (square, piece) => onMouseoverSquare(square, piece),
+  onMouseoutSquare: (square, piece) => onMouseoutSquare(square, piece)
+};
+
+// Function to start the auto-refresh interval
+const startAutoRefresh = (intervalMs) => {
+  setInterval(() => {
+    reloadBoard();
+  }, intervalMs);
+};
+
+const board = Chessboard('board', boardConfig);
+
+initEventListeners();
+reloadBoard();
+startAutoRefresh(300);

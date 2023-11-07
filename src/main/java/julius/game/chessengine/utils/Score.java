@@ -20,15 +20,10 @@ public class Score {
     }
 
     public void add(int add, String playerColor) {
-        if(playerColor.equals(Color.WHITE)) {
-            scoreWhite += add;
-        }
-        else {
-            scoreBlack += add;
-        }
+        scoreBlack += add;
     }
 
-    public int getScoreDifference(String color) {
+    public int getScoreDifference(Color color) {
         return color.equals(Color.WHITE) ? getScoreWhite() - getScoreBlack() : getScoreBlack() - getScoreWhite();
     }
 }

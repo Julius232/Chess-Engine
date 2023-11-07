@@ -1,6 +1,8 @@
 package julius.game.chessengine.board;
 
-import julius.game.chessengine.figures.Figure;
+import julius.game.chessengine.board.BitBoard;
+import julius.game.chessengine.board.Position;
+import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -10,43 +12,43 @@ import lombok.RequiredArgsConstructor;
 public class FEN {
     private final String renderBoard;
 
-    public static FEN translateBoardToFEN(Board board) {
-        StringBuilder frontendBoard = new StringBuilder();
-        for (int y = 8; y >= 1; y--) {
-            int count = 0;
-            for (char x = 'a'; x <= 'h'; x++) {
-                Field f = board.getFieldForPosition(new Position(x, y));
-                Field nextF = board.getFieldForPosition(new Position((char) (x + 1), y));
-                if (board.isOccupiedField(f)) {
-                    frontendBoard.append(convertToFrontendChar(board.getFigureForPosition(f.getPosition())));
-                } else {
-                    ++count;
-                    if (board.isOccupiedField(nextF)) {
-                        frontendBoard.append(count);
-                        count = 0;
+    public static FEN translateBoardToFEN(BitBoard board) {
+        StringBuilder fenBuilder = new StringBuilder();
+        for (int rank = 8; rank >= 1; rank--) {
+            int emptyCount = 0;
+            for (char file = 'a'; file <= 'h'; file++) {
+                Position position = new Position(file, rank);
+                PieceType pieceType = board.getPieceTypeAtPosition(position);
+                Color color = board.getPieceColorAtPosition(position);
+
+                if (pieceType != null) {
+                    if (emptyCount > 0) {
+                        fenBuilder.append(emptyCount);
+                        emptyCount = 0;
                     }
-                }
-                if (x == 'h' && count > 0) {
-                    frontendBoard.append(count);
+                    char fenChar = getFenCharacter(pieceType, color);
+                    fenBuilder.append(fenChar);
+                } else {
+                    emptyCount++;
                 }
             }
-            if (y > 1) {
-                frontendBoard.append('/');
+            if (emptyCount > 0) {
+                fenBuilder.append(emptyCount);
+            }
+            if (rank > 1) {
+                fenBuilder.append('/');
             }
         }
-        return new FEN(frontendBoard.toString());
+        // You would add the active color, castling availability, en passant target square,
+        // halfmove clock, and fullmove number after this
+        return new FEN(fenBuilder.toString());
     }
 
-    private static char convertToFrontendChar(Figure figure) {
-        String type = figure.getType();
-        String color = figure.getColor();
-        char frontendChar = type.charAt(0);
-        if(type.equals("KNIGHT")) {
-            frontendChar = 'N';
+    private static char getFenCharacter(PieceType pieceType, Color color) {
+        char fenChar = pieceType.getNotation();
+        if (color == Color.BLACK) {
+            fenChar = Character.toLowerCase(fenChar);
         }
-        if(color.equals(Color.BLACK)) {
-            frontendChar = Character.toLowerCase(frontendChar);
-        }
-        return frontendChar;
+        return fenChar;
     }
 }

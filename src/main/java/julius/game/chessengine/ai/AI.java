@@ -1,27 +1,27 @@
 package julius.game.chessengine.ai;
 
-import julius.game.chessengine.board.Board;
-import julius.game.chessengine.board.FEN;
+import julius.game.chessengine.board.BitBoard;
+import julius.game.chessengine.board.Move;
+import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
-import julius.game.chessengine.engine.MoveField;
-import julius.game.chessengine.figures.*;
 import julius.game.chessengine.utils.Color;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.lang.Double.MAX_VALUE;
-import static java.lang.Double.MIN_VALUE;
 
 @Log4j2
 @Component
 public class AI {
+
+
+    private final double MIN_SCORE = Double.NEGATIVE_INFINITY;
+    private final double CHECKMATE_SCORE = 10000; // or some other large positive value
 
     private final Engine engine;
 
@@ -29,137 +29,78 @@ public class AI {
         this.engine = engine;
     }
 
-    public GameState executeCalculatedMove(String color) {
-        MoveField calculatedMove = calculateMove(engine.getBoard(), color);
+    public GameState executeCalculatedMove(String colorString) {
+        // Convert the string color to the Color enum
+        Color color = Color.valueOf(colorString.toUpperCase());
 
-        if (calculatedMove != null) {
-            return engine.moveFigure(engine.getBoard(), calculatedMove.fromPositionToString(), calculatedMove.toPositionToString());
-        } else return engine.getGameState();
+        // Calculate the move using the AI logic
+        Move calculatedMove = calculateMove(engine.getBitBoard(), color);
+
+        // Convert the Move to fromPosition and toPosition
+        Position fromPosition = calculatedMove.getFrom();
+        Position toPosition = calculatedMove.getTo();
+
+        // Use the engine to move the figure on the bitboard
+        return engine.moveFigure(engine.getBitBoard(), fromPosition, toPosition);
     }
 
-    private MoveField calculateMove(Board board, String color) {
-        //String fenBoard = FEN.translateBoardToFEN(board).getRenderBoard();
-        int levelOfDepth = 5;
-        String filePath = "src/main/resources/best.moves.level" + levelOfDepth;
 
-        try {
-            Map<String, MoveField> bestMoves = new HashMap<>();
+    private Move calculateMove(BitBoard board, Color color) {
+        int levelOfDepth = 7; // Adjust the level of depth according to your requirements
 
-            Properties properties = new Properties();
-            properties.load(new FileInputStream(filePath));
-            /*
-            for (String key : properties.stringPropertyNames()) {
-                bestMoves.put(key, new MoveField(board, properties.get(key).toString()));
+        // Get all possible moves for the given color
+        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(color);
+
+        // Sort moves by efficiency if needed
+        // Assume sortMovesByEfficiency returns a sorted list of Move objects
+        // This is just a placeholder; you'll need to implement the actual logic for sorting moves by efficiency
+        LinkedList<Move> sortedMoves = sortMovesByEfficiency(moves, board, color);
+
+        // Get the best move from the sorted list
+        // This is just a placeholder; you'll need to implement the actual logic for selecting the best move
+        Move calculatedMove = getBestMove(board, sortedMoves, color, levelOfDepth);
+
+        // Log the calculated move
+        log.info("Calculated Move is From: " + calculatedMove.getFrom()
+                + " To: " + calculatedMove.getTo());
+
+        // Return the calculated move directly without saving it
+        return calculatedMove;
+    }
+
+
+    private LinkedList<Move> sortMovesByEfficiency(List<Move> moves, BitBoard board, Color color) {
+        // We use a TreeMap to sort by the move efficiency value automatically.
+        Map<Move, Integer> unsortedMoveMap = new HashMap<>();
+
+        for (Move move : moves) {
+            BitBoard dummy = new BitBoard(board); // Clone the board or create a new dummy board with the same state
+            dummy.performMove(move); // Perform the move on the dummy board
+
+            int efficiency;
+            if (engine.isInStateCheckMate(dummy, Color.getOpponentColor(color))) {
+                efficiency = 10000; // Assign a high value for checkmate
+            } else if (dummy.isInCheck(Color.getOpponentColor(color))) {
+                efficiency = 1000; // Assign a medium value for check
+            } else {
+                efficiency = 100; // Assign a base value for moves that do not result in check
             }
-            if (bestMoves.containsKey(fenBoard)) {
-                MoveField bestMove = bestMoves.get(fenBoard);
-                log.info("Found bestMove for " + fenBoard + " = " + bestMove.toString() + " in " + filePath);
-                return bestMove;
-            }*/
-
-            List<MoveField> moves = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
-            LinkedList<MoveField> sortedMoves = sortMovesByEfficiency(moves, board, color);
-
-            //MoveField calculatedMoveField = getMaxScoreMoveOfAllPossibleMoves(board, moves, color, levelOfDepth);
-            MoveField calculatedMoveField = getBestMove(board, sortedMoves, color, levelOfDepth);
-
-
-            log.info("Calculated Move is From: " + calculatedMoveField.fromPositionToString()
-                    + " To: " + calculatedMoveField.toPositionToString());
-            //bestMoves.put(FEN.translateBoardToFEN(board).getRenderBoard(), calculatedMoveField);
-
-            properties.store(new FileOutputStream(filePath), null);
-
-            return calculatedMoveField;
-        } catch (Exception e) {
-            log.error(e.getMessage());
+            unsortedMoveMap.put(move, efficiency);
         }
 
-        return null;
+        // Sort the moves by their efficiency in descending order
+        List<Map.Entry<Move, Integer>> sortedEntries = new ArrayList<>(unsortedMoveMap.entrySet());
+        sortedEntries.sort(Map.Entry.<Move, Integer>comparingByValue().reversed());
 
-    }
-
-    private LinkedList<MoveField> sortMovesByEfficiency(List<MoveField> moves, Board board, String color) {
-        LinkedHashMap<MoveField, Integer> sortedMoveMap = new LinkedHashMap<>();
-        for(MoveField move : moves) {
-            Board dummy = engine.simulateMoveAndGetDummyBoard(board, move);
-
-            if(engine.isInStateCheckMate(dummy, Color.getOpponentColor(color))) {
-                sortedMoveMap.put(move, 10000);
-            }
-            else if(dummy.isPlayerInStateCheck(Color.getOpponentColor(color))) {
-                sortedMoveMap.put(move, 1000);
-            }
-
-            else {
-                Figure figureFrom = board.getFigureForPosition(move.getFromPosition());
-                try {
-                    Figure figureTo = board.getFigureForPosition(move.getToPosition());
-                    if (figureFrom instanceof Pawn) {
-                        if (figureTo instanceof Queen) {
-                            sortedMoveMap.put(move, 900);
-                        }
-                        if (figureTo instanceof Rook) {
-                            sortedMoveMap.put(move, 500);
-                        }
-                        if (figureTo instanceof Knight || figureTo instanceof Bishop) {
-                            sortedMoveMap.put(move, 300);
-                        }
-                        if (figureTo instanceof Pawn) {
-                            sortedMoveMap.put(move, 100);
-                        }
-                    }
-                    if (figureFrom instanceof Knight || figureFrom instanceof Bishop) {
-                        if (figureTo instanceof Queen) {
-                            sortedMoveMap.put(move, 810);
-                        }
-                        if (figureTo instanceof Rook) {
-                            sortedMoveMap.put(move, 450);
-                        }
-                        if (figureTo instanceof Knight || figureTo instanceof Bishop) {
-                            sortedMoveMap.put(move, 270);
-                        }
-                        if (figureTo instanceof Pawn) {
-                            sortedMoveMap.put(move, 10);
-                        }
-                    }
-                    if (figureFrom instanceof Rook) {
-                        if (figureTo instanceof Queen) {
-                            sortedMoveMap.put(move, 450);
-                        }
-                        if (figureTo instanceof Rook) {
-                            sortedMoveMap.put(move, 250);
-                        }
-                        if (figureTo instanceof Knight || figureTo instanceof Bishop) {
-                            sortedMoveMap.put(move, 30);
-                        }
-                        if (figureTo instanceof Pawn) {
-                            sortedMoveMap.put(move, 3);
-                        }
-                    }
-                    if (figureFrom instanceof Queen) {
-                        if (figureTo instanceof Queen) {
-                            sortedMoveMap.put(move, 100);
-                        }
-                        if (figureTo instanceof Rook) {
-                            sortedMoveMap.put(move, 250);
-                        }
-                        if (figureTo instanceof Knight || figureTo instanceof Bishop) {
-                            sortedMoveMap.put(move, 30);
-                        }
-                        if (figureTo instanceof Pawn) {
-                            sortedMoveMap.put(move, 3);
-                        }
-                    }
-
-                } catch (RuntimeException e) {
-                    sortedMoveMap.put(move, 0);
-                }
-            }
+        // Create a linked list to store the sorted moves
+        LinkedList<Move> sortedMoves = new LinkedList<>();
+        for (Map.Entry<Move, Integer> entry : sortedEntries) {
+            sortedMoves.add(entry.getKey());
         }
-        orderByValue(sortedMoveMap, Comparator.reverseOrder());
-        return new LinkedList<>(sortedMoveMap.keySet());
+
+        return sortedMoves;
     }
+
 
     static <K, V> void orderByValue(
             LinkedHashMap<K, V> m, Comparator<? super V> c) {
@@ -170,110 +111,65 @@ public class AI {
                 .forEachOrdered(e -> m.put(e.getKey(), e.getValue()));
     }
 
-    private MoveField getBestMove(Board board, LinkedList<MoveField> moves, String color, int levelOfDepth) {
-        MoveField bestMove = null;
-        double best = -9999999;
+    private Move getBestMove(BitBoard board, LinkedList<Move> moves, Color color, int levelOfDepth) {
+        Move bestMove = null;
+        double bestScore = MIN_SCORE;
+        double alpha = MIN_SCORE;
+        double MAX_SCORE = Double.POSITIVE_INFINITY;
+        double beta = MAX_SCORE;
 
-        double alpha = -9999999;
-        double beta = 9999999;
-
-        for (MoveField move : moves) {
+        for (Move move : moves) {
             double value = getMinScore(board, move, color, levelOfDepth - 1, alpha, beta);
-            if(value > 1000) {
-                return move;
-            }
-            if (value > best) {
-                best = value;
+            if (value > bestScore) {
+                bestScore = value;
                 bestMove = move;
-            }
-            if (value > alpha) {
                 alpha = value;
             }
-            if (beta <= alpha) {
-                log.info("I think this should never happen.");
-                break;
-            }
         }
-        log.info("best move score: " + best);
+        log.info("Best move score: " + bestScore);
         return bestMove;
     }
 
-    private double getMinScore(Board board, MoveField move, String color, int depth, double alpha, double beta) {
-
-        Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
-        double score = boardAfterMove.getScore().getScoreDifference(color);
+    private double getMinScore(BitBoard board, Move move, Color color, int depth, double alpha, double beta) {
+        BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
         if (engine.isInStateCheckMate(boardAfterMove, Color.getOpponentColor(color))) {
-            score += boardAfterMove.getKings().get(0).getPoints();
-            log.info(String.format("Depth[%s]: CHECKMATE FOUND! score[%s] alpha[%s] beta[%s]", depth, score, alpha, beta));
-            boardAfterMove.logBoard();
-            return score;
+            return CHECKMATE_SCORE; // Positive value for checkmate in favor
         }
         if (depth == 0) {
-            return score;
+            return boardAfterMove.getScore().getScoreDifference(color);
         }
-        return getMaxScore(boardAfterMove, color, depth - 1, alpha, beta);
+        return getMaxScore(boardAfterMove, Color.getOpponentColor(color), depth - 1, alpha, beta);
     }
 
-    private double getMaxScore(Board boardAfterMove, String color, int depth, double alpha, double beta) {
-        List<MoveField> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color));
-        double max = 9999999;
-        double score;
-        for (MoveField move : opponentMoves) {
-            Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, move);
-            score = boardAfterSecondMove.getScore().getScoreDifference(color);
-            if (engine.isInStateCheckMate(boardAfterSecondMove, color)) {
-                score -= boardAfterSecondMove.getKings().get(0).getPoints();
-                log.info(String.format("Depth[%s]: CHECKMATE FOUND! score[%s] alpha[%s] beta[%s]", depth, score, alpha, beta));
-                boardAfterSecondMove.logBoard();
-            }
-            if (depth > 0) {
-                max = getMinScore(boardAfterSecondMove, color, depth - 1, alpha, beta);
-            }
-            else if (score < max) {
-                max = score;
-            }
-            if (beta > score) {
-                beta = score;
-            }
+    private double getMaxScore(BitBoard board, Color color, int depth, double alpha, double beta) {
+        if (engine.isInStateCheckMate(board, color)) {
+            // negative for opponent's checkmate
+            double CHECKMATE_SCORE_NEG = -CHECKMATE_SCORE;
+            return CHECKMATE_SCORE_NEG; // Negative value for opponent's checkmate
+        }
+        if (depth == 0) {
+            return board.getScore().getScoreDifference(color);
+        }
+
+        double maxScore = MIN_SCORE;
+        List<Move> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(board, Color.getOpponentColor(color));
+        for (Move move : opponentMoves) {
+            BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
+            // Here we pass the 'move' to getMinScore as required by its parameters
+            double score = getMinScore(boardAfterMove, move, Color.getOpponentColor(color), depth - 1, alpha, beta);
+            maxScore = Math.max(maxScore, score);
+            alpha = Math.max(alpha, score);
             if (beta <= alpha) {
-                log.info(depth + ") Pruning getMaxScore, score was: " + score + " move was: " + move.toString());
+                log.info("Pruning in getMaxScore at depth " + depth + " with score " + score);
                 break;
             }
         }
-        return max;
-    }
-
-    private double getMinScore(Board boardAfterSecondMove, String color, int depth, double alpha, double beta) {
-        List<MoveField> moves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color);
-        double min = -9999999;
-        double score;
-        for (MoveField move : moves) {
-            Board boardAfterThirdMove = engine.simulateMoveAndGetDummyBoard(boardAfterSecondMove, move);
-            score = boardAfterThirdMove.getScore().getScoreDifference(color);
-            if (engine.isInStateCheckMate(boardAfterThirdMove, Color.getOpponentColor(color))) {
-                score += boardAfterThirdMove.getKings().get(0).getPoints();
-                log.info(String.format("Depth[%s]: CHECKMATE FOUND! score[%s] alpha[%s] beta[%s]", depth, score, alpha, beta));
-                boardAfterThirdMove.logBoard();
-            }
-            if (depth > 0) {
-                min = getMaxScore(boardAfterThirdMove, color, depth - 1, alpha, beta);
-            }
-            else if (score > min) {
-                min = score;
-            }
-            if (score > alpha) {
-                alpha = score;
-            }
-            if (beta <= alpha) {
-                log.info(depth + ") Pruning getMinscore, score was: " + score + " move was: " + move.toString());
-                break;
-            }
-        }
-        return min;
+        return maxScore;
     }
 
 
-    /*private MoveField getMaxScoreMoveOfAllPossibleMoves(Board board, List<MoveField> moves, String color, int level) {
+
+    /*private Move getMaxScoreMoveOfAllPossibleMoves(Board board, List<MoveField> moves, String color, int level) {
         long startTime = System.nanoTime();
         double max = -3333;
         double finalMax = max;
@@ -287,7 +183,7 @@ public class AI {
         Set<MoveField> bestMoveFields = getKeysByValue(moveMap, max);
 
 
-        *//*for (MoveField move : moves) {
+        *//*for (Move move : moves) {
             min = getMinScoreForPredictingNextMovesAfterMove(board, move, color, max, level);
             if (min > max) {
                 log.info("max was " + max + " now is " + min);
@@ -303,7 +199,7 @@ public class AI {
                 .orElseThrow(() -> new IllegalStateException("No best move found."));
     }*/
 
-    private double getMaxScoreOfAllPossibleMoves(Board board, List<MoveField> moves, String color, double min, double max, int level) {
+    private double getMaxScoreOfAllPossibleMoves(BitBoard board, List<Move> moves, Color color, double min, double max, int level) {
         double maximum = max;
 
         double finalMaximum = maximum;
@@ -316,17 +212,17 @@ public class AI {
         return maximum;
     }
 
-    private double getMinScoreForPredictingNextMovesAfterMove(Board board, MoveField move, String color, double max, int level) {
+    private double getMinScoreForPredictingNextMovesAfterMove(BitBoard board, Move move, Color color, double max, int level) {
         log.info("-------------------------------------------------------------");
         long startTime = System.nanoTime();
         log.info("Move is " + move.toString());
-        Board boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
+        BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
 
         double minScore = 3333;
 
         double scoreAfterFirstMove = boardAfterMove.getScore().getScoreDifference(color);
         if (engine.isInStateCheckMate(boardAfterMove, Color.getOpponentColor(color))) {
-            scoreAfterFirstMove += boardAfterMove.getKings().get(0).getPoints();
+            scoreAfterFirstMove += 1337;
         }
 
         log.trace(String.format("Score after First Move [%s]", scoreAfterFirstMove));
@@ -334,7 +230,7 @@ public class AI {
         if (scoreAfterFirstMove >= max) {
             log.trace(String.format("Score after First Move was >= max [%s]", scoreAfterFirstMove));
 
-            List<MoveField> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color));
+            List<Move> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterMove, Color.getOpponentColor(color));
 
             double finalMinScore = minScore;
             minScore = opponentMoves.stream()
@@ -355,14 +251,14 @@ public class AI {
         return scoreAfterFirstMove;
     }
 
-    private double calculateOpponent(String color, double max, int level, Board boardAfterMove, double minScore, MoveField opponentMove) {
+    private double calculateOpponent(Color color, double max, int level, BitBoard boardAfterMove, double minScore, Move opponentMove) {
         long startTime = System.nanoTime();
 
-        Board boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
+        BitBoard boardAfterSecondMove = engine.simulateMoveAndGetDummyBoard(boardAfterMove, opponentMove);
 
         double scoreAfterSecondMove = boardAfterSecondMove.getScore().getScoreDifference(color);
         if (engine.isInStateCheckMate(boardAfterSecondMove, color)) {
-            scoreAfterSecondMove -= boardAfterSecondMove.getKings().get(0).getPoints();
+            scoreAfterSecondMove -= 1337;
         }
         log.trace(String.format("Score after Second Move: [%s]", scoreAfterSecondMove));
 
@@ -370,7 +266,7 @@ public class AI {
             log.trace("MinScore is now: " + scoreAfterSecondMove);
             minScore = scoreAfterSecondMove;
             if (level > 1) {
-                List<MoveField> nMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color);
+                List<Move> nMoves = engine.getAllPossibleMoveFieldsForPlayerColor(boardAfterSecondMove, color);
 
                 log.trace("minscore: " + minScore + "going into recursion");
                 minScore = getMaxScoreOfAllPossibleMoves(boardAfterSecondMove, nMoves, color, minScore, max, level - 1);

@@ -2,7 +2,7 @@ package julius.game.chessengine.board
 
 
 import julius.game.chessengine.utils.Color
-import julius.game.chessengine.figures.Pawn
+
 import julius.game.chessengine.generator.FieldGenerator
 import spock.lang.Specification
 
@@ -53,7 +53,7 @@ class BoardTest extends Specification {
         given:
         def board = new Board()
         def a2 = new Field(Color.WHITE, new Position('a' as char, 2))
-        def pawn = new Pawn(Color.WHITE, a2)
+        def pawn = new Pawn(Color.WHITE, a2, false)
 
         when:
         def fields = pawn.getPossibleFields(board)
@@ -104,7 +104,7 @@ class BoardTest extends Specification {
         def fieldC2 = new Field(Color.WHITE, c2)
         def fieldC6 = new Field(Color.WHITE, c6)
         def fieldB7 = new Field(Color.WHITE, b7)
-        def pawn = new Pawn(Color.WHITE, fieldC2)
+        def pawn = new Pawn(Color.WHITE, fieldC2, false)
         board.logBoard()
 
         when:
