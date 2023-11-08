@@ -75,9 +75,7 @@ public class BitBoard {
     }
 
 
-
     // ... other members and methods ...
-
 
 
     // Method to set up the initial position
@@ -163,6 +161,7 @@ public class BitBoard {
             blackRookH8Moved = true;
         }
     }
+
     public List<Move> generateAllPossibleMoves(Color color) {
         List<Move> moves = new ArrayList<>();
 
@@ -1460,9 +1459,78 @@ public class BitBoard {
 
         // Factor in king safety, piece positions, control of center, etc., for a more advanced scoring
         // These advanced concepts are omitted for brevity, but would involve additional logic.
+        // Define additional score values
+        final int CENTER_PAWN_BONUS = 10;   // Bonus points for pawns in the center
+        final int DOUBLED_PAWN_PENALTY = -20; // Penalty points for doubled pawns
+        final int ISOLATED_PAWN_PENALTY = -10; // Penalty points for isolated pawns
+
+        // Initialize bonuses and penalties
+        int whiteCenterBonus = 0;
+        int blackCenterBonus = 0;
+        int whiteDoubledPenalty = 0;
+        int blackDoubledPenalty = 0;
+        int whiteIsolatedPenalty = 0;
+        int blackIsolatedPenalty = 0;
+
+        // Calculate bonuses and penalties for white
+        whiteCenterBonus += countCenterPawns(whitePawns) * CENTER_PAWN_BONUS;
+        whiteDoubledPenalty += countDoubledPawns(whitePawns, whitePieces) * DOUBLED_PAWN_PENALTY;
+        whiteIsolatedPenalty += countIsolatedPawns(whitePawns) * ISOLATED_PAWN_PENALTY;
+
+        // Calculate bonuses and penalties for black
+        blackCenterBonus += countCenterPawns(blackPawns) * CENTER_PAWN_BONUS;
+        blackDoubledPenalty += countDoubledPawns(blackPawns, blackPieces) * DOUBLED_PAWN_PENALTY;
+        blackIsolatedPenalty += countIsolatedPawns(blackPawns) * ISOLATED_PAWN_PENALTY;
+
+        // Apply bonuses and penalties to the score
+        whiteScore += whiteCenterBonus + whiteDoubledPenalty + whiteIsolatedPenalty;
+        blackScore += blackCenterBonus + blackDoubledPenalty + blackIsolatedPenalty;
 
         // Return the score encapsulated in a Score object
         return new Score(whiteScore, blackScore);
+    }
+
+    // Method to count pawns in the center (e4, d4, e5, d5 squares)
+    private int countCenterPawns(long pawnsBitboard) {
+        // Bit positions for e4, d4, e5, d5
+        long centerSquares = (1L << bitIndex('e', 4)) | (1L << bitIndex('d', 4))
+                | (1L << bitIndex('e', 5)) | (1L << bitIndex('d', 5));
+        return Long.bitCount(pawnsBitboard & centerSquares);
+    }
+
+    // Method to count doubled pawns, which are two pawns of the same color on the same file
+    private int countDoubledPawns(long pawnsBitboard, long piecesBitboard) {
+        int doubledPawns = 0;
+        for (char file = 'a'; file <= 'h'; file++) {
+            long fileBitboard = fileBitboard(file);
+            if (Long.bitCount(pawnsBitboard & fileBitboard) > 1) {
+                doubledPawns++;
+            }
+        }
+        return doubledPawns;
+    }
+
+    // Helper method to get a bitboard representing a file
+    private long fileBitboard(char file) {
+        long fileBitboard = 0L;
+        for (int rank = 1; rank <= 8; rank++) {
+            fileBitboard |= 1L << bitIndex(file, rank);
+        }
+        return fileBitboard;
+    }
+
+    // Method to count isolated pawns, which are pawns with no friendly pawns on adjacent files
+    private int countIsolatedPawns(long pawnsBitboard) {
+        int isolatedPawns = 0;
+        for (char file = 'a'; file <= 'h'; file++) {
+            long fileBitboard = fileBitboard(file);
+            long adjacentFiles = (file > 'a' ? fileBitboard((char) (file - 1)) : 0L)
+                    | (file < 'h' ? fileBitboard((char) (file + 1)) : 0L);
+            if ((pawnsBitboard & fileBitboard) != 0 && (pawnsBitboard & adjacentFiles) == 0) {
+                isolatedPawns++;
+            }
+        }
+        return isolatedPawns;
     }
 
     public void logBoard() {
@@ -1521,5 +1589,102 @@ public class BitBoard {
         // Check if the move wraps around the board horizontally or is outside the board vertically
         return Math.abs(fromFile - toFile) > 1 || toRank < 0 || toRank > 7;
     }
+
+    public void undoMove(Move move) {
+        // Reverse the move
+        int fromIndex = bitIndex(move.getFrom().getX(), move.getFrom().getY());
+        int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
+
+        // Move the piece back
+        long pieceBitboard = getBitboardForPiece(move.getPieceType(), move.getColor());
+        pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
+        setBitboardForPiece(move.getPieceType(), move.getColor(), pieceBitboard);
+
+        // If a piece was captured, restore it to the board
+        if (move.isCapture()) {
+            restoreCapturedPiece(move.getTo(), getOpponentColor(move.getColor()));
+        }
+
+        // If the move was a castling move, move the rook back
+        if (move.isCastlingMove()) {
+            // Determine if this is kingside or queenside castling
+            boolean kingside = move.getTo().getX() > move.getFrom().getX();
+            Position rookFromPosition, rookToPosition;
+            if (kingside) {
+                rookToPosition = new Position('h', move.getFrom().getY());
+                rookFromPosition = new Position((char) (move.getTo().getX() - 1), move.getTo().getY());
+            } else {
+                rookToPosition = new Position('a', move.getFrom().getY());
+                rookFromPosition = new Position((char) (move.getTo().getX() + 1), move.getTo().getY());
+            }
+            // Move the rook back
+            int rookFromIndex = bitIndex(rookFromPosition.getX(), rookFromPosition.getY());
+            int rookToIndex = bitIndex(rookToPosition.getX(), rookToPosition.getY());
+            long rookBitboard = getBitboardForPiece(PieceType.ROOK, move.getColor());
+            rookBitboard = moveBit(rookBitboard, rookFromIndex, rookToIndex);
+            setBitboardForPiece(PieceType.ROOK, move.getColor(), rookBitboard);
+        }
+
+        // If the move was a double pawn push, remove the last move double step pawn position
+        if (move.getPieceType() == PieceType.PAWN && Math.abs(move.getFrom().getY() - move.getTo().getY()) == 2) {
+            lastMoveDoubleStepPawnPosition = null;
+        }
+
+        // If the move involved a pawn promotion, revert the pawn back to its original state
+        if (move.isPromotionMove()) {
+            // Assuming that the promotion was to a queen, revert the queen to a pawn
+            long pawns = getBitboardForPiece(PieceType.PAWN, move.getColor());
+            long queens = getBitboardForPiece(PieceType.QUEEN, move.getColor());
+
+            // Remove the queen from the to position and add a pawn back to the from position
+            queens &= ~(1L << fromIndex);
+            pawns |= (1L << fromIndex);
+
+            setBitboardForPiece(PieceType.PAWN, move.getColor(), pawns);
+            setBitboardForPiece(PieceType.QUEEN, move.getColor(), queens);
+        }
+
+        // Restore the state of the king and rook moved flags if necessary
+        if (move.getPieceType() == PieceType.KING) {
+            if (move.getColor() == Color.WHITE) {
+                whiteKingMoved = false;
+            } else {
+                blackKingMoved = false;
+            }
+        }
+
+        // Assuming we also track the moves of the rooks for castling purposes, restore their moved state
+        if (move.getPieceType() == PieceType.ROOK) {
+            if (move.getFrom().equals(new Position('a', 1))) {
+                whiteRookA1Moved = false;
+            } else if (move.getFrom().equals(new Position('h', 1))) {
+                whiteRookH1Moved = false;
+            } else if (move.getFrom().equals(new Position('a', 8))) {
+                blackRookA8Moved = false;
+            } else if (move.getFrom().equals(new Position('h', 8))) {
+                blackRookH8Moved = false;
+            }
+        }
+
+        // Update the aggregated bitboards
+        updateAggregatedBitboards();
+    }
+
+    private void restoreCapturedPiece(Position position, Color color) {
+        // You'll need to keep track of what piece was captured in the Move object
+        // For simplicity, let's assume it was a pawn
+        long pawns = getBitboardForPiece(PieceType.PAWN, color);
+        int index = bitIndex(position.getX(), position.getY());
+        pawns |= (1L << index);
+        setBitboardForPiece(PieceType.PAWN, color, pawns);
+
+        // Update the aggregated bitboards for the color of the captured piece
+        if (color == Color.WHITE) {
+            whitePieces |= (1L << index);
+        } else {
+            blackPieces |= (1L << index);
+        }
+    }
+
 }
 

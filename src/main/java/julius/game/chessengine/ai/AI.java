@@ -5,6 +5,7 @@ import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
+import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -15,7 +16,6 @@ import java.util.*;
 @Component
 public class AI {
 
-    private final double MIN_SCORE = Double.NEGATIVE_INFINITY;
     private final double CHECKMATE_SCORE = 10000; // or some other large positive value
 
     private final Engine engine;
@@ -70,25 +70,37 @@ public class AI {
 
     private LinkedList<Move> sortMovesByEfficiency(List<Move> moves, BitBoard board, Color color) {
         // We use a TreeMap to sort by the move efficiency value automatically.
-        Map<Move, Integer> unsortedMoveMap = new HashMap<>();
+        Map<Move, Integer> moveEfficiencyMap = new HashMap<>();
 
         for (Move move : moves) {
             BitBoard dummy = new BitBoard(board); // Clone the board or create a new dummy board with the same state
             dummy.performMove(move); // Perform the move on the dummy board
 
-            int efficiency;
+            // Start with a base score for sorting
+            int score = 0;
+
+            // Check for checkmate or check
             if (engine.isInStateCheckMate(dummy, Color.getOpponentColor(color))) {
-                efficiency = 10000; // Assign a high value for checkmate
+                score += 10000; // Checkmate should have the highest score
             } else if (dummy.isInCheck(Color.getOpponentColor(color))) {
-                efficiency = 1000; // Assign a medium value for check
-            } else {
-                efficiency = 100; // Assign a base value for moves that do not result in check
+                score += 500; // Checks should have a high score
             }
-            unsortedMoveMap.put(move, efficiency);
+
+            // Captures
+            if (move.isCapture()) {
+                // Add the value of the captured piece to the score
+                score += getPieceValue(dummy.getPieceTypeAtPosition(move.getTo()));
+            }
+
+            // Add points for threats (attacking high-value pieces without capturing)
+            score += evaluateThreats(move, dummy, color);
+
+            // Use the score for sorting
+            moveEfficiencyMap.put(move, score);
         }
 
         // Sort the moves by their efficiency in descending order
-        List<Map.Entry<Move, Integer>> sortedEntries = new ArrayList<>(unsortedMoveMap.entrySet());
+        List<Map.Entry<Move, Integer>> sortedEntries = new ArrayList<>(moveEfficiencyMap.entrySet());
         sortedEntries.sort(Map.Entry.<Move, Integer>comparingByValue().reversed());
 
         // Create a linked list to store the sorted moves
@@ -100,8 +112,51 @@ public class AI {
         return sortedMoves;
     }
 
+    private int getPieceValue(PieceType pieceType) {
+        return switch (pieceType) {
+            case PAWN -> 100;
+            case KNIGHT, BISHOP -> 300;
+            case ROOK -> 500;
+            case QUEEN -> 900;
+            default -> 0; // King has no value because it cannot be captured
+        };
+    }
+
+    private int evaluateThreats(Move move, BitBoard board, Color color) {
+        int threatScore = 0;
+
+        // Simulate the move on the board
+        board.performMove(move);
+
+        // Get all possible moves for the opponent after this move
+        List<Move> opponentMoves = board.generateAllPossibleMoves(Color.getOpponentColor(color));
+
+        // Analyze each of the opponent's moves
+        for (Move opponentMove : opponentMoves) {
+            // Check if the move is a capture move
+            if (opponentMove.isCapture()) {
+                // Get the piece at the destination
+                PieceType capturedPiece = board.getPieceTypeAtPosition(opponentMove.getTo());
+
+                // Check if the piece at the destination is the same as the one moved by the player
+                if (capturedPiece == move.getPieceType()) {
+                    // If so, then the player's move has created a threat to that piece
+                    // You can adjust the scores based on the importance of the piece threatened
+                    // For simplicity, using the getPieceValue method to get the value of the threatened piece
+                    threatScore += getPieceValue(capturedPiece);
+                }
+            }
+        }
+
+        // Undo the move to restore the board state
+        board.undoMove(move);
+
+        return threatScore;
+    }
+
     private Move getBestMove(BitBoard board, LinkedList<Move> moves, Color color, int levelOfDepth) {
         Move bestMove = null;
+        double MIN_SCORE = Double.NEGATIVE_INFINITY;
         double bestScore = MIN_SCORE;
         double alpha = MIN_SCORE;
         double beta = Double.POSITIVE_INFINITY;
@@ -132,7 +187,9 @@ public class AI {
 
         double minScore = Double.POSITIVE_INFINITY;
         List<Move> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
-        for (Move opponentMove : opponentMoves) {
+        // Sort opponent moves before examining them
+        LinkedList<Move> sortedOpponentMoves = sortMovesByEfficiency(opponentMoves, board, Color.getOpponentColor(color));
+        for (Move opponentMove : sortedOpponentMoves) {
             BitBoard boardAfterOpponentMove = engine.simulateMoveAndGetDummyBoard(board, opponentMove);
             double score = getMaxScore(boardAfterOpponentMove, Color.getOpponentColor(color), depth - 1, alpha, beta);
             if (score < minScore) {
@@ -161,7 +218,9 @@ public class AI {
 
         double maxScore = Double.NEGATIVE_INFINITY;
         List<Move> moves = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
-        for (Move move : moves) {
+        // Sort moves before examining them
+        LinkedList<Move> sortedMoves = sortMovesByEfficiency(moves, board, color);
+        for (Move move : sortedMoves) {
             BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
             double score = getMinScore(boardAfterMove, move, Color.getOpponentColor(color), depth - 1, alpha, beta);
             if (score > maxScore) {

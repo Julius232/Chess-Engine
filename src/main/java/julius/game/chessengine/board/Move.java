@@ -58,6 +58,10 @@ public class Move {
         return promotionPieceType;
     }
 
+    public boolean isPromotionMove() {
+        return promotionPieceType != null;
+    }
+
     // You may want to override toString() for easy move printing.
     @Override
     public String toString() {
