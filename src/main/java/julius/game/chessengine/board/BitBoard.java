@@ -221,8 +221,8 @@ public class BitBoard {
         long opponentPieces = (color == Color.WHITE) ? blackPieces : whitePieces;
         long emptySquares = ~(whitePieces | blackPieces);
         int direction = (color == Color.WHITE) ? 8 : -8; // Up for white, down for black
+        int startingRank = (color == Color.WHITE) ? 1 : 6; // Starting rank for white is 2, which is index 1 in array; for black is 7, index 6
         int promotionRank = (color == Color.WHITE) ? 7 : 0;
-        long rankMask = (color == Color.WHITE) ? 0x00FF000000000000L : 0x0000000000FF0000L;
 
         // Generate moves for each pawn
         for (int i = Long.numberOfTrailingZeros(pawns); i < 64 - Long.numberOfLeadingZeros(pawns); i++) {
@@ -232,25 +232,27 @@ public class BitBoard {
 
                 // Single move forward
                 if ((1L << (i + direction) & emptySquares) != 0) {
-                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction), PieceType.PAWN, color, false, false, false, (rank == promotionRank) ? PieceType.QUEEN : null));
+                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction), PieceType.PAWN, color, false, false, false, (rank + (direction / 8) == promotionRank) ? PieceType.QUEEN : null));
+
                     // Initial double move
-                    if (((1L << i) & rankMask) != 0) {
+                    if (rank == startingRank && (1L << (i + 2 * direction) & emptySquares) != 0 && (1L << (i + direction) & emptySquares) != 0) {
                         moves.add(new Move(indexToPosition(i), indexToPosition(i + 2 * direction), PieceType.PAWN, color, false, false, false, null));
                     }
                 }
 
                 // Captures
                 if (file > 0 && (1L << (i + direction - 1) & opponentPieces) != 0) { // Capture left
-                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction - 1), PieceType.PAWN, color, true, false, false, (rank == promotionRank) ? PieceType.QUEEN : null));
+                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction - 1), PieceType.PAWN, color, true, false, false, (rank + (direction / 8) == promotionRank) ? PieceType.QUEEN : null));
                 }
                 if (file < 7 && (1L << (i + direction + 1) & opponentPieces) != 0) { // Capture right
-                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction + 1), PieceType.PAWN, color, true, false, false, (rank == promotionRank) ? PieceType.QUEEN : null));
+                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction + 1), PieceType.PAWN, color, true, false, false, (rank + (direction / 8) == promotionRank) ? PieceType.QUEEN : null));
                 }
             }
         }
 
         return moves;
     }
+
 
     private List<Move> generateKnightMoves(Color color) {
         List<Move> moves = new ArrayList<>();

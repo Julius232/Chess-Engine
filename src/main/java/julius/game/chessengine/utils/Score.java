@@ -19,8 +19,14 @@ public class Score {
         this.scoreBlack = scoreBlack;
     }
 
-    public void add(int add, String playerColor) {
-        scoreBlack += add;
+    public void add(int add, Color playerColor) {
+        if (playerColor == Color.WHITE) {
+            this.scoreWhite += add;
+        } else if (playerColor == Color.BLACK) {
+            this.scoreBlack += add;
+        } else {
+            log.error("Invalid player color");
+        }
     }
 
     public int getScoreDifference(Color color) {

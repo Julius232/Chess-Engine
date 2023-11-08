@@ -121,38 +121,61 @@ public class AI {
     private double getMinScore(BitBoard board, Move move, Color color, int depth, double alpha, double beta) {
         BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
         if (engine.isInStateCheckMate(boardAfterMove, Color.getOpponentColor(color))) {
-            return CHECKMATE_SCORE; // Positive value for checkmate in favor
+            log.info("Checkmate detected for {}, score: {}", Color.getOpponentColor(color), CHECKMATE_SCORE);
+            return CHECKMATE_SCORE;
         }
         if (depth == 0) {
-            log.info("Board score at depth 0 for {}: {} - Move[{}]", color, board.getScore().getScoreDifference(color), move);
-            return boardAfterMove.getScore().getScoreDifference(color);
+            double score = boardAfterMove.getScore().getScoreDifference(color);
+            log.info("Depth 0 for {}, move: {}, score: {}", color, move, score);
+            return score;
         }
-        return getMaxScore(boardAfterMove, Color.getOpponentColor(color), depth - 1, alpha, beta);
+
+        double minScore = Double.POSITIVE_INFINITY;
+        List<Move> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
+        for (Move opponentMove : opponentMoves) {
+            BitBoard boardAfterOpponentMove = engine.simulateMoveAndGetDummyBoard(board, opponentMove);
+            double score = getMaxScore(boardAfterOpponentMove, Color.getOpponentColor(color), depth - 1, alpha, beta);
+            if (score < minScore) {
+                minScore = score;
+                beta = Math.min(beta, score);
+                log.info("Better min score found at depth {}: move: {}, score: {}", depth, opponentMove, score);
+            }
+            if (beta <= alpha) {
+                log.info("Pruning in getMinScore at depth {} with beta: {}, alpha: {}", depth, beta, alpha);
+                break; // Alpha cut-off
+            }
+        }
+        return minScore;
     }
 
     private double getMaxScore(BitBoard board, Color color, int depth, double alpha, double beta) {
         if (engine.isInStateCheckMate(board, color)) {
-            // negative for opponent's checkmate
-            return -CHECKMATE_SCORE; // Negative value for opponent's checkmate
+            log.info("Checkmate detected for {}, score: {}", color, -CHECKMATE_SCORE);
+            return -CHECKMATE_SCORE;
         }
         if (depth == 0) {
-            return board.getScore().getScoreDifference(color);
+            double score = board.getScore().getScoreDifference(color);
+            log.info("Depth 0 for {}, score: {}", color, score);
+            return score;
         }
 
-        double maxScore = MIN_SCORE;
-        List<Move> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(board, Color.getOpponentColor(color));
-        for (Move move : opponentMoves) {
+        double maxScore = Double.NEGATIVE_INFINITY;
+        List<Move> moves = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
+        for (Move move : moves) {
             BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
-            // Here we pass the 'move' to getMinScore as required by its parameters
             double score = getMinScore(boardAfterMove, move, Color.getOpponentColor(color), depth - 1, alpha, beta);
-            maxScore = Math.max(maxScore, score);
-            alpha = Math.max(alpha, score);
+            if (score > maxScore) {
+                maxScore = score;
+                alpha = Math.max(alpha, score);
+                log.info("Better max score found at depth {}: move: {}, score: {}", depth, move, score);
+            }
             if (beta <= alpha) {
-                log.info("Pruning in getMaxScore at depth " + depth + " with score " + score);
-                break;
+                log.info("Pruning in getMaxScore at depth {} with beta: {}, alpha: {}", depth, beta, alpha);
+                break; // Beta cut-off
             }
         }
         return maxScore;
     }
+
 
 }
