@@ -1,28 +1,25 @@
 package julius.game.chessengine.figures
 
-import julius.game.chessengine.utils.Color
-
-import julius.game.chessengine.board.Field
+import julius.game.chessengine.board.BitBoard
+import julius.game.chessengine.board.Move
 import julius.game.chessengine.board.Position
+import julius.game.chessengine.utils.Color
 import spock.lang.Specification
 
 class KnightTest extends Specification {
 
     def "GetPossibleFields"() {
-        given:
-        def board = new Board()
-        def knight = board.getFigureForPosition(new Position('b' as char, 8))
-
         when:
-        List<Field> possibleFields = knight.getPossibleFields(board)
+        def board = new BitBoard()
+        List<Move> moves = board.generateAllPossibleMoves(Color.BLACK)
 
         then:
-        possibleFields.size() == 2
+        moves.size() == 24
     }
 
     def "Move"() {
         given:
-        def board = new Board()
+        def board = new BitBoard()
         def knight = board.getFigureForPosition(new Position('b' as char, 8))
         def c6 = new Position('c' as char, 6)
         def toField = board.getFieldForPosition(c6)
@@ -42,7 +39,7 @@ class KnightTest extends Specification {
 
     def "Attack"() {
         given:
-        def board = new Board()
+        def board = new BitBoard()
         def knight = board.getFigureForPosition(new Position('b' as char, 8))
 
         def c6 = new Position('c' as char, 6)

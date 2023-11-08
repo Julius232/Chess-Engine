@@ -37,11 +37,6 @@ public class ChessController {
         return ResponseEntity.ok().build();
     }
 
-/*    @GetMapping(value = "/field")
-    public ResponseEntity<List<Field>> getFields() {
-        return ResponseEntity.ok(engine.getBitBoard().getFields());
-    }*/
-
     @GetMapping(value = "/field/possible/white")
     public ResponseEntity<List<Move>> getAllPossibleFieldsWhite() {
         return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(Color.WHITE));
@@ -66,7 +61,8 @@ public class ChessController {
     public ResponseEntity<GameState> moveFigure(@PathVariable("from") String from,
                                                 @PathVariable("to") String to) {
         if (from != null && to != null) {
-            return ResponseEntity.ok(engine.moveFigure(engine.getBitBoard(), convertStringToPosition(from), convertStringToPosition(to)));
+            GameState state = engine.moveFigure(engine.getBitBoard(), convertStringToPosition(from), convertStringToPosition(to));
+            return ResponseEntity.ok(state);
         } else return ResponseEntity.status(406).build();
     }
 

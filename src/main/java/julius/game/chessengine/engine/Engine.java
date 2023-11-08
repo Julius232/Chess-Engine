@@ -122,7 +122,7 @@ public class Engine {
         }
 
         // Check if the path is clear for moves that require it
-        if (requiresClearPath(move.getPieceType()) && !isPathClear(bitBoard, move)) {
+        if (requiresClearPath(move.getPieceType()) && isPathBlocked(bitBoard, move)) {
             return false;
         }
 
@@ -136,12 +136,9 @@ public class Engine {
 
         // Simulate the move and check for check
         BitBoard testBoard = simulateMove(bitBoard, move);
-        if (testBoard.isInCheck(move.getColor())) {
-            return false;
-        }
+        return !testBoard.isInCheck(move.getColor());
 
         // If all checks pass, the move is legal
-        return true;
     }
 
     private BitBoard simulateMove(BitBoard bitBoard, Move move) {
@@ -175,18 +172,15 @@ public class Engine {
         }
 
         // Check if the to position is the en passant target square
-        if (!move.getTo().equals(new Position(lastPawnPosition.getX(), currentPawnRank == 5 ? 6 : 3))) {
-            return false; // The move is not capturing the double-stepped pawn en passant
-        }
+        return move.getTo().equals(new Position(lastPawnPosition.getX(), currentPawnRank == 5 ? 6 : 3)); // The move is not capturing the double-stepped pawn en passant
 
         // All conditions are satisfied for en passant
-        return true;
     }
 
 
     private boolean isInCheck(BitBoard bitBoard, Color color) {
         // Find the king's position
-        Position kingPosition = findKingPosition(bitBoard, color);
+        Position kingPosition = findKingPosition(color);
 
         // Check if the king is under attack by any pawns
         if (isAttackedByPawns(bitBoard, kingPosition, color)) {
@@ -211,12 +205,9 @@ public class Engine {
         }
 
         // Check if the king is under attack by the opposing king
-        if (isAttackedByKing(bitBoard, kingPosition, color)) {
-            return true;
-        }
+        return isAttackedByKing(bitBoard, kingPosition, color);
 
         // If none of the checks return true, the king is not in check
-        return false;
     }
 
 
@@ -237,12 +228,9 @@ public class Engine {
             return true;
         }
 
-        if (isValidBoardPosition(attackFromRight) && bitBoard.isOccupiedByPawn(attackFromRight, Color.getOpponentColor(color))) {
-            return true;
-        }
+        return isValidBoardPosition(attackFromRight) && bitBoard.isOccupiedByPawn(attackFromRight, Color.getOpponentColor(color));
 
         // No pawns are attacking the king
-        return false;
     }
 
     private boolean isValidBoardPosition(Position position) {
@@ -274,22 +262,6 @@ public class Engine {
 
         // If no knight attacks the king, return false
         return false;
-    }
-
-    private boolean isAttackedByRooks(BitBoard bitBoard, Position kingPosition, Color color) {
-        // Rooks attack horizontally and vertically. Check all four directions from the king's position.
-        return isAttackedHorizontallyOrVertically(bitBoard, kingPosition, color, PieceType.ROOK);
-    }
-
-    private boolean isAttackedByBishops(BitBoard bitBoard, Position kingPosition, Color color) {
-        // Bishops attack diagonally. Check all four diagonal directions from the king's position.
-        return isAttackedDiagonally(bitBoard, kingPosition, color, PieceType.BISHOP);
-    }
-
-    private boolean isAttackedByQueens(BitBoard bitBoard, Position kingPosition, Color color) {
-        // Queens attack in any direction. Check horizontally, vertically, and diagonally.
-        return isAttackedHorizontallyOrVertically(bitBoard, kingPosition, color, PieceType.QUEEN) ||
-                isAttackedDiagonally(bitBoard, kingPosition, color, PieceType.QUEEN);
     }
 
     private boolean isAttackedHorizontallyOrVertically(BitBoard bitBoard, Position kingPosition, Color color, PieceType pieceType) {
@@ -384,12 +356,11 @@ public class Engine {
     }
 
     // Utility method to find the king's position
-    private Position findKingPosition(BitBoard bitBoard, Color color) {
+    private Position findKingPosition(Color color) {
         // Search through the bitboard to find the king's position
         // This will likely involve iterating over all squares or using a more efficient lookup
         return new Position('e', color == Color.WHITE ? 1 : 8); // Placeholder
     }
-
 
     private boolean canCastle(BitBoard bitBoard, Move move) {
         // Check if the king has moved, which would make castling illegal
@@ -408,48 +379,18 @@ public class Engine {
         }
 
         // Check if the path between the king and the rook is clear
-        if (!isPathClear(bitBoard, new Move(move.getFrom(), rookPosition, PieceType.KING, move.getColor(), false, false, false, null))) {
+        if (isPathBlocked(bitBoard, new Move(move.getFrom(), rookPosition, PieceType.KING, move.getColor(), false, false, false, null))) {
             return false;
         }
 
         // Check if the king is in check
-        if (isInCheck(bitBoard, move.getColor())) {
-            return false;
-        }
-
-        // Check if the squares the king passes over are under attack
-        Position[] positionsToCheck = move.getColor() == Color.WHITE
-                ? (new Position[]{new Position('f', 1), new Position('g', 1)})
-                : (new Position[]{new Position('f', 8), new Position('g', 8)});
-        for (Position position : positionsToCheck) {
-            if (isSquareUnderAttack(bitBoard, position, move.getColor())) {
-                return false;
-            }
-        }
+        return !isInCheck(bitBoard, move.getColor());
 
         // All checks passed, castling is legal
-        return true;
     }
 
-    private boolean isSquareUnderAttack(BitBoard bitBoard, Position position, Color color) {
-        // This method will need to check if the square is attacked by any of the opponent's pieces
-        // This is a placeholder implementation and should be completed with actual attack detection logic
-        return false;
-    }
 
-// The following are placeholder methods to be implemented:
-
-    private boolean hasKingMoved(Color color) {
-        // This should check if the king of the given color has moved
-        return false;
-    }
-
-    private boolean hasRookMoved(Position rookPosition) {
-        // This should check if the rook at the given position has moved
-        return false;
-    }
-
-    private boolean isPathClear(BitBoard bitBoard, Move move) {
+    private boolean isPathBlocked(BitBoard bitBoard, Move move) {
         // Calculate the direction of the move
         int xDirection = Integer.compare(move.getTo().getX(), move.getFrom().getX());
         int yDirection = Integer.compare(move.getTo().getY(), move.getFrom().getY());
@@ -465,12 +406,12 @@ public class Engine {
 
             // If any position between from and to (excluding to) is occupied, the path is not clear
             if (bitBoard.isOccupied(new Position(file, rank))) {
-                return false;
+                return true;
             }
         }
 
         // If we checked all intervening squares and found no pieces, the path is clear
-        return true;
+        return false;
     }
 
 
@@ -680,13 +621,10 @@ public class Engine {
         }
 
         // Check if the 'to' position is on the board
-        if (move.getTo().getX() < 'a' || move.getTo().getX() > 'h' ||
-                move.getTo().getY() < 1 || move.getTo().getY() > 8) {
-            return false;
-        }
+        return move.getTo().getX() >= 'a' && move.getTo().getX() <= 'h' &&
+                move.getTo().getY() >= 1 && move.getTo().getY() <= 8;
 
         // If both positions are within the valid range, the move is on the board
-        return true;
     }
 
     public List<Move> getAllPossibleMoveFieldsForPlayerColor(Color color) {
@@ -724,14 +662,14 @@ public class Engine {
         List<Move> moves = bitBoard.generateMovesForPieceAtPosition(pieceType, color, fromPosition);
 
         return moves.stream()
-                .filter(move -> !isInCheckAfterMove(bitBoard, move))
+                .filter(move -> isNotInCheckAfterMove(bitBoard, move))
                 .map(Move::getTo)
                 .collect(Collectors.toList());
     }
 
-    private boolean isInCheckAfterMove(BitBoard board, Move move) {
+    private boolean isNotInCheckAfterMove(BitBoard board, Move move) {
         BitBoard testBoard = simulateMove(board, move);
-        return testBoard.isInCheck(move.getColor());
+        return !testBoard.isInCheck(move.getColor());
     }
 
 
@@ -750,88 +688,12 @@ public class Engine {
         // Filter out the moves that would leave the king in check after they are made.
         // Note: You need to implement a method that checks if making a certain move would result in check.
         long legalMovesCount = possibleMoves.stream()
-                .filter(move -> !isInCheckAfterMove(board, move))
+                .filter(move -> isNotInCheckAfterMove(board, move))
                 .count();
 
         // Checkmate occurs when the king is in check and there are no legal moves left.
         return isInCheck && legalMovesCount == 0;
     }
-
-    public double simulateMoveAndGetEfficiency(BitBoard board, Move move, Color currentPlayerColor, Color color, int levelOfDepth, double mostEfficientMove) {
-        double efficiency = 0;
-        int iteration = 0;
-
-        // Simulate the move on a copy of the board
-        BitBoard simulatedBoard = new BitBoard(board);
-        simulatedBoard.performMove(move);
-
-        // Here, you need a way to calculate the score difference after the move.
-        // This function must be implemented according to your scoring system.
-        int scoreDifference = calculateScoreDifference(simulatedBoard, color);
-        efficiency += scoreDifference;
-
-        while (iteration < levelOfDepth && efficiency > mostEfficientMove) {
-            // Here, you need a way to determine the most efficient counter-move by the opponent.
-            // This recursive function must be implemented.
-            double opponentBestMoveEfficiency = getMostEfficientMoveEfficiency(simulatedBoard, Color.getOppositeColor(color), levelOfDepth - 1, -mostEfficientMove);
-
-            if (color == currentPlayerColor) {
-                efficiency -= opponentBestMoveEfficiency; // Minimizing opponent's score
-            } else {
-                efficiency += opponentBestMoveEfficiency; // Maximizing own score
-            }
-            iteration++;
-        }
-
-        // Logging is not available in this environment, but you can use System.out.println or another logging method as needed.
-        // System.out.println("Efficiency: " + efficiency + " Move: " + move + " Player: " + color + " MostEfficientMove: " + mostEfficientMove);
-
-        return efficiency;
-    }
-
-    private int calculateScoreDifference(BitBoard board, Color color) {
-        // Assume we have a method that calculates the material score for a given color.
-        int playerScore = calculateMaterialScore(board, color);
-        int opponentScore = calculateMaterialScore(board, Color.getOppositeColor(color));
-
-        // The score difference is the player's score minus the opponent's score.
-        return playerScore - opponentScore;
-    }
-
-    private int calculateMaterialScore(BitBoard board, Color color) {
-        // Material values could be defined as follows:
-        // Pawn = 1, Knight = 3, Bishop = 3, Rook = 5, Queen = 9, King = 0 (since the king's value is immeasurable in a typical game)
-        int pawnValue = 1;
-        int knightValue = 3;
-        int bishopValue = 3;
-        int rookValue = 5;
-        int queenValue = 9;
-        // King's value is not counted since the game is generally over when the king is taken.
-
-        // Count pieces by scanning the bitboards and using Long.bitCount to count the 1s.
-        int pawns = Long.bitCount(board.getBitboardForPiece(PieceType.PAWN, color));
-        int knights = Long.bitCount(board.getBitboardForPiece(PieceType.KNIGHT, color));
-        int bishops = Long.bitCount(board.getBitboardForPiece(PieceType.BISHOP, color));
-        int rooks = Long.bitCount(board.getBitboardForPiece(PieceType.ROOK, color));
-        int queens = Long.bitCount(board.getBitboardForPiece(PieceType.QUEEN, color));
-
-        // Calculate material score.
-        int score = (pawns * pawnValue) +
-                (knights * knightValue) +
-                (bishops * bishopValue) +
-                (rooks * rookValue) +
-                (queens * queenValue);
-
-        return score;
-    }
-
-
-    private double getMostEfficientMoveEfficiency(BitBoard board, Color color, int levelOfDepth, double alphaBetaBound) {
-        // This recursive function would simulate moves for the opponent and return the most efficient move's efficiency
-        // Implement the logic using a recursive minimax algorithm with alpha-beta pruning, or another suitable algorithm
-        return 0; // Placeholder
-    }
-
 
     public BitBoard simulateMoveAndGetDummyBoard(BitBoard board, Move move) {
         // Create a copy of the original BitBoard
@@ -841,14 +703,6 @@ public class Engine {
         dummyBoard.performMove(move);
 
         return dummyBoard;
-    }
-
-    private boolean isInStateCheckAfterMove(BitBoard board, Move move, Color color) {
-        // Simulate the move on a dummy board
-        BitBoard dummyBoard = simulateMoveAndGetDummyBoard(board, move);
-
-        // Check if the king of the given color is in check after the move
-        return dummyBoard.isInCheck(color);
     }
 
     private void updateGameState() {

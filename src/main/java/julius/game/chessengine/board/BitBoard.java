@@ -38,6 +38,11 @@ public class BitBoard {
     private boolean blackRookA8Moved = false;
     private boolean blackRookH8Moved = false;
 
+    // Constructor to initialize the board to the starting position
+    public BitBoard() {
+        setInitialPosition();
+    }
+
     public BitBoard(BitBoard other) {
         // Copying all the long fields representing the pieces
         this.whitePawns = other.whitePawns;
@@ -70,33 +75,10 @@ public class BitBoard {
     }
 
 
+
     // ... other members and methods ...
 
-    // Call these methods within the movePiece method when a king or rook moves
-    private void markKingAsMoved(Color color) {
-        if (color == Color.WHITE) {
-            whiteKingMoved = true;
-        } else {
-            blackKingMoved = true;
-        }
-    }
 
-    private void markRookAsMoved(Position rookPosition) {
-        if (rookPosition.equals(new Position('a', 1))) {
-            whiteRookA1Moved = true;
-        } else if (rookPosition.equals(new Position('h', 1))) {
-            whiteRookH1Moved = true;
-        } else if (rookPosition.equals(new Position('a', 8))) {
-            blackRookA8Moved = true;
-        } else if (rookPosition.equals(new Position('h', 8))) {
-            blackRookH8Moved = true;
-        }
-    }
-
-    // Constructor to initialize the board to the starting position
-    public BitBoard() {
-        setInitialPosition();
-    }
 
     // Method to set up the initial position
     public void setInitialPosition() {
@@ -139,52 +121,6 @@ public class BitBoard {
         allPieces = whitePieces | blackPieces;
     }
 
-
-    // Method to calculate the bit index based on position
-    public int bitIndex(char file, int rank) {
-        return (rank - 1) * 8 + (file - 'a');
-    }
-
-    // Method to move a piece
-    public void movePiece(PieceType piece, Color color, Position from, Position to) {
-        // Translate positions to bitboard indices
-        int fromIndex = bitIndex(from.getX(), from.getY());
-        int toIndex = bitIndex(to.getX(), to.getY());
-
-        // Find the correct bitboard based on the piece type and color
-        long pieceBitboard = getBitboardForPiece(piece, color);
-
-        // Check if there is a piece at the destination to capture
-        if (isOccupied(to)) {
-            // Get the color of the piece at the destination
-            Color opponentColor = getPieceColorAtPosition(to) == Color.WHITE ? Color.BLACK : Color.WHITE;
-            // If there is an opponent's piece, remove it from its bitboard
-            clearSquare(toIndex, opponentColor);
-        }
-
-        // Move the piece
-        pieceBitboard = moveBit(pieceBitboard, fromIndex, toIndex);
-
-        // Update the bitboard for the moved piece
-        setBitboardForPiece(piece, color, pieceBitboard);
-
-        // If the move is a king or rook move, we must mark them as moved for castling rights
-        if (piece == PieceType.KING) {
-            markKingAsMoved(color);
-        } else if (piece == PieceType.ROOK) {
-            markRookAsMoved(from);
-        }
-    }
-
-    // Helper method to move a piece on a bitboard
-    private long moveBit(long pieceBitboard, int fromIndex, int toIndex) {
-        // Clear the bit at the from index
-        pieceBitboard &= ~(1L << fromIndex);
-        // Set the bit at the to index
-        pieceBitboard |= 1L << toIndex;
-        return pieceBitboard;
-    }
-
     // Method to get the bitboard for a specific piece type and color
     public long getBitboardForPiece(PieceType piece, Color color) {
         return switch (color) {
@@ -207,6 +143,39 @@ public class BitBoard {
         };
     }
 
+    // Call these methods within the movePiece method when a king or rook moves
+    private void markKingAsMoved(Color color) {
+        if (color == Color.WHITE) {
+            whiteKingMoved = true;
+        } else {
+            blackKingMoved = true;
+        }
+    }
+
+    private void markRookAsMoved(Position rookPosition) {
+        if (rookPosition.equals(new Position('a', 1))) {
+            whiteRookA1Moved = true;
+        } else if (rookPosition.equals(new Position('h', 1))) {
+            whiteRookH1Moved = true;
+        } else if (rookPosition.equals(new Position('a', 8))) {
+            blackRookA8Moved = true;
+        } else if (rookPosition.equals(new Position('h', 8))) {
+            blackRookH8Moved = true;
+        }
+    }
+    public List<Move> generateAllPossibleMoves(Color color) {
+        List<Move> moves = new ArrayList<>();
+
+        // Generate moves for each piece type
+        moves.addAll(generatePawnMoves(color));
+        moves.addAll(generateKnightMoves(color));
+        moves.addAll(generateBishopMoves(color));
+        moves.addAll(generateRookMoves(color));
+        moves.addAll(generateQueenMoves(color));
+        moves.addAll(generateKingMoves(color));
+
+        return moves;
+    }
 
     // Method to set the bitboard for a specific piece type and color
     private void setBitboardForPiece(PieceType piece, Color color, long bitboard) {
@@ -246,20 +215,6 @@ public class BitBoard {
         allPieces = whitePieces | blackPieces;
     }
 
-    public List<Move> generateAllPossibleMoves(Color color) {
-        List<Move> moves = new ArrayList<>();
-
-        // Generate moves for each piece type
-        moves.addAll(generatePawnMoves(color));
-        moves.addAll(generateKnightMoves(color));
-        moves.addAll(generateBishopMoves(color));
-        moves.addAll(generateRookMoves(color));
-        moves.addAll(generateQueenMoves(color));
-        moves.addAll(generateKingMoves(color));
-
-        return moves;
-    }
-
     private List<Move> generatePawnMoves(Color color) {
         List<Move> moves = new ArrayList<>();
         long pawns = (color == Color.WHITE) ? whitePawns : blackPawns;
@@ -296,15 +251,6 @@ public class BitBoard {
 
         return moves;
     }
-
-
-    private Move createMove(int fromIndex, int toIndex, Color color, boolean isCapture, boolean isPromotion) {
-        Position from = indexToPosition(fromIndex);
-        Position to = indexToPosition(toIndex);
-        PieceType promotionPieceType = isPromotion ? PieceType.QUEEN : null; // Assume promotion to queen for simplicity
-        return new Move(from, to, PieceType.PAWN, color, isCapture, false, (to == lastMoveDoubleStepPawnPosition), promotionPieceType);
-    }
-
 
     private List<Move> generateKnightMoves(Color color) {
         List<Move> moves = new ArrayList<>();
@@ -553,21 +499,6 @@ public class BitBoard {
         return moves;
     }
 
-    private boolean doesMoveWrapAround(int fromIndex, int toIndex) {
-        int fromRank = fromIndex / 8;
-        int fromFile = fromIndex % 8;
-        int toRank = toIndex / 8;
-        int toFile = toIndex % 8;
-        // Check if the move wraps around the board horizontally or is outside the board vertically
-        return Math.abs(fromFile - toFile) > 1 || toRank < 0 || toRank > 7;
-    }
-
-
-    private boolean isMoveWithinBoard(int fromIndex, int toIndex) {
-        // Check if the move doesn't wrap around the edges of the board
-        return Math.abs(toIndex % 8 - fromIndex % 8) <= 1;
-    }
-
     private boolean canKingCastle(Color color) {
         // The king must not have moved and must not be in check
         return !hasKingMoved(color) && !isInCheck(color);
@@ -803,12 +734,8 @@ public class BitBoard {
 
         // Check if the to position is next to the last move double step pawn
         int fileDifference = Math.abs(to.getX() - lastMoveDoubleStepPawnPosition.getX());
-        if (fileDifference == 0 &&
-                to.getY() == (lastMoveDoubleStepPawnPosition.getY() == 5 ? lastMoveDoubleStepPawnPosition.getY() + 1 : lastMoveDoubleStepPawnPosition.getY() - 1)) {
-            return true;
-        }
-
-        return false;
+        return fileDifference == 0 &&
+                to.getY() == (lastMoveDoubleStepPawnPosition.getY() == 5 ? lastMoveDoubleStepPawnPosition.getY() + 1 : lastMoveDoubleStepPawnPosition.getY() - 1);
     }
 
     public boolean hasKingMoved(Color color) {
@@ -855,46 +782,6 @@ public class BitBoard {
             return (whiteKnights & positionMask) != 0;
         } else { // Color.BLACK
             return (blackKnights & positionMask) != 0;
-        }
-    }
-
-    public boolean isOccupiedByRook(Position position, Color color) {
-        int index = bitIndex(position.getX(), position.getY());
-        long positionMask = 1L << index;
-        if (color == Color.WHITE) {
-            return (whiteRooks & positionMask) != 0;
-        } else {
-            return (blackRooks & positionMask) != 0;
-        }
-    }
-
-    public boolean isOccupiedByQueen(Position position, Color color) {
-        int index = bitIndex(position.getX(), position.getY());
-        long positionMask = 1L << index;
-        if (color == Color.WHITE) {
-            return (whiteQueens & positionMask) != 0;
-        } else {
-            return (blackQueens & positionMask) != 0;
-        }
-    }
-
-    public boolean isOccupiedByBishop(Position position, Color color) {
-        int index = bitIndex(position.getX(), position.getY());
-        long positionMask = 1L << index;
-        if (color == Color.WHITE) {
-            return (whiteBishops & positionMask) != 0;
-        } else {
-            return (blackBishops & positionMask) != 0;
-        }
-    }
-
-    public boolean isOccupiedByKing(Position position, Color color) {
-        int index = bitIndex(position.getX(), position.getY());
-        long positionMask = 1L << index;
-        if (color == Color.WHITE) {
-            return (whiteKing & positionMask) != 0;
-        } else {
-            return (blackKing & positionMask) != 0;
         }
     }
 
@@ -1260,12 +1147,9 @@ public class BitBoard {
         }
 
         // Check if the opposing king can attack
-        if (canKingAttackKing(kingPosition, color)) {
-            return true;
-        }
+        return canKingAttackKing(kingPosition, color);
 
         // If none of the pieces can attack the king, then the king is not in check
-        return false;
     }
 
     private Position findKingPosition(Color color) {
@@ -1613,5 +1497,27 @@ public class BitBoard {
 
 
     // ... Additional methods to work with bitboards
+
+    // Method to calculate the bit index based on position
+    public int bitIndex(char file, int rank) {
+        return (rank - 1) * 8 + (file - 'a');
+    }
+
+    // Helper method to move a piece on a bitboard
+    private long moveBit(long pieceBitboard, int fromIndex, int toIndex) {
+        // Clear the bit at the from index
+        pieceBitboard &= ~(1L << fromIndex);
+        // Set the bit at the to index
+        pieceBitboard |= 1L << toIndex;
+        return pieceBitboard;
+    }
+
+    private boolean doesMoveWrapAround(int fromIndex, int toIndex) {
+        int fromFile = fromIndex % 8;
+        int toRank = toIndex / 8;
+        int toFile = toIndex % 8;
+        // Check if the move wraps around the board horizontally or is outside the board vertically
+        return Math.abs(fromFile - toFile) > 1 || toRank < 0 || toRank > 7;
+    }
 }
 

@@ -10,10 +10,6 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import static java.lang.Double.MAX_VALUE;
 
 @Log4j2
 @Component
@@ -57,7 +53,11 @@ public class AI {
 
         // Get the best move from the sorted list
         // This is just a placeholder; you'll need to implement the actual logic for selecting the best move
+        long startTime = System.nanoTime(); // Start timing
         Move calculatedMove = getBestMove(board, sortedMoves, color, levelOfDepth);
+        long endTime = System.nanoTime();
+
+        log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
 
         // Log the calculated move
         log.info("Calculated Move is From: " + calculatedMove.getFrom()
@@ -124,6 +124,7 @@ public class AI {
             return CHECKMATE_SCORE; // Positive value for checkmate in favor
         }
         if (depth == 0) {
+            log.info("Board score at depth 0 for {}: {} - Move[{}]", color, board.getScore().getScoreDifference(color), move);
             return boardAfterMove.getScore().getScoreDifference(color);
         }
         return getMaxScore(boardAfterMove, Color.getOpponentColor(color), depth - 1, alpha, beta);
