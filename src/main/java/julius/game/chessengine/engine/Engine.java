@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -21,11 +20,9 @@ public class Engine {
 
     private BitBoard bitBoard = new BitBoard();
     private GameState gameState = new GameState();
-    private boolean whitesTurn = true;
 
     public void startNewGame() {
         bitBoard = new BitBoard();
-        whitesTurn = true;
         gameState = new GameState();
         // Set up the initial position of the pieces on the bitboard
         bitBoard.setInitialPosition();
@@ -33,7 +30,7 @@ public class Engine {
 
     public GameState moveRandomFigure(Color color) {
         // Now, the color parameter is used to determine which moves to generate
-        List<Move> moves = bitBoard.generateAllPossibleMoves(color);
+        List<Move> moves = bitBoard.getAllCurrentPossibleMoves();
 
         if (moves.isEmpty()) {
             throw new RuntimeException("No moves possible for " + color);
@@ -44,9 +41,6 @@ public class Engine {
 
         // Execute the move on the bitboard
         bitBoard.performMove(randomMove);
-
-        // Toggle turn unconditionally
-        whitesTurn = !whitesTurn;
 
         // Update the game state
         updateGameState();
@@ -66,7 +60,7 @@ public class Engine {
 
         // Check if it's the correct player's turn
         Color pieceColor = bitBoard.getPieceColorAtPosition(fromPosition);
-        if ((pieceColor == Color.WHITE && !whitesTurn) || (pieceColor == Color.BLACK && whitesTurn)) {
+        if ((pieceColor == Color.WHITE && !bitBoard.whitesTurn) || (pieceColor == Color.BLACK && bitBoard.whitesTurn)) {
             bitBoard.logBoard();
             throw new IllegalStateException("It's not " + pieceColor + "'s turn");
         }
@@ -74,6 +68,7 @@ public class Engine {
 
         // Determine if the move is a capture and if the move is en passant
         boolean isCapture = bitBoard.isOccupiedByOpponent(toPosition, color);
+        PieceType capturedPieceType = isCapture ? bitBoard.getPieceTypeAtPosition(toPosition) : null;
         boolean isEnPassantMove = bitBoard.isEnPassantPossible(toPosition, color) && pieceType == PieceType.PAWN;
         if (isEnPassantMove) {
             // Clear the captured pawn from its position for en passant
@@ -88,7 +83,7 @@ public class Engine {
         PieceType promotionPieceType = isPromotion ? PieceType.QUEEN : null; // Assume queen promotion for simplicity
 
         // Create a Move object for the move
-        Move move = new Move(fromPosition, toPosition, pieceType, color, isCapture, isCastlingMove, isEnPassantMove, promotionPieceType);
+        Move move = new Move(fromPosition, toPosition, pieceType, color, isCapture, isCastlingMove, isEnPassantMove, promotionPieceType, capturedPieceType);
 
         // Check if the move is legal and doesn't result in a check
         if (!isLegalMove(bitBoard, move)) {
@@ -99,9 +94,6 @@ public class Engine {
 
         // Perform the move on the bitboard
         bitBoard.performMove(move);
-
-        // Toggle the turn only after a successful move
-        whitesTurn = !whitesTurn;
 
         // Update the game state
         updateGameState();
@@ -311,10 +303,7 @@ public class Engine {
                 Color pieceColor = bitBoard.getPieceColorAtPosition(position);
 
                 // If we encounter a piece
-                log.info("Checking position: " + file + rank + " for diagonal attacks");
                 if (pieceAtPosition != null) {
-                    bitBoard.logBoard();
-                    log.info("Encountered a piece: " + pieceAtPosition + " of color " + pieceColor);
                     // If it's an opposing bishop or queen, and matches the piece type we're looking for
                     if (pieceColor == Color.getOpponentColor(color) &&
                             (pieceAtPosition == pieceType || pieceAtPosition == PieceType.QUEEN)) {
@@ -379,7 +368,7 @@ public class Engine {
         }
 
         // Check if the path between the king and the rook is clear
-        if (isPathBlocked(bitBoard, new Move(move.getFrom(), rookPosition, PieceType.KING, move.getColor(), false, false, false, null))) {
+        if (isPathBlocked(bitBoard, new Move(move.getFrom(), rookPosition, PieceType.KING, move.getColor(), false, false, false, null, null))) {
             return false;
         }
 
@@ -633,7 +622,7 @@ public class Engine {
 
     public List<Move> getAllPossibleMoveFieldsForPlayerColor(BitBoard board, Color color) {
         // First, generate all possible moves for the given color
-        List<Move> moves = board.generateAllPossibleMoves(color);
+        List<Move> moves = board.getAllCurrentPossibleMoves();
 
         // Now filter out moves that would result in the player being in check
         return moves.stream()
@@ -653,16 +642,7 @@ public class Engine {
     }
 
     public List<Position> getPossibleMovesForPosition(Position fromPosition) {
-        Color color = bitBoard.getPieceColorAtPosition(fromPosition);
-        if (color == null || (color == Color.WHITE) != whitesTurn) {
-            return Collections.emptyList();
-        }
-
-        PieceType pieceType = bitBoard.getPieceTypeAtPosition(fromPosition);
-        List<Move> moves = bitBoard.generateMovesForPieceAtPosition(pieceType, color, fromPosition);
-
-        return moves.stream()
-                .filter(move -> isNotInCheckAfterMove(bitBoard, move))
+        return bitBoard.getMovesFromPosition(fromPosition).stream()
                 .map(Move::getTo)
                 .collect(Collectors.toList());
     }
@@ -683,7 +663,7 @@ public class Engine {
         boolean isInCheck = board.isInCheck(color);
 
         // Then, generate all possible moves for the player.
-        List<Move> possibleMoves = board.generateAllPossibleMoves(color);
+        List<Move> possibleMoves = board.getAllCurrentPossibleMoves();
 
         // Filter out the moves that would leave the king in check after they are made.
         // Note: You need to implement a method that checks if making a certain move would result in check.
@@ -717,7 +697,7 @@ public class Engine {
 
     public List<Move> getAllPossibleMovesForPlayerColor(Color color) {
         // Generate all possible moves for the color
-        List<Move> allMoves = bitBoard.generateAllPossibleMoves(color);
+        List<Move> allMoves = bitBoard.getAllCurrentPossibleMoves();
 
         // Filter out moves that would result in the player being in check
         return allMoves.stream()

@@ -8,9 +8,33 @@ import lombok.extern.log4j.Log4j2;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Log4j2
 public class BitBoard {
+
+    private static final long[] FileMasks = new long[]{
+            0x0101010101010101L, // File A
+            0x0202020202020202L, // File B
+            0x0404040404040404L, // File C
+            0x0808080808080808L, // File D
+            0x1010101010101010L, // File E
+            0x2020202020202020L, // File F
+            0x4040404040404040L, // File G
+            0x8080808080808080L  // File H
+    };
+    private static final long Rank2 = 0x000000000000FF00L;
+
+    private static final long Rank4 = 0x00000000FF000000L;
+    private static final long Rank5 = 0x000000FF00000000L;
+    private static final long Rank7 = 0x00FF000000000000L;
+    private static final long FileA = 0xFEFEFEFEFEFEFEFEL;
+    private static final long FileH = 0x7F7F7F7F7F7F7F7FL;
+
+    public boolean whitesTurn = true;
+    // Add score field to the BitBoard class
+    private Score currentScore;
     private long whitePawns = 0L;
     private long blackPawns = 0L;
     private long whiteKnights = 0L;
@@ -37,14 +61,23 @@ public class BitBoard {
     private boolean whiteRookH1Moved = false;
     private boolean blackRookA8Moved = false;
     private boolean blackRookH8Moved = false;
+    private List<Move> allCurrentPossibleMoves;
 
-    // Constructor to initialize the board to the starting position
+    public List<Move> getAllCurrentPossibleMoves() {
+        return this.allCurrentPossibleMoves;
+    }
+
     public BitBoard() {
+        this.currentScore = new Score(0, 0);
+        updateScore();
         setInitialPosition();
+        allCurrentPossibleMoves = generateAllPossibleMoves(Color.WHITE);
+
     }
 
     public BitBoard(BitBoard other) {
         // Copying all the long fields representing the pieces
+        this.currentScore = new Score(other.getScore().getScoreWhite(), other.getScore().getScoreBlack());
         this.whitePawns = other.whitePawns;
         this.blackPawns = other.blackPawns;
         this.whiteKnights = other.whiteKnights;
@@ -71,8 +104,80 @@ public class BitBoard {
         this.blackRookA8Moved = other.blackRookA8Moved;
         this.blackRookH8Moved = other.blackRookH8Moved;
 
+        this.whitesTurn = other.whitesTurn;
+
+        this.allCurrentPossibleMoves = deepCopyMovesList(other.allCurrentPossibleMoves);
         this.lastMoveDoubleStepPawnPosition = other.lastMoveDoubleStepPawnPosition != null ? new Position(other.lastMoveDoubleStepPawnPosition) : null;
     }
+
+    public List<Move> deepCopyMovesList(List<Move> originalMoves) {
+        List<Move> copiedMoves = new ArrayList<>();
+        for (Move originalMove : originalMoves) {
+            // Assuming Move class has a copy constructor
+            Move copiedMove = new Move(originalMove);
+            copiedMoves.add(copiedMove);
+        }
+        return copiedMoves;
+    }
+
+    public void updateScore() {
+        // Define the piece values
+        final int PAWN_VALUE = 100;   // Pawns are worth 1 point, scaled by 100
+        final int KNIGHT_VALUE = 300; // Knights are worth 3 points
+        final int BISHOP_VALUE = 300; // Bishops are worth 3 points
+        final int ROOK_VALUE = 500;   // Rooks are worth 5 points
+        final int QUEEN_VALUE = 900;  // Queens are worth 9 points
+
+        // Initialize scores
+        int whiteScore = 0;
+        int blackScore = 0;
+
+        // Calculate scores based on bitboards
+        whiteScore += Long.bitCount(whitePawns) * PAWN_VALUE;
+        whiteScore += Long.bitCount(whiteKnights) * KNIGHT_VALUE;
+        whiteScore += Long.bitCount(whiteBishops) * BISHOP_VALUE;
+        whiteScore += Long.bitCount(whiteRooks) * ROOK_VALUE;
+        whiteScore += Long.bitCount(whiteQueens) * QUEEN_VALUE;
+
+        blackScore -= Long.bitCount(blackPawns) * PAWN_VALUE;
+        blackScore -= Long.bitCount(blackKnights) * KNIGHT_VALUE;
+        blackScore -= Long.bitCount(blackBishops) * BISHOP_VALUE;
+        blackScore -= Long.bitCount(blackRooks) * ROOK_VALUE;
+        blackScore -= Long.bitCount(blackQueens) * QUEEN_VALUE;
+
+        // Factor in king safety, piece positions, control of center, etc., for a more advanced scoring
+        // These advanced concepts are omitted for brevity, but would involve additional logic.
+        // Define additional score values
+        final int CENTER_PAWN_BONUS = 10;   // Bonus points for pawns in the center
+        final int DOUBLED_PAWN_PENALTY = -20; // Penalty points for doubled pawns
+        final int ISOLATED_PAWN_PENALTY = -10; // Penalty points for isolated pawns
+
+        // Initialize bonuses and penalties
+        int whiteCenterBonus = 0;
+        int blackCenterBonus = 0;
+        int whiteDoubledPenalty = 0;
+        int blackDoubledPenalty = 0;
+        int whiteIsolatedPenalty = 0;
+        int blackIsolatedPenalty = 0;
+
+        // Calculate bonuses and penalties for white
+        whiteCenterBonus += countCenterPawns(whitePawns) * CENTER_PAWN_BONUS;
+        whiteDoubledPenalty += countDoubledPawns(whitePawns) * DOUBLED_PAWN_PENALTY;
+        whiteIsolatedPenalty += countIsolatedPawns(whitePawns) * ISOLATED_PAWN_PENALTY;
+
+        // Calculate bonuses and penalties for black
+        blackCenterBonus += countCenterPawns(blackPawns) * CENTER_PAWN_BONUS;
+        blackDoubledPenalty += countDoubledPawns(blackPawns) * DOUBLED_PAWN_PENALTY;
+        blackIsolatedPenalty += countIsolatedPawns(blackPawns) * ISOLATED_PAWN_PENALTY;
+
+        // Apply bonuses and penalties to the score
+        whiteScore += whiteCenterBonus + whiteDoubledPenalty + whiteIsolatedPenalty;
+        blackScore -= blackCenterBonus + blackDoubledPenalty + blackIsolatedPenalty;
+
+        // Return the score encapsulated in a Score object
+        this.currentScore = new Score(whiteScore, blackScore);
+    }
+    // Constructor to initialize the board to the starting position
 
 
     // ... other members and methods ...
@@ -212,6 +317,7 @@ public class BitBoard {
         whitePieces = whitePawns | whiteKnights | whiteBishops | whiteRooks | whiteQueens | whiteKing;
         blackPieces = blackPawns | blackKnights | blackBishops | blackRooks | blackQueens | blackKing;
         allPieces = whitePieces | blackPieces;
+        updateScore();
     }
 
     private List<Move> generatePawnMoves(Color color) {
@@ -219,37 +325,81 @@ public class BitBoard {
         long pawns = (color == Color.WHITE) ? whitePawns : blackPawns;
         long opponentPieces = (color == Color.WHITE) ? blackPieces : whitePieces;
         long emptySquares = ~(whitePieces | blackPieces);
-        int direction = (color == Color.WHITE) ? 8 : -8; // Up for white, down for black
-        int startingRank = (color == Color.WHITE) ? 1 : 6; // Starting rank for white is 2, which is index 1 in array; for black is 7, index 6
-        int promotionRank = (color == Color.WHITE) ? 7 : 0;
+        // Moves the pawns one rank up
+        long singleStepForward = (color == Color.WHITE) ? pawns << 8 : pawns >>> 8;
+        singleStepForward &= emptySquares; // Ensures the pawns can move (i.e., the squares in front are empty).
 
-        // Generate moves for each pawn
-        for (int i = Long.numberOfTrailingZeros(pawns); i < 64 - Long.numberOfLeadingZeros(pawns); i++) {
-            if (((1L << i) & pawns) != 0) {
-                int rank = i / 8;
-                int file = i % 8;
+        // Finds pawns on their initial rank that can move two steps forward
+        long startingRank = (color == Color.WHITE) ? Rank2 : Rank7;
+        long doubleStepForward = (color == Color.WHITE) ? ((pawns & startingRank) << 8) : ((pawns & startingRank) >>> 8);
+        doubleStepForward &= emptySquares; // Ensures the square one step in front is empty
+        doubleStepForward = (color == Color.WHITE) ? (doubleStepForward << 8) : (doubleStepForward >>> 8);
+        doubleStepForward &= emptySquares; // Ensures the square two steps in front is empty
 
-                // Single move forward
-                if ((1L << (i + direction) & emptySquares) != 0) {
-                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction), PieceType.PAWN, color, false, false, false, (rank + (direction / 8) == promotionRank) ? PieceType.QUEEN : null));
+        long attacksLeft = (color == Color.WHITE) ? (pawns & ~FileA) << 7 : (pawns & ~FileH) >>> 9;
+        long attacksRight = (color == Color.WHITE) ? (pawns & ~FileH) << 9 : (pawns & ~FileA) >>> 7;
 
-                    // Initial double move
-                    if (rank == startingRank && (1L << (i + 2 * direction) & emptySquares) != 0 && (1L << (i + direction) & emptySquares) != 0) {
-                        moves.add(new Move(indexToPosition(i), indexToPosition(i + 2 * direction), PieceType.PAWN, color, false, false, false, null));
-                    }
-                }
+        singleStepForward &= emptySquares;
+        doubleStepForward &= emptySquares;
+        attacksLeft &= opponentPieces;
+        attacksRight &= opponentPieces;
 
-                // Captures
-                if (file > 0 && (1L << (i + direction - 1) & opponentPieces) != 0) { // Capture left
-                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction - 1), PieceType.PAWN, color, true, false, false, (rank + (direction / 8) == promotionRank) ? PieceType.QUEEN : null));
-                }
-                if (file < 7 && (1L << (i + direction + 1) & opponentPieces) != 0) { // Capture right
-                    moves.add(new Move(indexToPosition(i), indexToPosition(i + direction + 1), PieceType.PAWN, color, true, false, false, (rank + (direction / 8) == promotionRank) ? PieceType.QUEEN : null));
-                }
+        addPawnMoves(moves, singleStepForward, 8, false, color);
+        addPawnMoves(moves, doubleStepForward, 16, false, color);
+        addPawnMoves(moves, attacksLeft, (color == Color.WHITE) ? 7 : -9, true, color);
+        addPawnMoves(moves, attacksRight, (color == Color.WHITE) ? 9 : -7, true, color);
+
+        if (lastMoveDoubleStepPawnPosition != null) {
+            // Calculate the en passant capture square
+            long enPassantSquare = 1L << bitIndex(lastMoveDoubleStepPawnPosition.getX(), color == Color.WHITE ? 5 : 4);
+
+            // Pawns that can potentially perform an en passant capture
+            long pawnsAbleToEnPassant = (color == Color.WHITE) ? (pawns << 1) | (pawns >>> 1) : (pawns << 1) | (pawns >>> 1);
+            pawnsAbleToEnPassant &= (color == Color.WHITE) ? Rank5 : Rank4;
+            pawnsAbleToEnPassant &= opponentPieces; // This will ensure that the pawn is adjacent to the opponent's pawn.
+
+            long enPassantCaptureLeft = (color == Color.WHITE) ? (pawnsAbleToEnPassant & ~FileA) >>> 1 : (pawnsAbleToEnPassant & ~FileH) << 1;
+            long enPassantCaptureRight = (color == Color.WHITE) ? (pawnsAbleToEnPassant & ~FileH) << 1 : (pawnsAbleToEnPassant & ~FileA) >>> 1;
+
+            // Left capture
+            if ((enPassantCaptureLeft & enPassantSquare) != 0) {
+                int fromIndex = color == Color.WHITE ? Long.numberOfTrailingZeros(enPassantCaptureLeft) - 9 :
+                        Long.numberOfTrailingZeros(enPassantCaptureLeft) + 7;
+                int toIndex = Long.numberOfTrailingZeros(enPassantSquare);
+                addEnPassantMove(moves, fromIndex, toIndex, color);
+            }
+
+            // Right capture
+            if ((enPassantCaptureRight & enPassantSquare) != 0) {
+                int fromIndex = color == Color.WHITE ? Long.numberOfTrailingZeros(enPassantCaptureRight) - 7 :
+                        Long.numberOfTrailingZeros(enPassantCaptureRight) + 9;
+                int toIndex = Long.numberOfTrailingZeros(enPassantSquare);
+                addEnPassantMove(moves, fromIndex, toIndex, color);
             }
         }
-
         return moves;
+    }
+
+    private void addEnPassantMove(List<Move> moves, int fromIndex, int toIndex, Color color) {
+        Position fromPosition = indexToPosition(fromIndex);
+        Position toPosition = indexToPosition(toIndex);
+        moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, true, false, true, null, PieceType.PAWN));
+    }
+
+    private void addPawnMoves(List<Move> moves, long bitboard, int shift, boolean isCapture, Color color) {
+        while (bitboard != 0) {
+            int toIndex = Long.numberOfTrailingZeros(bitboard);
+            int fromIndex = color == Color.WHITE ? toIndex - shift : toIndex + shift;
+            Position fromPosition = indexToPosition(fromIndex);
+            Position toPosition = indexToPosition(toIndex);
+            boolean isPromotion = (color == Color.WHITE) ? toPosition.getY() == 8 : toPosition.getY() == 1;
+
+            PieceType promotionPiece = isPromotion ? PieceType.QUEEN : null; // Assuming we always promote to a queen for simplicity
+            PieceType capturedType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
+            moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, isPromotion, promotionPiece, capturedType));
+
+            bitboard &= bitboard - 1; // Clear the processed bit
+        }
     }
 
 
@@ -287,8 +437,8 @@ public class BitBoard {
                         if ((ownPieces & (1L << toIndex)) == 0) {
                             // Determine if the target position is a capture
                             boolean isCapture = (allPieces & (1L << toIndex)) != 0;
-                            // Add move to the list (no promotion for knights, hence null)
-                            moves.add(new Move(fromPosition, toPosition, PieceType.KNIGHT, color, isCapture, false, false, null));
+                            PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
+                            moves.add(new Move(fromPosition, toPosition, PieceType.KNIGHT, color, isCapture, false, false, null, capturedPieceType));
                         }
                     }
                 }
@@ -334,7 +484,8 @@ public class BitBoard {
 
                             // If it's an opponent's piece, it's a capture move
                             boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
-                            moves.add(new Move(fromPosition, toPosition, PieceType.BISHOP, color, isCapture, false, false, null));
+                            PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
+                            moves.add(new Move(fromPosition, toPosition, PieceType.BISHOP, color, isCapture, false, false, null, capturedPieceType));
 
                             // If you capture a piece, you must stop.
                             if (isCapture) {
@@ -388,7 +539,8 @@ public class BitBoard {
 
                             // If it's an opponent's piece, it's a capture move
                             boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
-                            moves.add(new Move(fromPosition, toPosition, PieceType.ROOK, color, isCapture, false, false, null));
+                            PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
+                            moves.add(new Move(fromPosition, toPosition, PieceType.ROOK, color, isCapture, false, false, null, capturedPieceType));
 
                             // If you capture a piece, you must stop.
                             if (isCapture) {
@@ -445,7 +597,8 @@ public class BitBoard {
 
                             // If it's an opponent's piece, it's a capture move
                             boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
-                            moves.add(new Move(fromPosition, toPosition, PieceType.QUEEN, color, isCapture, false, false, null));
+                            PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
+                            moves.add(new Move(fromPosition, toPosition, PieceType.QUEEN, color, isCapture, false, false, null, capturedPieceType));
 
                             // If you capture a piece, you must stop.
                             if (isCapture) {
@@ -476,10 +629,11 @@ public class BitBoard {
             int targetIndex = kingPositionIndex + offset;
             // Check if the move is within board bounds and does not wrap around
             if (targetIndex >= 0 && targetIndex < 64 && !doesMoveWrapAround(kingPositionIndex, targetIndex)) {
-                Position targetPosition = indexToPosition(targetIndex);
-                if (!isOccupiedByColor(targetPosition, color)) {
-                    boolean isCapture = isOccupiedByOpponent(targetPosition, color);
-                    moves.add(new Move(kingPosition, targetPosition, PieceType.KING, color, isCapture, false, false, null));
+                Position toPosition = indexToPosition(targetIndex);
+                if (!isOccupiedByColor(toPosition, color)) {
+                    boolean isCapture = isOccupiedByOpponent(toPosition, color);
+                    PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
+                    moves.add(new Move(kingPosition, toPosition, PieceType.KING, color, isCapture, false, false, null, capturedPieceType));
                 }
             }
         }
@@ -489,11 +643,11 @@ public class BitBoard {
         if (canKingCastle(color)) {
             // Kingside castling
             if (canCastleKingside(color, kingPositionIndex)) {
-                moves.add(new Move(kingPosition, indexToPosition(kingPositionIndex + 2), PieceType.KING, color, false, true, false, null));
+                moves.add(new Move(kingPosition, indexToPosition(kingPositionIndex + 2), PieceType.KING, color, false, true, false, null, null));
             }
             // Queenside castling
             if (canCastleQueenside(color, kingPositionIndex)) {
-                moves.add(new Move(kingPosition, indexToPosition(kingPositionIndex - 2), PieceType.KING, color, false, true, false, null));
+                moves.add(new Move(kingPosition, indexToPosition(kingPositionIndex - 2), PieceType.KING, color, false, true, false, null, null));
             }
         }
 
@@ -638,6 +792,8 @@ public class BitBoard {
         }
 
         updateAggregatedBitboards();
+        whitesTurn = !whitesTurn;
+        allCurrentPossibleMoves = generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
     }
 
 
@@ -803,316 +959,16 @@ public class BitBoard {
         }
     }
 
-    public List<Move> generateMovesForPieceAtPosition(PieceType pieceType, Color color, Position fromPosition) {
-        List<Move> moves = new ArrayList<>();
-
-        // Depending on the piece type, call the appropriate method to generate its moves
-        switch (pieceType) {
-            case PAWN -> moves.addAll(generatePawnMovesFromPosition(color, fromPosition));
-            case KNIGHT -> moves.addAll(generateKnightMovesFromPosition(color, fromPosition));
-            case BISHOP -> moves.addAll(generateBishopMovesFromPosition(color, fromPosition));
-            case ROOK -> moves.addAll(generateRookMovesFromPosition(color, fromPosition));
-            case QUEEN -> moves.addAll(generateQueenMovesFromPosition(color, fromPosition));
-            case KING -> moves.addAll(generateKingMovesFromPosition(color, fromPosition));
-            default -> throw new IllegalArgumentException("Unknown piece type: " + pieceType);
-        }
-
-        return moves;
-    }
-
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
-    private List<Move> generatePawnMovesFromPosition(Color color, Position fromPosition) {
-        List<Move> moves = new ArrayList<>();
-
-        // Determine the direction pawns will move based on their color
-        int direction = (color == Color.WHITE) ? 1 : -1;
-
-        // Position in front of the pawn
-        Position oneStep = new Position(fromPosition.getX(), fromPosition.getY() + direction);
-        // If the position in front of the pawn is not occupied, it's a valid move
-        if (!isOccupied(oneStep)) {
-            moves.add(new Move(fromPosition, oneStep, PieceType.PAWN, color, false, false, false, null));
-
-            // If it's the pawn's first move, it can move two squares
-            if ((color == Color.WHITE && fromPosition.getY() == 2) || (color == Color.BLACK && fromPosition.getY() == 7)) {
-                Position twoSteps = new Position(fromPosition.getX(), fromPosition.getY() + (2 * direction));
-                if (!isOccupied(twoSteps)) {
-                    moves.add(new Move(fromPosition, twoSteps, PieceType.PAWN, color, false, false, false, null));
-                }
-            }
-        }
-
-        // Capture moves
-        Position[] capturePositions = {
-                new Position((char) (fromPosition.getX() + 1), fromPosition.getY() + direction),
-                new Position((char) (fromPosition.getX() - 1), fromPosition.getY() + direction)
-        };
-
-        for (Position capturePos : capturePositions) {
-            if (isValidBoardPosition(capturePos) && isOccupiedByOpponent(capturePos, color)) {
-                moves.add(new Move(fromPosition, capturePos, PieceType.PAWN, color, true, false, false, null));
-            }
-        }
-
-        // En passant capture
-        // En passant capture
-        Position enPassantPosition = getLastMoveDoubleStepPawnPosition();
-        if (enPassantPosition != null) {
-            // The en passant capture can only happen if the pawn is on its 5th rank (for white) or 4th rank (for black)
-            int enPassantRank = (color == Color.WHITE) ? 5 : 4;
-            if (fromPosition.getY() == enPassantRank) {
-                int enPassantFileOffset = enPassantPosition.getX() - fromPosition.getX();
-                // Check if the en passant position is directly to the left or right of the current pawn
-                if (Math.abs(enPassantFileOffset) == 1) {
-                    // Calculate the capture position, which is one rank forward from the current pawn's position
-                    // in the direction of the en passant position's file
-                    Position capturePosition = new Position(enPassantPosition.getX(), fromPosition.getY() + direction);
-                    // Add en passant capture move
-                    moves.add(new Move(fromPosition, capturePosition, PieceType.PAWN, color, true, false, false, null));
-                }
-            }
-        }
-
-        // Promotion
-        // If the pawn reaches the back rank, it should be promoted. You'll need to create moves for each promotion option.
-        // This is a simplified version and doesn't create all the promotion moves
-        if ((color == Color.WHITE && fromPosition.getY() == 7) || (color == Color.BLACK && fromPosition.getY() == 2)) {
-            Position promotionPosition = new Position(fromPosition.getX(), fromPosition.getY() + direction);
-            if (!isOccupied(promotionPosition)) {
-                moves.add(new Move(fromPosition, promotionPosition, PieceType.PAWN, color, false, false, true, PieceType.QUEEN)); // Promotion to queen as an example
-            }
-        }
-
-        return moves;
+    public List<Move> getMovesFromPosition(Position fromPosition) {
+        return allCurrentPossibleMoves.stream()
+                .filter(move -> move.getFrom().equals(fromPosition))
+                .collect(Collectors.toList());
     }
 
     private boolean isValidBoardPosition(Position position) {
         return position.getX() >= 'a' && position.getX() <= 'h' && position.getY() >= 1 && position.getY() <= 8;
     }
-
-    private List<Move> generateKnightMovesFromPosition(Color color, Position fromPosition) {
-        List<Move> moves = new ArrayList<>();
-
-        // The possible moves for a knight from its current position
-        int[][] knightOffsets = {
-                {-2, -1}, {-2, 1}, // Upwards L-moves
-                {2, -1}, {2, 1},   // Downwards L-moves
-                {-1, -2}, {1, -2}, // Leftwards L-moves
-                {-1, 2}, {1, 2}    // Rightwards L-moves
-        };
-
-        // Iterate through all possible L moves
-        for (int[] offset : knightOffsets) {
-            int targetFile = fromPosition.getX() + offset[0];
-            int targetRank = fromPosition.getY() + offset[1];
-
-            // Check if the target position is within the board limits
-            if (targetFile >= 'a' && targetFile <= 'h' && targetRank >= 1 && targetRank <= 8) {
-                Position toPosition = new Position((char) targetFile, targetRank);
-
-                // Check if the target position is occupied by a piece of the same color
-                if (!isOccupiedByColor(toPosition, color)) {
-                    // Determine if the target position is occupied by an opponent's piece, which would make it a capture
-                    boolean isCapture = isOccupiedByColor(toPosition, getOpponentColor(color));
-
-                    // If it's a valid move, add it to the list, either to an empty square or capturing an opponent's piece
-                    moves.add(new Move(fromPosition, toPosition, PieceType.KNIGHT, color, isCapture, false, false, null));
-                }
-            }
-        }
-
-        return moves;
-    }
-
-    private List<Move> generateBishopMovesFromPosition(Color color, Position fromPosition) {
-        List<Move> moves = new ArrayList<>();
-
-        // The possible directions for a bishop's move (diagonals)
-        int[][] directions = {
-                {1, 1},   // Up-Right
-                {1, -1},  // Down-Right
-                {-1, -1}, // Down-Left
-                {-1, 1}   // Up-Left
-        };
-
-        // Iterate through each direction a bishop can move
-        for (int[] direction : directions) {
-            int targetFile = fromPosition.getX();
-            int targetRank = fromPosition.getY();
-
-            // Keep moving in the direction until you hit the edge of the board or another piece
-            while (true) {
-                targetFile += direction[0];
-                targetRank += direction[1];
-
-                // Check if the new position is within the board
-                if (targetFile >= 'a' && targetFile <= 'h' && targetRank >= 1 && targetRank <= 8) {
-                    Position toPosition = new Position((char) targetFile, targetRank);
-
-                    // If the position is occupied by a piece of the same color, break the loop, can't jump over
-                    if (isOccupiedByColor(toPosition, color)) {
-                        break;
-                    }
-
-                    // If it's an opponent's piece, it's a capture move
-                    boolean isCapture = isOccupiedByColor(toPosition, getOpponentColor(color));
-
-                    moves.add(new Move(fromPosition, toPosition, PieceType.BISHOP, color, isCapture, false, false, null));
-
-                    // If you capture a piece, you must stop.
-                    if (isCapture) {
-                        break;
-                    }
-                } else {
-                    // If the position is off the board, stop checking this direction
-                    break;
-                }
-            }
-        }
-
-        return moves;
-    }
-
-
-    private List<Move> generateRookMovesFromPosition(Color color, Position fromPosition) {
-        List<Move> moves = new ArrayList<>();
-
-        // The possible directions for a rook's move: horizontal and vertical
-        int[][] directions = {
-                {0, 1},  // Up
-                {0, -1}, // Down
-                {1, 0},  // Right
-                {-1, 0}  // Left
-        };
-
-        // Iterate through each direction a rook can move
-        for (int[] direction : directions) {
-            int targetFile = fromPosition.getX();
-            int targetRank = fromPosition.getY();
-
-            // Keep moving in the direction until you hit the edge of the board or another piece
-            while (true) {
-                targetFile += direction[0];
-                targetRank += direction[1];
-
-                // Check if the new position is on the board
-                if (targetFile >= 'a' && targetFile <= 'h' && targetRank >= 1 && targetRank <= 8) {
-                    Position toPosition = new Position((char) targetFile, targetRank);
-
-                    // If the position is occupied by a piece of the same color, break the loop, can't jump over
-                    if (isOccupiedByColor(toPosition, color)) {
-                        break;
-                    }
-
-                    // If it's an opponent's piece, it's a capture move
-                    boolean isCapture = isOccupiedByColor(toPosition, getOpponentColor(color));
-
-                    moves.add(new Move(fromPosition, toPosition, PieceType.ROOK, color, isCapture, false, false, null));
-
-                    // If you capture a piece, you must stop.
-                    if (isCapture) {
-                        break;
-                    }
-                } else {
-                    // If the position is off the board, stop checking this direction
-                    break;
-                }
-            }
-        }
-
-        return moves;
-    }
-
-
-    private List<Move> generateQueenMovesFromPosition(Color color, Position fromPosition) {
-        List<Move> moves = new ArrayList<>();
-
-        // Combine the moves of the rook and bishop for the queen
-        moves.addAll(generateRookMovesFromPosition(color, fromPosition));
-        moves.addAll(generateBishopMovesFromPosition(color, fromPosition));
-
-        return moves;
-    }
-
-
-    private List<Move> generateKingMovesFromPosition(Color color, Position fromPosition) {
-        List<Move> moves = new ArrayList<>();
-
-        // The possible moves for a king from its current position
-        int[][] kingOffsets = {
-                {-1, -1}, {-1, 0}, {-1, 1}, // Diagonal and straight upwards
-                {0, -1}, {0, 1},            // Straight sideways
-                {1, -1}, {1, 0}, {1, 1}     // Diagonal and straight downwards
-        };
-
-        for (int[] offset : kingOffsets) {
-
-            int targetFile = fromPosition.getX() + offset[0];
-            int targetRank = fromPosition.getY() + offset[1];
-
-            // Check if the target position is within the board limits
-            if (targetFile >= 'a' && targetFile <= 'h' && targetRank >= 1 && targetRank <= 8) {
-                Position toPosition = new Position((char) targetFile, targetRank);
-
-                // Check if the target position is occupied by a piece of the same color or if the king would be in check after moving
-                if (!isOccupiedByColor(toPosition, color) && !isSquareUnderAttack(toPosition, color)) {
-                    boolean isCapture = isOccupiedByOpponent(toPosition, color);
-                    moves.add(new Move(fromPosition, toPosition, PieceType.KING, color, isCapture, false, false, null));
-                }
-            }
-        }
-
-        // Check for castling if the king has not moved and is not in check
-        if (!hasKingMoved(color) && !isInCheck(color)) {
-            // Kingside castling
-            if (canCastleKingside(color, fromPosition)) {
-                moves.add(new Move(fromPosition, new Position((char) (fromPosition.getX() + 2), fromPosition.getY()), PieceType.KING, color, false, true, false, null));
-            }
-            // Queenside castling
-            if (canCastleQueenside(color, fromPosition)) {
-                moves.add(new Move(fromPosition, new Position((char) (fromPosition.getX() - 2), fromPosition.getY()), PieceType.KING, color, false, true, false, null));
-            }
-        }
-
-        return moves;
-    }
-
-    private boolean canCastleQueenside(Color color, Position kingPosition) {
-
-        // Ensure the squares between the king and the rook are unoccupied and not under attack
-        Position[] queensideSquares = {
-                new Position((char) (kingPosition.getX() - 1), kingPosition.getY()),
-                new Position((char) (kingPosition.getX() - 2), kingPosition.getY()),
-                new Position((char) (kingPosition.getX() - 3), kingPosition.getY())
-        };
-
-        for (Position square : queensideSquares) {
-            if (isOccupied(square) || isSquareUnderAttack(square, color)) {
-                return false;
-            }
-        }
-        return !hasRookMoved(new Position('a', color == Color.WHITE ? 1 : 8));
-    }
-
-    private boolean canCastleKingside(Color color, Position kingPosition) {
-
-        // Ensure the squares between the king and the rook are unoccupied and not under attack
-        Position[] kingsideSquares = {
-                new Position((char) (kingPosition.getX() + 1), kingPosition.getY()),
-                new Position((char) (kingPosition.getX() + 2), kingPosition.getY())
-        };
-
-        for (Position square : kingsideSquares) {
-            if (isOccupied(square) || isSquareUnderAttack(square, color)) {
-                return false;
-            }
-        }
-        return !hasRookMoved(new Position('h', color == Color.WHITE ? 1 : 8));
-    }
-
-// The canCastleKingside and canCastleQueenside methods need to be implemented to check if castling is possible
-// These methods would check for the rooks having moved, the squares between the king and rook being unoccupied and not under attack, etc.
-
 
     private Color getOpponentColor(Color color) {
         return color == Color.WHITE ? Color.BLACK : Color.WHITE;
@@ -1433,61 +1289,7 @@ public class BitBoard {
     }
 
     public Score getScore() {
-        // Define the piece values
-        final int PAWN_VALUE = 100;   // Pawns are worth 1 point, scaled by 100
-        final int KNIGHT_VALUE = 300; // Knights are worth 3 points
-        final int BISHOP_VALUE = 300; // Bishops are worth 3 points
-        final int ROOK_VALUE = 500;   // Rooks are worth 5 points
-        final int QUEEN_VALUE = 900;  // Queens are worth 9 points
-
-        // Initialize scores
-        int whiteScore = 0;
-        int blackScore = 0;
-
-        // Calculate scores based on bitboards
-        whiteScore += Long.bitCount(whitePawns) * PAWN_VALUE;
-        whiteScore += Long.bitCount(whiteKnights) * KNIGHT_VALUE;
-        whiteScore += Long.bitCount(whiteBishops) * BISHOP_VALUE;
-        whiteScore += Long.bitCount(whiteRooks) * ROOK_VALUE;
-        whiteScore += Long.bitCount(whiteQueens) * QUEEN_VALUE;
-
-        blackScore += Long.bitCount(blackPawns) * PAWN_VALUE;
-        blackScore += Long.bitCount(blackKnights) * KNIGHT_VALUE;
-        blackScore += Long.bitCount(blackBishops) * BISHOP_VALUE;
-        blackScore += Long.bitCount(blackRooks) * ROOK_VALUE;
-        blackScore += Long.bitCount(blackQueens) * QUEEN_VALUE;
-
-        // Factor in king safety, piece positions, control of center, etc., for a more advanced scoring
-        // These advanced concepts are omitted for brevity, but would involve additional logic.
-        // Define additional score values
-        final int CENTER_PAWN_BONUS = 10;   // Bonus points for pawns in the center
-        final int DOUBLED_PAWN_PENALTY = -20; // Penalty points for doubled pawns
-        final int ISOLATED_PAWN_PENALTY = -10; // Penalty points for isolated pawns
-
-        // Initialize bonuses and penalties
-        int whiteCenterBonus = 0;
-        int blackCenterBonus = 0;
-        int whiteDoubledPenalty = 0;
-        int blackDoubledPenalty = 0;
-        int whiteIsolatedPenalty = 0;
-        int blackIsolatedPenalty = 0;
-
-        // Calculate bonuses and penalties for white
-        whiteCenterBonus += countCenterPawns(whitePawns) * CENTER_PAWN_BONUS;
-        whiteDoubledPenalty += countDoubledPawns(whitePawns, whitePieces) * DOUBLED_PAWN_PENALTY;
-        whiteIsolatedPenalty += countIsolatedPawns(whitePawns) * ISOLATED_PAWN_PENALTY;
-
-        // Calculate bonuses and penalties for black
-        blackCenterBonus += countCenterPawns(blackPawns) * CENTER_PAWN_BONUS;
-        blackDoubledPenalty += countDoubledPawns(blackPawns, blackPieces) * DOUBLED_PAWN_PENALTY;
-        blackIsolatedPenalty += countIsolatedPawns(blackPawns) * ISOLATED_PAWN_PENALTY;
-
-        // Apply bonuses and penalties to the score
-        whiteScore += whiteCenterBonus + whiteDoubledPenalty + whiteIsolatedPenalty;
-        blackScore += blackCenterBonus + blackDoubledPenalty + blackIsolatedPenalty;
-
-        // Return the score encapsulated in a Score object
-        return new Score(whiteScore, blackScore);
+        return this.currentScore;
     }
 
     // Method to count pawns in the center (e4, d4, e5, d5 squares)
@@ -1499,7 +1301,7 @@ public class BitBoard {
     }
 
     // Method to count doubled pawns, which are two pawns of the same color on the same file
-    private int countDoubledPawns(long pawnsBitboard, long piecesBitboard) {
+    private int countDoubledPawns(long pawnsBitboard) {
         int doubledPawns = 0;
         for (char file = 'a'; file <= 'h'; file++) {
             long fileBitboard = fileBitboard(file);
@@ -1600,9 +1402,20 @@ public class BitBoard {
         pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
         setBitboardForPiece(move.getPieceType(), move.getColor(), pieceBitboard);
 
-        // If a piece was captured, restore it to the board
         if (move.isCapture()) {
-            restoreCapturedPiece(move.getTo(), getOpponentColor(move.getColor()));
+            // You need to know exactly what type of piece was captured.
+            // Let's assume move.getCapturedPieceType() returns the type of the captured piece.
+            PieceType capturedPieceType = move.getCapturedPieceType();
+            Color opponentColor = getOpponentColor(move.getColor());
+            long capturedPieceBitboard = getBitboardForPiece(capturedPieceType, opponentColor);
+
+            // Restore the captured piece on its bitboard
+            capturedPieceBitboard |= (1L << toIndex);
+            setBitboardForPiece(capturedPieceType, opponentColor, capturedPieceBitboard);
+
+            // Update the aggregated bitboards for the opponent
+            updateAggregatedBitboards();
+
         }
 
         // If the move was a castling move, move the rook back
@@ -1668,22 +1481,46 @@ public class BitBoard {
 
         // Update the aggregated bitboards
         updateAggregatedBitboards();
+        whitesTurn = !whitesTurn;
+        allCurrentPossibleMoves = generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
     }
 
-    private void restoreCapturedPiece(Position position, Color color) {
-        // You'll need to keep track of what piece was captured in the Move object
-        // For simplicity, let's assume it was a pawn
-        long pawns = getBitboardForPiece(PieceType.PAWN, color);
-        int index = bitIndex(position.getX(), position.getY());
-        pawns |= (1L << index);
-        setBitboardForPiece(PieceType.PAWN, color, pawns);
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        BitBoard bitBoard = (BitBoard) o;
+        return whitePawns == bitBoard.whitePawns &&
+                blackPawns == bitBoard.blackPawns &&
+                whiteKnights == bitBoard.whiteKnights &&
+                blackKnights == bitBoard.blackKnights &&
+                whiteBishops == bitBoard.whiteBishops &&
+                blackBishops == bitBoard.blackBishops &&
+                whiteRooks == bitBoard.whiteRooks &&
+                blackRooks == bitBoard.blackRooks &&
+                whiteQueens == bitBoard.whiteQueens &&
+                blackQueens == bitBoard.blackQueens &&
+                whiteKing == bitBoard.whiteKing &&
+                blackKing == bitBoard.blackKing &&
+                whitePieces == bitBoard.whitePieces &&
+                blackPieces == bitBoard.blackPieces &&
+                allPieces == bitBoard.allPieces &&
+                whiteKingMoved == bitBoard.whiteKingMoved &&
+                blackKingMoved == bitBoard.blackKingMoved &&
+                whiteRookA1Moved == bitBoard.whiteRookA1Moved &&
+                whiteRookH1Moved == bitBoard.whiteRookH1Moved &&
+                blackRookA8Moved == bitBoard.blackRookA8Moved &&
+                blackRookH8Moved == bitBoard.blackRookH8Moved &&
+                (Objects.equals(lastMoveDoubleStepPawnPosition, bitBoard.lastMoveDoubleStepPawnPosition));
+    }
 
-        // Update the aggregated bitboards for the color of the captured piece
-        if (color == Color.WHITE) {
-            whitePieces |= (1L << index);
-        } else {
-            blackPieces |= (1L << index);
-        }
+    @Override
+    public int hashCode() {
+        return Objects.hash(whitePawns, blackPawns, whiteKnights, blackKnights, whiteBishops, blackBishops,
+                whiteRooks, blackRooks, whiteQueens, blackQueens, whiteKing, blackKing,
+                whitePieces, blackPieces, allPieces, whiteKingMoved, blackKingMoved,
+                whiteRookA1Moved, whiteRookH1Moved, blackRookA8Moved, blackRookH8Moved,
+                lastMoveDoubleStepPawnPosition);
     }
 
 }

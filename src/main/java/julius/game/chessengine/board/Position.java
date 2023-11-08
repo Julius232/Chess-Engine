@@ -31,4 +31,18 @@ public class Position {
     public String toString() {
         return x + String.valueOf(y);
     }
+
+    public static Position convertStringToPosition(String positionStr) {
+        if (positionStr.length() != 2) {
+            throw new IllegalArgumentException("Invalid position string: " + positionStr);
+        }
+        char file = positionStr.charAt(0);
+        int rank = Character.getNumericValue(positionStr.charAt(1));
+
+        if (file < 'a' || file > 'h' || rank < 1 || rank > 8) {
+            throw new IllegalArgumentException("Position out of bounds: " + positionStr);
+        }
+
+        return new Position(file, rank);
+    }
 }

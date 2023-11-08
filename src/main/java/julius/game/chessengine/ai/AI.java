@@ -16,8 +16,6 @@ import java.util.*;
 @Component
 public class AI {
 
-    private final double CHECKMATE_SCORE = 10000; // or some other large positive value
-
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -41,20 +39,15 @@ public class AI {
 
 
     private Move calculateMove(BitBoard board, Color color) {
-        int levelOfDepth = 7; // Adjust the level of depth according to your requirements
+        int levelOfDepth = 6; // Adjust the level of depth according to your requirements
 
         // Get all possible moves for the given color
         List<Move> moves = engine.getAllPossibleMovesForPlayerColor(color);
 
-        // Sort moves by efficiency if needed
-        // Assume sortMovesByEfficiency returns a sorted list of Move objects
-        // This is just a placeholder; you'll need to implement the actual logic for sorting moves by efficiency
-        LinkedList<Move> sortedMoves = sortMovesByEfficiency(moves, board, color);
-
         // Get the best move from the sorted list
         // This is just a placeholder; you'll need to implement the actual logic for selecting the best move
         long startTime = System.nanoTime(); // Start timing
-        Move calculatedMove = getBestMove(board, sortedMoves, color, levelOfDepth);
+        Move calculatedMove = getBestMove(board, moves, color, levelOfDepth);
         long endTime = System.nanoTime();
 
         log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
@@ -66,6 +59,76 @@ public class AI {
         // Return the calculated move directly without saving it
         return calculatedMove;
     }
+
+    private Move getBestMove(BitBoard board, List<Move> moves, Color color, int levelOfDepth) {
+        double alpha = Double.NEGATIVE_INFINITY;
+        double beta = Double.POSITIVE_INFINITY;
+        Move bestMove = null;
+        double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+
+        log.info("Starting best move calculation for color {}", color);
+        BitBoard dummyBoard = new BitBoard(board);
+        for (Move move : sortMovesByEfficiency(moves, dummyBoard, color)) {
+            dummyBoard.performMove(move);
+            log.info("Evaluating move: {}", move);
+            double score = alphaBeta(dummyBoard, levelOfDepth - 1, alpha, beta, color == Color.WHITE, color);
+            log.info("Move {} evaluated with score {}", move, score);
+            dummyBoard.undoMove(move);
+
+            if (color == Color.WHITE && score > bestScore || color == Color.BLACK && score < bestScore) {
+                bestScore = score;
+                bestMove = move;
+                log.info("New best move found: {} with score {}", move, bestScore);
+            }
+        }
+
+        log.info("Score [{}] was best move [{}] calculation completed for color {}", bestScore, bestMove, color);
+        return bestMove;
+    }
+
+
+    private double alphaBeta(BitBoard board, int depth, double alpha, double beta, boolean maximizingPlayer, Color color) {
+        log.info("alphaBeta called with depth {} for color {} (maximizingPlayer: {})", depth, color, maximizingPlayer);
+
+        if (depth == 0 || engine.isInStateCheckMate(board, color)) {
+            double staticEval = board.getScore().getScoreDifference() * (maximizingPlayer ? 1 : -1);
+            log.info("Depth 0 or checkmate reached. Evaluation: {}", staticEval);
+            return staticEval;
+        }
+
+        if (maximizingPlayer) {
+            double maxEval = Double.NEGATIVE_INFINITY;
+            for (Move move : sortMovesByEfficiency(engine.getAllPossibleMovesForPlayerColor(color), board, color)) {
+                board.performMove(move);
+                double eval = alphaBeta(board, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
+                board.undoMove(move);
+                maxEval = Math.max(maxEval, eval);
+                alpha = Math.max(alpha, eval);
+                if (beta <= alpha) {
+                    log.info("Alpha-beta cutoff. Alpha: {}, Beta: {}", alpha, beta);
+                    break; // Alpha-beta cutoff
+                }
+            }
+            log.info("Maximizing player. Max evaluation: {}", maxEval);
+            return maxEval;
+        } else {
+            double minEval = Double.POSITIVE_INFINITY;
+            for (Move move : sortMovesByEfficiency(engine.getAllPossibleMovesForPlayerColor(color), board, color)) {
+                board.performMove(move);
+                double eval = alphaBeta(board, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
+                board.undoMove(move);
+                minEval = Math.min(minEval, eval);
+                beta = Math.min(beta, eval);
+                if (alpha >= beta) {
+                    log.info("Alpha-beta cutoff. Alpha: {}, Beta: {}", alpha, beta);
+                    break; // Alpha-beta cutoff
+                }
+            }
+            log.info("Minimizing player. Min evaluation: {}", minEval);
+            return minEval;
+        }
+    }
+
 
 
     private LinkedList<Move> sortMovesByEfficiency(List<Move> moves, BitBoard board, Color color) {
@@ -83,7 +146,7 @@ public class AI {
             if (engine.isInStateCheckMate(dummy, Color.getOpponentColor(color))) {
                 score += 10000; // Checkmate should have the highest score
             } else if (dummy.isInCheck(Color.getOpponentColor(color))) {
-                score += 500; // Checks should have a high score
+                score += 5000; // Checks should have a high score
             }
 
             // Captures
@@ -129,7 +192,7 @@ public class AI {
         board.performMove(move);
 
         // Get all possible moves for the opponent after this move
-        List<Move> opponentMoves = board.generateAllPossibleMoves(Color.getOpponentColor(color));
+        List<Move> opponentMoves = board.getAllCurrentPossibleMoves();
 
         // Analyze each of the opponent's moves
         for (Move opponentMove : opponentMoves) {
@@ -153,88 +216,4 @@ public class AI {
 
         return threatScore;
     }
-
-    private Move getBestMove(BitBoard board, LinkedList<Move> moves, Color color, int levelOfDepth) {
-        Move bestMove = null;
-        double MIN_SCORE = Double.NEGATIVE_INFINITY;
-        double bestScore = MIN_SCORE;
-        double alpha = MIN_SCORE;
-        double beta = Double.POSITIVE_INFINITY;
-
-        for (Move move : moves) {
-            double value = getMinScore(board, move, color, levelOfDepth - 1, alpha, beta);
-            if (value > bestScore) {
-                bestScore = value;
-                bestMove = move;
-                alpha = value;
-            }
-        }
-        log.info("Best move score: " + bestScore);
-        return bestMove;
-    }
-
-    private double getMinScore(BitBoard board, Move move, Color color, int depth, double alpha, double beta) {
-        BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
-        if (engine.isInStateCheckMate(boardAfterMove, Color.getOpponentColor(color))) {
-            log.info("Checkmate detected for {}, score: {}", Color.getOpponentColor(color), CHECKMATE_SCORE);
-            return CHECKMATE_SCORE;
-        }
-        if (depth == 0) {
-            double score = boardAfterMove.getScore().getScoreDifference(color);
-            log.info("Depth 0 for {}, move: {}, score: {}", color, move, score);
-            return score;
-        }
-
-        double minScore = Double.POSITIVE_INFINITY;
-        List<Move> opponentMoves = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
-        // Sort opponent moves before examining them
-        LinkedList<Move> sortedOpponentMoves = sortMovesByEfficiency(opponentMoves, board, Color.getOpponentColor(color));
-        for (Move opponentMove : sortedOpponentMoves) {
-            BitBoard boardAfterOpponentMove = engine.simulateMoveAndGetDummyBoard(board, opponentMove);
-            double score = getMaxScore(boardAfterOpponentMove, Color.getOpponentColor(color), depth - 1, alpha, beta);
-            if (score < minScore) {
-                minScore = score;
-                beta = Math.min(beta, score);
-                log.info("Better min score found at depth {}: move: {}, score: {}", depth, opponentMove, score);
-            }
-            if (beta <= alpha) {
-                log.info("Pruning in getMinScore at depth {} with beta: {}, alpha: {}", depth, beta, alpha);
-                break; // Alpha cut-off
-            }
-        }
-        return minScore;
-    }
-
-    private double getMaxScore(BitBoard board, Color color, int depth, double alpha, double beta) {
-        if (engine.isInStateCheckMate(board, color)) {
-            log.info("Checkmate detected for {}, score: {}", color, -CHECKMATE_SCORE);
-            return -CHECKMATE_SCORE;
-        }
-        if (depth == 0) {
-            double score = board.getScore().getScoreDifference(color);
-            log.info("Depth 0 for {}, score: {}", color, score);
-            return score;
-        }
-
-        double maxScore = Double.NEGATIVE_INFINITY;
-        List<Move> moves = engine.getAllPossibleMoveFieldsForPlayerColor(board, color);
-        // Sort moves before examining them
-        LinkedList<Move> sortedMoves = sortMovesByEfficiency(moves, board, color);
-        for (Move move : sortedMoves) {
-            BitBoard boardAfterMove = engine.simulateMoveAndGetDummyBoard(board, move);
-            double score = getMinScore(boardAfterMove, move, Color.getOpponentColor(color), depth - 1, alpha, beta);
-            if (score > maxScore) {
-                maxScore = score;
-                alpha = Math.max(alpha, score);
-                log.info("Better max score found at depth {}: move: {}, score: {}", depth, move, score);
-            }
-            if (beta <= alpha) {
-                log.info("Pruning in getMaxScore at depth {} with beta: {}, alpha: {}", depth, beta, alpha);
-                break; // Beta cut-off
-            }
-        }
-        return maxScore;
-    }
-
-
 }

@@ -13,8 +13,10 @@ public class Move {
     private final boolean isEnPassantMove;
     private final PieceType promotionPieceType; // This can be null if no promotion
 
+    private final PieceType capturedPieceType;
+
     public Move(Position from, Position to, PieceType pieceType, Color color,
-                boolean isCapture, boolean isCastlingMove, boolean isEnPassantMove, PieceType promotionPieceType) {
+                boolean isCapture, boolean isCastlingMove, boolean isEnPassantMove, PieceType promotionPieceType, PieceType capturedPieceType) {
         this.from = from;
         this.to = to;
         this.pieceType = pieceType;
@@ -23,6 +25,19 @@ public class Move {
         this.isCastlingMove = isCastlingMove;
         this.isEnPassantMove = isEnPassantMove;
         this.promotionPieceType = promotionPieceType;
+        this.capturedPieceType = isCapture ? capturedPieceType : null;
+    }
+
+    public Move(Move originalMove) {
+        this.from = new Position(originalMove.getFrom()); // Assuming Position also has a copy constructor
+        this.to = new Position(originalMove.getTo()); // Assuming Position also has a copy constructor
+        this.pieceType = originalMove.getPieceType();
+        this.color = originalMove.getColor();
+        this.isCapture = originalMove.isCapture();
+        this.isCastlingMove = originalMove.isCastlingMove();
+        this.isEnPassantMove = originalMove.isEnPassantMove();
+        this.promotionPieceType = originalMove.getPromotionPieceType();
+        this.capturedPieceType = originalMove.getCapturedPieceType();
     }
 
     // Getters for all the fields
@@ -62,6 +77,11 @@ public class Move {
         return promotionPieceType != null;
     }
 
+    public PieceType getCapturedPieceType() {
+        return capturedPieceType;
+    }
+
+
     // You may want to override toString() for easy move printing.
     @Override
     public String toString() {
@@ -80,6 +100,8 @@ public class Move {
         }
         return moveString.toString();
     }
+
+
 
     // Additional methods as needed...
 }
