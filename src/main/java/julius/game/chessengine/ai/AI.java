@@ -52,6 +52,10 @@ public class AI {
         Move calculatedMove = getBestMove(board, moves, color, levelOfDepth);
         long endTime = System.nanoTime();
 
+        if(calculatedMove == null && moves.size() > 0) {
+            log.error("Calculated move is null but there are moves available!!!!!!!");
+        }
+
         log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
 
 

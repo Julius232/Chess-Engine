@@ -1556,10 +1556,12 @@ public class BitBoard {
             setBitboardForPiece(PieceType.PAWN, move.getColor(), pawnBitboard);
         }
 
-        // 3. Move the Pawn Back
-        long pieceBitboard = getBitboardForPiece(PieceType.PAWN, move.getColor());
+        // Moving the piece back...
+        // Ensure that if the piece is a king, it's handled correctly
+        PieceType movedPieceType = move.getPieceType() == PieceType.PAWN && move.isPromotionMove() ? move.getPromotionPieceType() : move.getPieceType();
+        long pieceBitboard = getBitboardForPiece(movedPieceType, move.getColor());
         pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
-        setBitboardForPiece(PieceType.PAWN, move.getColor(), pieceBitboard);
+        setBitboardForPiece(movedPieceType, move.getColor(), pieceBitboard);
 
         // If the move was a castling move, move the rook back
         if (move.isCastlingMove()) {
