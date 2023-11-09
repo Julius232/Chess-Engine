@@ -9,6 +9,8 @@ import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 @Log4j2
 public class Engine {
 
+    private LinkedList<Move> moves = new LinkedList<>();
     private BitBoard bitBoard = new BitBoard();
     private GameState gameState = new GameState();
 
@@ -29,7 +32,7 @@ public class Engine {
     }
 
     public List<Move> getAllLegalMoves() {
-       return bitBoard.getAllCurrentPossibleMoves()
+        return bitBoard.getAllCurrentPossibleMoves()
                 .stream()
                 .filter(move -> isLegalMove(bitBoard, move))
                 .collect(Collectors.toList());
@@ -109,6 +112,7 @@ public class Engine {
         // Perform the move on the bitboard
         bitBoard.performMove(move);
 
+        moves.add(move);
         // Update the game state
         updateGameState();
 
@@ -714,4 +718,10 @@ public class Engine {
         return isInCheck(boardCopy, color);
     }
 
+    public void undoLastMove() {
+        if (moves.size() > 0) {
+            bitBoard.undoMove(moves.getLast());
+            moves.removeLast();
+        }
+    }
 }

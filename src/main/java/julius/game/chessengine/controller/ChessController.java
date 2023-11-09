@@ -39,6 +39,12 @@ public class ChessController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping(value = "/undo")
+    public ResponseEntity<?> undoLastMove() {
+        engine.undoLastMove();
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping(value = "/field/possible/white")
     public ResponseEntity<List<Move>> getAllPossibleFieldsWhite() {
         return ResponseEntity.ok(engine.getAllLegalMoves());

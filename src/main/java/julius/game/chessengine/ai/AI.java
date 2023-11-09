@@ -87,55 +87,74 @@ public class AI {
 
     private double alphaBeta(BitBoard board, int depth, double alpha, double beta, boolean maximizingPlayer, Color color) {
         long boardHash = board.getBoardStateHash();
-        if (transpositionTable.containsKey(boardHash)) {
-            TranspositionTableEntry entry = transpositionTable.get(boardHash);
-            if (entry.depth >= depth) {
-                if (entry.isExact) {
-                    return entry.score;
-                } else if (entry.score <= alpha) {
-                    return alpha;
-                } else if (entry.score >= beta) {
-                    return beta;
-                }
+        TranspositionTableEntry entry = transpositionTable.get(boardHash);
+
+        if (entry != null && entry.depth >= depth) {
+            if (entry.nodeType == NodeType.EXACT) {
+                return entry.score;
+            }
+            if (entry.nodeType == NodeType.LOWERBOUND && entry.score > alpha) {
+                alpha = entry.score;
+            } else if (entry.nodeType == NodeType.UPPERBOUND && entry.score < beta) {
+                beta = entry.score;
+            }
+            if (alpha >= beta) {
+                return entry.score;
             }
         }
+
         if (depth == 0 || engine.isInStateCheckMate(board, color)) {
-            double staticEval = board.getScore().getScoreDifference() * (maximizingPlayer ? 1 : -1);
-            transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, true));
+            double staticEval = board.getScore().getScoreDifference(color) * (maximizingPlayer ? 1 : -1);
+            transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, NodeType.EXACT));
             return staticEval;
         }
+
+        double alphaOriginal = alpha;
+        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(color);
+
         if (maximizingPlayer) {
             double maxEval = Double.NEGATIVE_INFINITY;
-            for (Move move : sortMovesByEfficiency(engine.getAllPossibleMovesForPlayerColor(color), board, color)) {
+            for (Move move : sortMovesByEfficiency(moves, board, color)) {
                 board.performMove(move);
                 double eval = alphaBeta(board, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
                 board.undoMove(move);
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
                 if (beta <= alpha) {
-                    //board.logBoardWithDepth(depth);
                     break;
                 }
             }
-            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, true));
+            if (maxEval <= alphaOriginal) {
+                transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND));
+            } else if (maxEval >= beta) {
+                transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.LOWERBOUND));
+            } else {
+                transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT));
+            }
             return maxEval;
         } else {
             double minEval = Double.POSITIVE_INFINITY;
-            for (Move move : sortMovesByEfficiency(engine.getAllPossibleMovesForPlayerColor(color), board, color)) {
+            for (Move move : sortMovesByEfficiency(moves, board, color)) {
                 board.performMove(move);
                 double eval = alphaBeta(board, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
                 board.undoMove(move);
                 minEval = Math.min(minEval, eval);
                 beta = Math.min(beta, eval);
                 if (alpha >= beta) {
-                    //board.logBoardWithDepth(depth);
                     break;
                 }
             }
-            transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, true));
+            if (minEval <= alphaOriginal) {
+                transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.UPPERBOUND));
+            } else if (minEval >= beta) {
+                transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.LOWERBOUND));
+            } else {
+                transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.EXACT));
+            }
             return minEval;
         }
     }
+
 
     private LinkedList<Move> sortMovesByEfficiency(List<Move> moves, BitBoard board, Color color) {
         // We use a TreeMap to sort by the move efficiency value automatically.

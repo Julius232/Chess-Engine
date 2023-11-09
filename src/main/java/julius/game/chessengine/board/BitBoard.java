@@ -137,11 +137,11 @@ public class BitBoard {
         whiteScore += Long.bitCount(whiteRooks) * ROOK_VALUE;
         whiteScore += Long.bitCount(whiteQueens) * QUEEN_VALUE;
 
-        blackScore -= Long.bitCount(blackPawns) * PAWN_VALUE;
-        blackScore -= Long.bitCount(blackKnights) * KNIGHT_VALUE;
-        blackScore -= Long.bitCount(blackBishops) * BISHOP_VALUE;
-        blackScore -= Long.bitCount(blackRooks) * ROOK_VALUE;
-        blackScore -= Long.bitCount(blackQueens) * QUEEN_VALUE;
+        blackScore += Long.bitCount(blackPawns) * PAWN_VALUE;
+        blackScore += Long.bitCount(blackKnights) * KNIGHT_VALUE;
+        blackScore += Long.bitCount(blackBishops) * BISHOP_VALUE;
+        blackScore += Long.bitCount(blackRooks) * ROOK_VALUE;
+        blackScore += Long.bitCount(blackQueens) * QUEEN_VALUE;
 
         // Factor in king safety, piece positions, control of center, etc., for a more advanced scoring
         // These advanced concepts are omitted for brevity, but would involve additional logic.
@@ -170,16 +170,74 @@ public class BitBoard {
 
         // Apply bonuses and penalties to the score
         whiteScore += whiteCenterBonus + whiteDoubledPenalty + whiteIsolatedPenalty;
-        blackScore -= blackCenterBonus + blackDoubledPenalty + blackIsolatedPenalty;
+        blackScore += blackCenterBonus + blackDoubledPenalty + blackIsolatedPenalty;
+
+        final int[] PAWN_POSITIONAL_VALUES = {
+                // Rank 1 - Base rank for white, no pawns should be here
+                0, 0, 0, 0, 0, 0, 0, 0,
+                // Rank 2 - Initial rank for white pawns
+                5, 10, 10, -10, -10, 10, 10, 5,
+                // Rank 3 - Pawns have moved one square
+                5, -5, -10, 0, 0, -10, -5, 5,
+                // Rank 4 - Pawns have moved two squares
+                10, 0, 0, 20, 20, 0, 0, 10,
+                // Rank 5 - Pawns are advancing and potentially supporting attack
+                15, 10, 10, 25, 25, 10, 10, 15,
+                // Rank 6 - Pawns are far advanced and can become very dangerous
+                20, 20, 20, 30, 30, 20, 20, 20,
+                // Rank 7 - Pawns are very close to promotion
+                25, 25, 25, 40, 40, 25, 25, 25,
+                // Rank 8 - Pawns should never be here (promotion should have occurred)
+                0, 0, 0, 0, 0, 0, 0, 0
+        };
+
+        // Apply positional values to the pawns
+        whiteScore += applyPositionalValues(whitePawns, PAWN_POSITIONAL_VALUES);
+        blackScore += applyPositionalValues(blackPawns, PAWN_POSITIONAL_VALUES);
 
         // Return the score encapsulated in a Score object
         this.currentScore = new Score(whiteScore, blackScore);
     }
-    // Constructor to initialize the board to the starting position
+    private int applyPositionalValues(long bitboard, int[] positionalValues) {
+        int score = 0;
+        for (int i = Long.numberOfTrailingZeros(bitboard); i < 64 - Long.numberOfLeadingZeros(bitboard); i++) {
+            if (((1L << i) & bitboard) != 0) {
+                score += positionalValues[i];
+            }
+        }
+        return score;
+    }
 
+    private boolean isPieceUnderThreat(long pieceBitboard, Color color) {
+        // Convert the piece bitboard into positions and check for threats against each position
+        while (pieceBitboard != 0) {
+            int positionIndex = Long.numberOfTrailingZeros(pieceBitboard);
+            Position piecePosition = indexToPosition(positionIndex);
 
-    // ... other members and methods ...
+            // If any opponent's piece can legally move to the piece position, then the piece is under threat
+            if (isPositionUnderThreat(piecePosition, color)) {
+                return true;
+            }
 
+            // Clear the checked position bit so that we can proceed to the next piece
+            pieceBitboard &= pieceBitboard - 1;
+        }
+        return false;
+    }
+
+    private boolean isPositionUnderThreat(Position position, Color color) {
+        // Get the opponent's color
+        Color opponentColor = getOpponentColor(color);
+
+        // Check if any of the opponent's piece attacks include the position
+        // For example, you would check if any opponent's pawns, knights, bishops, rooks, queens, or king can attack the position
+        return canPawnAttackPosition(position, opponentColor) ||
+                canKnightAttackPosition(position, opponentColor) ||
+                canBishopAttackPosition(position, opponentColor) ||
+                canRookAttackPosition(position, opponentColor) ||
+                canQueenAttackPosition(position, opponentColor) ||
+                canKingAttackPosition(position, opponentColor);
+    }
 
     // Method to set up the initial position
     public void setInitialPosition() {
@@ -1469,18 +1527,11 @@ public class BitBoard {
     }
 
     public void undoMove(Move move) {
-        // Reverse the move
         int fromIndex = bitIndex(move.getFrom().getX(), move.getFrom().getY());
         int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
 
-        // Move the piece back
-        long pieceBitboard = getBitboardForPiece(move.getPieceType(), move.getColor());
-        pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
-        setBitboardForPiece(move.getPieceType(), move.getColor(), pieceBitboard);
-
+        // 1. Handle Captured Piece Restoration
         if (move.isCapture()) {
-            // You need to know exactly what type of piece was captured.
-            // Let's assume move.getCapturedPieceType() returns the type of the captured piece.
             PieceType capturedPieceType = move.getCapturedPieceType();
             Color opponentColor = getOpponentColor(move.getColor());
             long capturedPieceBitboard = getBitboardForPiece(capturedPieceType, opponentColor);
@@ -1488,11 +1539,27 @@ public class BitBoard {
             // Restore the captured piece on its bitboard
             capturedPieceBitboard |= (1L << toIndex);
             setBitboardForPiece(capturedPieceType, opponentColor, capturedPieceBitboard);
-
-            // Update the aggregated bitboards for the opponent
-            updateAggregatedBitboards();
-
         }
+
+        // 2. Handle Pawn Promotion
+        if (move.isPromotionMove()) {
+            // Demote the promoted piece back to a pawn
+            PieceType promotedTo = move.getPromotionPieceType();
+            long promotedPieceBitboard = getBitboardForPiece(promotedTo, move.getColor());
+            // Remove promoted piece
+            promotedPieceBitboard &= ~(1L << toIndex);
+            setBitboardForPiece(promotedTo, move.getColor(), promotedPieceBitboard);
+
+            // Re-add the pawn
+            long pawnBitboard = getBitboardForPiece(PieceType.PAWN, move.getColor());
+            pawnBitboard |= 1L << fromIndex;
+            setBitboardForPiece(PieceType.PAWN, move.getColor(), pawnBitboard);
+        }
+
+        // 3. Move the Pawn Back
+        long pieceBitboard = getBitboardForPiece(PieceType.PAWN, move.getColor());
+        pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
+        setBitboardForPiece(PieceType.PAWN, move.getColor(), pieceBitboard);
 
         // If the move was a castling move, move the rook back
         if (move.isCastlingMove()) {
@@ -1517,20 +1584,6 @@ public class BitBoard {
         // If the move was a double pawn push, remove the last move double step pawn position
         if (move.getPieceType() == PieceType.PAWN && Math.abs(move.getFrom().getY() - move.getTo().getY()) == 2) {
             lastMoveDoubleStepPawnPosition = null;
-        }
-
-        // If the move involved a pawn promotion, revert the pawn back to its original state
-        if (move.isPromotionMove()) {
-            // Assuming that the promotion was to a queen, revert the queen to a pawn
-            long pawns = getBitboardForPiece(PieceType.PAWN, move.getColor());
-            long queens = getBitboardForPiece(PieceType.QUEEN, move.getColor());
-
-            // Remove the queen from the to position and add a pawn back to the from position
-            queens &= ~(1L << fromIndex);
-            pawns |= (1L << fromIndex);
-
-            setBitboardForPiece(PieceType.PAWN, move.getColor(), pawns);
-            setBitboardForPiece(PieceType.QUEEN, move.getColor(), queens);
         }
 
         // Restore the state of the king and rook moved flags if necessary

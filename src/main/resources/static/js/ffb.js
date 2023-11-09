@@ -20,8 +20,8 @@ $(document).ready(function() {
 
     const updateScore = () => {
         makeRequest('GET', 'http://localhost:8080/chess/score', (data) => {
-            document.getElementById("scoreWhite").textContent = `WHITE: ${data.scoreWhite}`;
-            document.getElementById("scoreBlack").textContent = `BLACK: ${data.scoreBlack}`;
+            let scoreDifference = data.scoreWhite - data.scoreBlack;
+            document.getElementById("score").textContent = `SCORE: ${scoreDifference}`;
         });
     };
 
@@ -67,6 +67,11 @@ $(document).ready(function() {
         });
         $('#resetBoard').on('click', () => {
             makeRequest('PUT', 'http://localhost:8080/chess/reset', () => {
+                reloadBoard();
+            });
+        });
+        $('#undoMove').on('click', () => {
+            makeRequest('GET', 'http://localhost:8080/chess/undo', () => {
                 reloadBoard();
             });
         });

@@ -48,6 +48,7 @@ public class BitBoardTest {
 
         // Do 10 moves
         for (int i = 0; i < 100; i++) {
+            log.info(i + ": MOVE");
             // Assume generateAllPossibleMoves and performMove are properly defined methods
             List<Move> possibleMoves = engine.getAllLegalMoves();
             if (!possibleMoves.isEmpty()) {
@@ -62,6 +63,8 @@ public class BitBoardTest {
 
         // Now undo the 10 moves
         for (int i = movesPerformed.size() - 1; i >= 0; i--) {
+
+            log.info(i + ": UNDO");
             board.undoMove(movesPerformed.get(i));
             board.logBoard();
         }
@@ -172,7 +175,6 @@ public class BitBoardTest {
     }
 
 
-
     @Test
     public void checkForCapturesBlack() {
         Engine engine = new Engine(); // The chess engine
@@ -251,7 +253,6 @@ public class BitBoardTest {
         long blackPawns = 0x00FF000000000000L;
 
 
-
         printBitboard(whitePawns);
 
         whitePawns = movePawn(2, Color.WHITE, whitePawns, 'e', false, false);
@@ -274,7 +275,6 @@ public class BitBoardTest {
         long blackPawns = 0x00FF000000000000L;
 
 
-
         printBitboard(whitePawns);
 
         whitePawns = movePawn(2, Color.WHITE, whitePawns, 'e', false, false);
@@ -289,8 +289,6 @@ public class BitBoardTest {
         Position lastMoveDoubleStepPawnPosition = new Position('d', 5);
 
 
-
-
         int enPassantRank = (color == Color.WHITE) ? 5 : 2; // For white, the en passant rank is 6 (5 in 0-based index); for black, it's 3 (2 in 0-based index).
         int fileIndexOfDoubleSteppedPawn = lastMoveDoubleStepPawnPosition.getX() - 'a';
         int enPassantIndex = (enPassantRank * 8) + fileIndexOfDoubleSteppedPawn;
@@ -303,10 +301,10 @@ public class BitBoardTest {
         //long attacksLeftEnPassant = 0x800003780L;
         //long attacksRightEnPassant = 0x200001dc00L;
 
-        log.info("EnPassantTargetSquare before masking: {}", "0x"+Long.toHexString(enPassantTargetSquare));
+        log.info("EnPassantTargetSquare before masking: {}", "0x" + Long.toHexString(enPassantTargetSquare));
 
-        log.info("Attacks left before masking: {}", "0x"+Long.toHexString(attacksLeftEnPassant));
-        log.info("Attacks right before masking: {}", "0x"+Long.toHexString(attacksRightEnPassant));
+        log.info("Attacks left before masking: {}", "0x" + Long.toHexString(attacksLeftEnPassant));
+        log.info("Attacks right before masking: {}", "0x" + Long.toHexString(attacksRightEnPassant));
 
         // Filter out captures that don't have an opponent pawn in the en passant target square
         long validEnPassantCapturesLeft = attacksLeftEnPassant & enPassantTargetSquare;
@@ -326,20 +324,20 @@ public class BitBoardTest {
     private long movePawn(int amountOfFields, Color color, long pawns, char file, boolean isCaptureToTheLeft, boolean isCaptureToTheRight) {
         int capture = 0;
 
-        if(isCaptureToTheLeft && isCaptureToTheRight) {
+        if (isCaptureToTheLeft && isCaptureToTheRight) {
             throw new IllegalStateException("Pawns cannot capture left and right!");
         }
 
-        if(isCaptureToTheLeft) {
+        if (isCaptureToTheLeft) {
             capture = Color.WHITE == color ? -1 : 1;
         }
 
-        if(isCaptureToTheRight) {
+        if (isCaptureToTheRight) {
             capture = Color.WHITE == color ? 1 : -1;
         }
 
         return Color.WHITE == color ?
-                (pawns & ~FileMasks[file - 'a']) | (pawns & FileMasks[file - 'a']) << 8 * amountOfFields + capture:
+                (pawns & ~FileMasks[file - 'a']) | (pawns & FileMasks[file - 'a']) << 8 * amountOfFields + capture :
                 (pawns & ~FileMasks[file - 'a']) | (pawns & FileMasks[file - 'a']) >> 8 * amountOfFields + capture;
     }
 
@@ -351,7 +349,6 @@ public class BitBoardTest {
         // Use bitwise AND to clear the bit at the specified position
         return pawns & mask;
     }
-
 
 
     public void printBitboard(long bitboard) {
