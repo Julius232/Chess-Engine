@@ -16,6 +16,8 @@ import java.util.*;
 @Component
 public class AI {
 
+    private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
+
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -86,16 +88,25 @@ public class AI {
         return bestMove;
     }
 
-
     private double alphaBeta(BitBoard board, int depth, double alpha, double beta, boolean maximizingPlayer, Color color) {
-        log.info("alphaBeta called with depth {} for color {} (maximizingPlayer: {})", depth, color, maximizingPlayer);
-
+        long boardHash = board.getBoardStateHash();
+        if (transpositionTable.containsKey(boardHash)) {
+            TranspositionTableEntry entry = transpositionTable.get(boardHash);
+            if (entry.depth >= depth) {
+                if (entry.isExact) {
+                    return entry.score;
+                } else if (entry.score <= alpha) {
+                    return alpha;
+                } else if (entry.score >= beta) {
+                    return beta;
+                }
+            }
+        }
         if (depth == 0 || engine.isInStateCheckMate(board, color)) {
             double staticEval = board.getScore().getScoreDifference() * (maximizingPlayer ? 1 : -1);
-            log.info("Depth 0 or checkmate reached. Evaluation: {}", staticEval);
+            transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, true));
             return staticEval;
         }
-
         if (maximizingPlayer) {
             double maxEval = Double.NEGATIVE_INFINITY;
             for (Move move : sortMovesByEfficiency(engine.getAllPossibleMovesForPlayerColor(color), board, color)) {
@@ -105,11 +116,10 @@ public class AI {
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
                 if (beta <= alpha) {
-                    log.info("Alpha-beta cutoff. Alpha: {}, Beta: {}", alpha, beta);
-                    break; // Alpha-beta cutoff
+                    break;
                 }
             }
-            log.info("Maximizing player. Max evaluation: {}", maxEval);
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, true));
             return maxEval;
         } else {
             double minEval = Double.POSITIVE_INFINITY;
@@ -120,16 +130,13 @@ public class AI {
                 minEval = Math.min(minEval, eval);
                 beta = Math.min(beta, eval);
                 if (alpha >= beta) {
-                    log.info("Alpha-beta cutoff. Alpha: {}, Beta: {}", alpha, beta);
-                    break; // Alpha-beta cutoff
+                    break;
                 }
             }
-            log.info("Minimizing player. Min evaluation: {}", minEval);
+            transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, true));
             return minEval;
         }
     }
-
-
 
     private LinkedList<Move> sortMovesByEfficiency(List<Move> moves, BitBoard board, Color color) {
         // We use a TreeMap to sort by the move efficiency value automatically.

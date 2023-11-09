@@ -14,7 +14,18 @@ import java.util.stream.Collectors;
 @Log4j2
 public class BitBoard {
 
-    private static final long[] FileMasks = new long[]{
+    final long[] RankMasks = new long[]{
+            0x00000000000000FFL, // Rank 1
+            0x000000000000FF00L, // Rank 2
+            0x0000000000FF0000L, // Rank 3
+            0x00000000FF000000L, // Rank 4
+            0x000000FF00000000L, // Rank 5
+            0x0000FF0000000000L, // Rank 6
+            0x00FF000000000000L, // Rank 7
+            0xFF00000000000000L  // Rank 8
+    };
+
+    final long[] FileMasks = new long[]{
             0x0101010101010101L, // File A
             0x0202020202020202L, // File B
             0x0404040404040404L, // File C
@@ -28,9 +39,9 @@ public class BitBoard {
 
     private static final long Rank4 = 0x00000000FF000000L;
     private static final long Rank5 = 0x000000FF00000000L;
-    private static final long Rank7 = 0x00FF000000000000L;
-    private static final long FileA = 0xFEFEFEFEFEFEFEFEL;
-    private static final long FileH = 0x7F7F7F7F7F7F7F7FL;
+    private static final long Rank7 = 0x00FF000000000000L; // seventh rank from white's perspective
+    private static final long FileA = 0x0101010101010101L; // file A from white's perspective
+    private static final long FileH = 0x8080808080808080L; // file H from white's perspective
 
     public boolean whitesTurn = true;
     // Add score field to the BitBoard class
@@ -64,7 +75,7 @@ public class BitBoard {
     private List<Move> allCurrentPossibleMoves;
 
     public List<Move> getAllCurrentPossibleMoves() {
-        return this.allCurrentPossibleMoves;
+        return generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
     }
 
     public BitBoard() {
@@ -313,7 +324,7 @@ public class BitBoard {
         updateAggregatedBitboards();
     }
 
-    private void updateAggregatedBitboards() {
+    void updateAggregatedBitboards() {
         whitePieces = whitePawns | whiteKnights | whiteBishops | whiteRooks | whiteQueens | whiteKing;
         blackPieces = blackPawns | blackKnights | blackBishops | blackRooks | blackQueens | blackKing;
         allPieces = whitePieces | blackPieces;
@@ -325,59 +336,123 @@ public class BitBoard {
         long pawns = (color == Color.WHITE) ? whitePawns : blackPawns;
         long opponentPieces = (color == Color.WHITE) ? blackPieces : whitePieces;
         long emptySquares = ~(whitePieces | blackPieces);
+
+        log.debug("Initial pawns: {}", "0x" + Long.toHexString(pawns));
+        log.debug("Opponent pieces: {}", "0x" + Long.toHexString(opponentPieces));
+        log.debug("Empty squares: {}", "0x" + Long.toHexString(emptySquares));
+
         // Moves the pawns one rank up
         long singleStepForward = (color == Color.WHITE) ? pawns << 8 : pawns >>> 8;
-        singleStepForward &= emptySquares; // Ensures the pawns can move (i.e., the squares in front are empty).
+        singleStepForward &= emptySquares;
+        log.debug("Single step forward: {}", "0x" + Long.toHexString(singleStepForward));
 
         // Finds pawns on their initial rank that can move two steps forward
-        long startingRank = (color == Color.WHITE) ? Rank2 : Rank7;
-        long doubleStepForward = (color == Color.WHITE) ? ((pawns & startingRank) << 8) : ((pawns & startingRank) >>> 8);
-        doubleStepForward &= emptySquares; // Ensures the square one step in front is empty
-        doubleStepForward = (color == Color.WHITE) ? (doubleStepForward << 8) : (doubleStepForward >>> 8);
-        doubleStepForward &= emptySquares; // Ensures the square two steps in front is empty
 
-        long attacksLeft = (color == Color.WHITE) ? (pawns & ~FileA) << 7 : (pawns & ~FileH) >>> 9;
-        long attacksRight = (color == Color.WHITE) ? (pawns & ~FileH) << 9 : (pawns & ~FileA) >>> 7;
+        long doubleStepForward = 0L; // Initialize the variable
 
-        singleStepForward &= emptySquares;
-        doubleStepForward &= emptySquares;
+        // For white pawns on their starting rank, move two steps forward if both squares are empty.
+        if (color == Color.WHITE) {
+            long whitePawnsOnStartingRank = pawns & Rank2;
+            long whitePawnsSingleStep = whitePawnsOnStartingRank << 8;
+            long whitePawnsDoubleStep = whitePawnsSingleStep << 8;
+            doubleStepForward = whitePawnsDoubleStep & emptySquares;
+        }
+
+        // For black pawns on their starting rank, move two steps forward if both squares are empty.
+        if (color == Color.BLACK) {
+            long blackPawnsOnStartingRank = pawns & Rank7;
+            long blackPawnsSingleStep = blackPawnsOnStartingRank >>> 8;
+            long blackPawnsDoubleStep = blackPawnsSingleStep >>> 8;
+            doubleStepForward = blackPawnsDoubleStep & emptySquares;
+        }
+        log.debug("Double step forward: {}", "0x" + Long.toHexString(doubleStepForward));
+
+        // Calculate potential capture moves to the left and right
+        long attacksLeft = (color == Color.WHITE) ? (pawns & ~FileA) << 7 : (pawns & ~FileA) >>> 9;
+        long attacksRight = (color == Color.WHITE) ? (pawns & ~FileH) << 9 : (pawns & ~FileH) >>> 7;
+
+        log.debug("Attacks left before masking: {}", "0x" + Long.toHexString(attacksLeft));
+        log.debug("Attacks right before masking: {}", "0x" + Long.toHexString(attacksRight));
+
+        // Filter out captures that don't have an opponent piece
         attacksLeft &= opponentPieces;
         attacksRight &= opponentPieces;
+
+        log.debug("Attacks left after masking: {}", "0x" + Long.toHexString(attacksLeft));
+        log.debug("Attacks right after masking: {}", "0x" + Long.toHexString(attacksRight));
 
         addPawnMoves(moves, singleStepForward, 8, false, color);
         addPawnMoves(moves, doubleStepForward, 16, false, color);
         addPawnMoves(moves, attacksLeft, (color == Color.WHITE) ? 7 : -9, true, color);
         addPawnMoves(moves, attacksRight, (color == Color.WHITE) ? 9 : -7, true, color);
 
+
         if (lastMoveDoubleStepPawnPosition != null) {
-            // Calculate the en passant capture square
-            long enPassantSquare = 1L << bitIndex(lastMoveDoubleStepPawnPosition.getX(), color == Color.WHITE ? 5 : 4);
+            int enPassantRank = (color == Color.WHITE) ? 5 : 2; // For white, the en passant rank is 6 (5 in 0-based index); for black, it's 3 (2 in 0-based index).
+            int fileIndexOfDoubleSteppedPawn = lastMoveDoubleStepPawnPosition.getX() - 'a'; // Convert file character to 0-based index.
 
-            // Pawns that can potentially perform an en passant capture
-            long pawnsAbleToEnPassant = (color == Color.WHITE) ? (pawns << 1) | (pawns >>> 1) : (pawns << 1) | (pawns >>> 1);
-            pawnsAbleToEnPassant &= (color == Color.WHITE) ? Rank5 : Rank4;
-            pawnsAbleToEnPassant &= opponentPieces; // This will ensure that the pawn is adjacent to the opponent's pawn.
+            // The en passant target square is the square passed over by the double-stepping pawn
+            int enPassantTargetIndex = (enPassantRank * 8) + fileIndexOfDoubleSteppedPawn;
+            long enPassantTargetSquare = 1L << enPassantTargetIndex;
 
-            long enPassantCaptureLeft = (color == Color.WHITE) ? (pawnsAbleToEnPassant & ~FileA) >>> 1 : (pawnsAbleToEnPassant & ~FileH) << 1;
-            long enPassantCaptureRight = (color == Color.WHITE) ? (pawnsAbleToEnPassant & ~FileH) << 1 : (pawnsAbleToEnPassant & ~FileA) >>> 1;
+            // Pawns that can potentially perform an en passant capture must be on the rank adjacent to the en passant target square
+            long potentialEnPassantAttackers = pawns & RankMasks[color == Color.WHITE ? 4 : 3];
 
-            // Left capture
-            if ((enPassantCaptureLeft & enPassantSquare) != 0) {
-                int fromIndex = color == Color.WHITE ? Long.numberOfTrailingZeros(enPassantCaptureLeft) - 9 :
-                        Long.numberOfTrailingZeros(enPassantCaptureLeft) + 7;
-                int toIndex = Long.numberOfTrailingZeros(enPassantSquare);
-                addEnPassantMove(moves, fromIndex, toIndex, color);
+            // Make sure to add boundary checks here to prevent ArrayIndexOutOfBoundsException
+            if (fileIndexOfDoubleSteppedPawn > 0) { // There is a file to the left
+                long leftAttackers = potentialEnPassantAttackers & FileMasks[fileIndexOfDoubleSteppedPawn - 1];
+                if (color.equals(Color.WHITE) ?
+                        ((leftAttackers << 9 & enPassantTargetSquare) != 0) :
+                        ((leftAttackers >> 7 & enPassantTargetSquare) != 0)) {
+                    int fromIndex = Long.numberOfTrailingZeros(leftAttackers);
+                    int toIndex = enPassantTargetIndex;
+                    addEnPassantMove(moves, fromIndex, toIndex, color);
+                }
             }
 
-            // Right capture
-            if ((enPassantCaptureRight & enPassantSquare) != 0) {
-                int fromIndex = color == Color.WHITE ? Long.numberOfTrailingZeros(enPassantCaptureRight) - 7 :
-                        Long.numberOfTrailingZeros(enPassantCaptureRight) + 9;
-                int toIndex = Long.numberOfTrailingZeros(enPassantSquare);
-                addEnPassantMove(moves, fromIndex, toIndex, color);
+            if (fileIndexOfDoubleSteppedPawn < 7) { // There is a file to the right
+                long rightAttackers = potentialEnPassantAttackers & FileMasks[fileIndexOfDoubleSteppedPawn + 1];
+                if (color.equals(Color.WHITE) ?
+                        ((rightAttackers << 7 & enPassantTargetSquare) != 0) :
+                        ((rightAttackers >> 9 & enPassantTargetSquare) != 0)) {
+                    int fromIndex = Long.numberOfTrailingZeros(rightAttackers);
+                    int toIndex = enPassantTargetIndex;
+                    addEnPassantMove(moves, fromIndex, toIndex, color);
+                }
             }
         }
+
+
         return moves;
+    }
+
+    private long movePawn(int amountOfFields, Color color, long pawns, char file, boolean isCaptureToTheLeft, boolean isCaptureToTheRight) {
+        int capture = 0;
+
+        if (isCaptureToTheLeft && isCaptureToTheRight) {
+            throw new IllegalStateException("Pawns cannot capture left and right!");
+        }
+
+        if (isCaptureToTheLeft) {
+            capture = Color.WHITE == color ? -1 : 1;
+        }
+
+        if (isCaptureToTheRight) {
+            capture = Color.WHITE == color ? 1 : -1;
+        }
+
+        return Color.WHITE == color ?
+                (pawns & ~FileMasks[file - 'a']) | (pawns & FileMasks[file - 'a']) << 8 * amountOfFields + capture :
+                (pawns & ~FileMasks[file - 'a']) | (pawns & FileMasks[file - 'a']) >> 8 * amountOfFields + capture;
+    }
+
+    private long removePawnFromPosition(Position position, long pawns) {
+        // Create a mask that represents the position to remove
+        long mask = FileMasks[position.getX() - 'a'] & RankMasks[position.getY() - 1];
+        // Flip the bits of the mask to have 0 at the position to remove and 1s elsewhere
+        mask = ~mask;
+        // Use bitwise AND to clear the bit at the specified position
+        return pawns & mask;
     }
 
     private void addEnPassantMove(List<Move> moves, int fromIndex, int toIndex, Color color) {
@@ -793,7 +868,7 @@ public class BitBoard {
 
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
-        allCurrentPossibleMoves = generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
+        //allCurrentPossibleMoves = generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
     }
 
 
@@ -961,7 +1036,7 @@ public class BitBoard {
 
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
     public List<Move> getMovesFromPosition(Position fromPosition) {
-        return allCurrentPossibleMoves.stream()
+        return getAllCurrentPossibleMoves().stream()
                 .filter(move -> move.getFrom().equals(fromPosition))
                 .collect(Collectors.toList());
     }
@@ -1364,7 +1439,7 @@ public class BitBoard {
             logBoard.append("  ").append(rank).append('\n'); // Append the rank number at the end of each line
         }
         logBoard.append("  a b c d e f g h"); // Append file letters at the bottom
-        log.info(logBoard.toString()); // Log the current board state
+        log.debug(logBoard.toString()); // Log the current board state
     }
 
 
@@ -1482,7 +1557,7 @@ public class BitBoard {
         // Update the aggregated bitboards
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
-        allCurrentPossibleMoves = generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
+        //allCurrentPossibleMoves = generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
     }
 
     @Override
@@ -1523,5 +1598,31 @@ public class BitBoard {
                 lastMoveDoubleStepPawnPosition);
     }
 
+    public long getBoardStateHash() {
+        long hash = 0;
+
+        // Combine the hash codes of all individual piece bitboards and other state indicators
+        hash ^= whitePawns ^ blackPawns ^ whiteKnights ^ blackKnights ^ whiteBishops ^ blackBishops;
+        hash ^= whiteRooks ^ blackRooks ^ whiteQueens ^ blackQueens ^ whiteKing ^ blackKing;
+        hash ^= (whiteKingMoved ? 1 : 0) ^ (blackKingMoved ? 2 : 0);
+        hash ^= (whiteRookA1Moved ? 4 : 0) ^ (whiteRookH1Moved ? 8 : 0);
+        hash ^= (blackRookA8Moved ? 16 : 0) ^ (blackRookH8Moved ? 32 : 0);
+        hash ^= (whitesTurn ? 64 : 0); // Assuming you have a field indicating whose turn it is
+
+        return hash;
+    }
+
+    public void setWhitePawns(long l) {
+        this.whitePawns = l;
+    }
+
+    public void setBlackPawns(long d) {
+        this.blackPawns = d;
+    }
+
+    public void setLastMoveDoubleStepPawnPosition(Position d) {
+
+        this.lastMoveDoubleStepPawnPosition = d;
+    }
 }
 
