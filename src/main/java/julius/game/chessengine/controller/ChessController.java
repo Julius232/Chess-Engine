@@ -41,12 +41,12 @@ public class ChessController {
 
     @GetMapping(value = "/field/possible/white")
     public ResponseEntity<List<Move>> getAllPossibleFieldsWhite() {
-        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(Color.WHITE));
+        return ResponseEntity.ok(engine.getAllLegalMoves());
     }
 
     @GetMapping(value = "/field/possible/black")
     public ResponseEntity<List<Move>> getAllPossibleFieldsBlack() {
-        return ResponseEntity.ok(engine.getAllPossibleMoveFieldsForPlayerColor(Color.BLACK));
+        return ResponseEntity.ok(engine.getAllLegalMoves());
     }
 
     @GetMapping(value = "/figure")

@@ -41,7 +41,7 @@ public class AI {
 
 
     private Move calculateMove(BitBoard board, Color color) {
-        int levelOfDepth = 6; // Adjust the level of depth according to your requirements
+        int levelOfDepth = 5; // Adjust the level of depth according to your requirements
 
         // Get all possible moves for the given color
         List<Move> moves = engine.getAllPossibleMovesForPlayerColor(color);
@@ -54,9 +54,6 @@ public class AI {
 
         log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
 
-        // Log the calculated move
-        log.info("Calculated Move is From: " + calculatedMove.getFrom()
-                + " To: " + calculatedMove.getTo());
 
         // Return the calculated move directly without saving it
         return calculatedMove;
@@ -68,13 +65,13 @@ public class AI {
         Move bestMove = null;
         double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 
-        log.info("Starting best move calculation for color {}", color);
+        log.debug("Starting best move calculation for color {}", color);
         BitBoard dummyBoard = new BitBoard(board);
         for (Move move : sortMovesByEfficiency(moves, dummyBoard, color)) {
             dummyBoard.performMove(move);
-            log.info("Evaluating move: {}", move);
+            log.debug("Evaluating move: {}", move);
             double score = alphaBeta(dummyBoard, levelOfDepth - 1, alpha, beta, color == Color.WHITE, color);
-            log.info("Move {} evaluated with score {}", move, score);
+            log.debug("Move {} evaluated with score {}", move, score);
             dummyBoard.undoMove(move);
 
             if (color == Color.WHITE && score > bestScore || color == Color.BLACK && score < bestScore) {
@@ -116,6 +113,7 @@ public class AI {
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
                 if (beta <= alpha) {
+                    //board.logBoardWithDepth(depth);
                     break;
                 }
             }
@@ -130,6 +128,7 @@ public class AI {
                 minEval = Math.min(minEval, eval);
                 beta = Math.min(beta, eval);
                 if (alpha >= beta) {
+                    //board.logBoardWithDepth(depth);
                     break;
                 }
             }

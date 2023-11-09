@@ -28,9 +28,23 @@ public class Engine {
         bitBoard.setInitialPosition();
     }
 
+    public List<Move> getAllLegalMoves() {
+       return bitBoard.getAllCurrentPossibleMoves()
+                .stream()
+                .filter(move -> isLegalMove(bitBoard, move))
+                .collect(Collectors.toList());
+    }
+
+    // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
+    public List<Move> getMovesFromPosition(Position fromPosition) {
+        return getAllLegalMoves().stream()
+                .filter(move -> move.getFrom().equals(fromPosition))
+                .collect(Collectors.toList());
+    }
+
     public GameState moveRandomFigure(Color color) {
         // Now, the color parameter is used to determine which moves to generate
-        List<Move> moves = bitBoard.getAllCurrentPossibleMoves();
+        List<Move> moves = getAllLegalMoves();
 
         if (moves.isEmpty()) {
             throw new RuntimeException("No moves possible for " + color);
@@ -616,20 +630,6 @@ public class Engine {
         // If both positions are within the valid range, the move is on the board
     }
 
-    public List<Move> getAllPossibleMoveFieldsForPlayerColor(Color color) {
-        return getAllPossibleMoveFieldsForPlayerColor(bitBoard, color);
-    }
-
-    public List<Move> getAllPossibleMoveFieldsForPlayerColor(BitBoard board, Color color) {
-        // First, generate all possible moves for the given color
-        List<Move> moves = board.getAllCurrentPossibleMoves();
-
-        // Now filter out moves that would result in the player being in check
-        return moves.stream()
-                .filter(move -> !isInCheckAfterMoveSimulation(board, move, color))
-                .collect(Collectors.toList());
-    }
-
     private boolean isInCheckAfterMoveSimulation(BitBoard board, Move move, Color color) {
         // Create a copy of the bitboard to simulate the move
         BitBoard boardCopy = new BitBoard(board);
@@ -642,7 +642,7 @@ public class Engine {
     }
 
     public List<Position> getPossibleMovesForPosition(Position fromPosition) {
-        return bitBoard.getMovesFromPosition(fromPosition).stream()
+        return getMovesFromPosition(fromPosition).stream()
                 .map(Move::getTo)
                 .collect(Collectors.toList());
     }
@@ -686,18 +686,18 @@ public class Engine {
     }
 
     private void updateGameState() {
-        if (getAllPossibleMoveFieldsForPlayerColor(Color.WHITE).size() == 0 && isInStateCheck(bitBoard, Color.WHITE)) {
+        if (getAllLegalMoves().size() == 0 && isInStateCheck(bitBoard, Color.WHITE) && bitBoard.whitesTurn) {
             gameState.setState("BLACK WON");
-        } else if (getAllPossibleMoveFieldsForPlayerColor(Color.BLACK).size() == 0 && isInStateCheck(bitBoard, Color.BLACK)) {
+        } else if (getAllLegalMoves().size() == 0 && isInStateCheck(bitBoard, Color.WHITE) && !bitBoard.whitesTurn) {
             gameState.setState("WHITE WON");
-        } else if (getAllPossibleMoveFieldsForPlayerColor(Color.WHITE).size() == 0 || getAllPossibleMoveFieldsForPlayerColor(Color.BLACK).size() == 0) {
+        } else if (getAllLegalMoves().size() == 0) {
             gameState.setState("DRAW");
         }
     }
 
     public List<Move> getAllPossibleMovesForPlayerColor(Color color) {
         // Generate all possible moves for the color
-        List<Move> allMoves = bitBoard.getAllCurrentPossibleMoves();
+        List<Move> allMoves = getAllLegalMoves();
 
         // Filter out moves that would result in the player being in check
         return allMoves.stream()

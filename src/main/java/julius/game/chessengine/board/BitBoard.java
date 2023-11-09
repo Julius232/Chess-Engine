@@ -72,7 +72,6 @@ public class BitBoard {
     private boolean whiteRookH1Moved = false;
     private boolean blackRookA8Moved = false;
     private boolean blackRookH8Moved = false;
-    private List<Move> allCurrentPossibleMoves;
 
     public List<Move> getAllCurrentPossibleMoves() {
         return generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
@@ -82,7 +81,6 @@ public class BitBoard {
         this.currentScore = new Score(0, 0);
         updateScore();
         setInitialPosition();
-        allCurrentPossibleMoves = generateAllPossibleMoves(Color.WHITE);
 
     }
 
@@ -117,27 +115,16 @@ public class BitBoard {
 
         this.whitesTurn = other.whitesTurn;
 
-        this.allCurrentPossibleMoves = deepCopyMovesList(other.allCurrentPossibleMoves);
         this.lastMoveDoubleStepPawnPosition = other.lastMoveDoubleStepPawnPosition != null ? new Position(other.lastMoveDoubleStepPawnPosition) : null;
-    }
-
-    public List<Move> deepCopyMovesList(List<Move> originalMoves) {
-        List<Move> copiedMoves = new ArrayList<>();
-        for (Move originalMove : originalMoves) {
-            // Assuming Move class has a copy constructor
-            Move copiedMove = new Move(originalMove);
-            copiedMoves.add(copiedMove);
-        }
-        return copiedMoves;
     }
 
     public void updateScore() {
         // Define the piece values
-        final int PAWN_VALUE = 100;   // Pawns are worth 1 point, scaled by 100
-        final int KNIGHT_VALUE = 300; // Knights are worth 3 points
-        final int BISHOP_VALUE = 300; // Bishops are worth 3 points
-        final int ROOK_VALUE = 500;   // Rooks are worth 5 points
-        final int QUEEN_VALUE = 900;  // Queens are worth 9 points
+        final int PAWN_VALUE = 1000;   // Pawns are worth 1 point, scaled by 100
+        final int KNIGHT_VALUE = 3000; // Knights are worth 3 points
+        final int BISHOP_VALUE = 3000; // Bishops are worth 3 points
+        final int ROOK_VALUE = 5000;   // Rooks are worth 5 points
+        final int QUEEN_VALUE = 9000;  // Queens are worth 9 points
 
         // Initialize scores
         int whiteScore = 0;
@@ -383,8 +370,8 @@ public class BitBoard {
 
         addPawnMoves(moves, singleStepForward, 8, false, color);
         addPawnMoves(moves, doubleStepForward, 16, false, color);
-        addPawnMoves(moves, attacksLeft, (color == Color.WHITE) ? 7 : -9, true, color);
-        addPawnMoves(moves, attacksRight, (color == Color.WHITE) ? 9 : -7, true, color);
+        addPawnMoves(moves, attacksLeft, (color == Color.WHITE) ? 7 : 9, true, color);
+        addPawnMoves(moves, attacksRight, (color == Color.WHITE) ? 9 : 7, true, color);
 
 
         if (lastMoveDoubleStepPawnPosition != null) {
@@ -469,9 +456,17 @@ public class BitBoard {
             Position toPosition = indexToPosition(toIndex);
             boolean isPromotion = (color == Color.WHITE) ? toPosition.getY() == 8 : toPosition.getY() == 1;
 
-            PieceType promotionPiece = isPromotion ? PieceType.QUEEN : null; // Assuming we always promote to a queen for simplicity
             PieceType capturedType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
-            moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, isPromotion, promotionPiece, capturedType));
+
+            if(isPromotion) {
+                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.QUEEN, capturedType));
+                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.ROOK, capturedType));
+                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.BISHOP, capturedType));
+                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.KNIGHT, capturedType));
+            }
+            else {
+                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, null, capturedType));
+            }
 
             bitboard &= bitboard - 1; // Clear the processed bit
         }
@@ -855,6 +850,16 @@ public class BitBoard {
         pieceBitboard = moveBit(pieceBitboard, fromIndex, toIndex);
         setBitboardForPiece(move.getPieceType(), move.getColor(), pieceBitboard);
 
+        if (move.isPromotionMove()) {
+            // Clear the pawn from the promotion square
+            clearSquare(toIndex, move.getColor());
+
+            // Set the bitboard for the promotion piece
+            long promotionPieceBitboard = getBitboardForPiece(move.getPromotionPieceType(), move.getColor());
+            promotionPieceBitboard |= (1L << toIndex); // Place the promotion piece on the promotion square
+            setBitboardForPiece(move.getPromotionPieceType(), move.getColor(), promotionPieceBitboard);
+        }
+
         // Mark the king as moved if it was a king move
         if (move.getPieceType() == PieceType.KING) {
             markKingAsMoved(move.getColor());
@@ -868,7 +873,6 @@ public class BitBoard {
 
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
-        //allCurrentPossibleMoves = generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
     }
 
 
@@ -1034,13 +1038,6 @@ public class BitBoard {
         }
     }
 
-    // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
-    public List<Move> getMovesFromPosition(Position fromPosition) {
-        return getAllCurrentPossibleMoves().stream()
-                .filter(move -> move.getFrom().equals(fromPosition))
-                .collect(Collectors.toList());
-    }
-
     private boolean isValidBoardPosition(Position position) {
         return position.getX() >= 'a' && position.getX() <= 'h' && position.getY() >= 1 && position.getY() <= 8;
     }
@@ -1095,7 +1092,7 @@ public class BitBoard {
     // Example for one attack check - similar methods needed for other piece types
     private boolean canPawnAttackKing(Position kingPosition, Color kingColor) {
         // Determine the direction from which the pawn would attack
-        int pawnAttackDirection = (kingColor == Color.WHITE) ? -1 : 1;
+        int pawnAttackDirection = (kingColor == Color.WHITE) ? 1 : -1;
         // Generate the positions from which an opponent pawn would attack
         Position attackFromLeft = new Position((char) (kingPosition.getX() - 1), kingPosition.getY() + pawnAttackDirection);
         Position attackFromRight = new Position((char) (kingPosition.getX() + 1), kingPosition.getY() + pawnAttackDirection);
@@ -1410,6 +1407,10 @@ public class BitBoard {
         return isolatedPawns;
     }
 
+    public void logBoardWithDepth(int depth) {
+        log.info("  -------------------  DEPTH[{}]  -------------------  ", depth);
+        logBoard();
+    }
     public void logBoard() {
         StringBuilder logBoard = new StringBuilder();
         logBoard.append('\n');
@@ -1439,7 +1440,7 @@ public class BitBoard {
             logBoard.append("  ").append(rank).append('\n'); // Append the rank number at the end of each line
         }
         logBoard.append("  a b c d e f g h"); // Append file letters at the bottom
-        log.debug(logBoard.toString()); // Log the current board state
+        log.info(logBoard.toString()); // Log the current board state
     }
 
 
@@ -1557,7 +1558,6 @@ public class BitBoard {
         // Update the aggregated bitboards
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
-        //allCurrentPossibleMoves = generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
     }
 
     @Override
