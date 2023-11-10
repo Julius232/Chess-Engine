@@ -180,9 +180,9 @@ public class AI {
 
             // Check for checkmate or check
             if (engine.isInStateCheckMate(dummy, Color.getOpponentColor(color))) {
-                score += 100; // Checkmate should have the highest score
+                score += 10000; // Checkmate should have the highest score
             } else if (dummy.isInCheck(Color.getOpponentColor(color))) {
-                score += 50; // Checks should have a high score
+                score += 5000; // Checks should have a high score
             }
 
             // Captures
@@ -213,10 +213,10 @@ public class AI {
 
     private int getPieceValue(PieceType pieceType) {
         return switch (pieceType) {
-            case PAWN -> 1;
-            case KNIGHT, BISHOP -> 3;
-            case ROOK -> 5;
-            case QUEEN -> 9;
+            case PAWN -> 100;
+            case KNIGHT, BISHOP -> 300;
+            case ROOK -> 500;
+            case QUEEN -> 900;
             default -> 0; // King has no value because it cannot be captured
         };
     }
