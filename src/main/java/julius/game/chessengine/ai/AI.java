@@ -107,7 +107,7 @@ public class AI {
         }
 
         if (depth == 0 || engine.isInStateCheckMate(board, color)) {
-            double staticEval = board.getScore().getScoreDifference(color) / 100.0;
+            double staticEval = board.getScore().getScoreDifference() / 100.0;
             transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, NodeType.EXACT));
             return staticEval;
         }
@@ -123,7 +123,7 @@ public class AI {
                 board.undoMove(move);
                 maxEval = Math.min(maxEval, eval);
                 alpha = Math.min(alpha, eval);
-                if (beta <= alpha) {
+                if (alpha >= beta) {
                     log.info("pruning Move: " + move);
                     break;
                 }

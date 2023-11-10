@@ -14,7 +14,7 @@ public class Score {
         this.scoreBlack = scoreBlack;
     }
 
-    public int getScoreDifference(Color color) {
+    public int getScoreDifference() {
         return (getScoreWhite() - getScoreBlack());
     }
 }
