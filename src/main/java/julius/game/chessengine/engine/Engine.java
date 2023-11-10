@@ -81,7 +81,7 @@ public class Engine {
             bitBoard.logBoard();
             throw new IllegalStateException("It's not " + pieceColor + "'s turn");
         }
-
+/*
 
         // Determine if the move is a capture and if the move is en passant
         boolean isCapture = bitBoard.isOccupiedByOpponent(toPosition, color);
@@ -99,16 +99,20 @@ public class Engine {
         boolean isPromotion = pieceType == PieceType.PAWN && (toPosition.getY() == 1 || toPosition.getY() == 8);
         PieceType promotionPieceType = isPromotion ? PieceType.QUEEN : null; // Assume queen promotion for simplicity
 
+
         // Create a Move object for the move
-        Move move = new Move(fromPosition, toPosition, pieceType, color, isCapture, isCastlingMove, isEnPassantMove, promotionPieceType, capturedPieceType);
+        Move move = new Move(fromPosition, toPosition, pieceType, color, isCapture, isCastlingMove, isEnPassantMove, promotionPieceType, capturedPieceType, isCastlingMove, isCastlingMove);
 
         // Check if the move is legal and doesn't result in a check
         if (!isLegalMove(bitBoard, move)) {
             log.info(move.toString());
             bitBoard.logBoard();
             throw new IllegalStateException("Move is not legal or results in a check");
-        }
+        }*/
 
+        Move move = getAllLegalMoves().stream()
+                .filter(m -> m.getFrom().equals(fromPosition) && m.getTo().equals(toPosition))
+                .findAny().orElseThrow(() -> new IllegalStateException("Move not found"));
         // Perform the move on the bitboard
         bitBoard.performMove(move);
 
@@ -386,7 +390,7 @@ public class Engine {
         }
 
         // Check if the path between the king and the rook is clear
-        if (isPathBlocked(bitBoard, new Move(move.getFrom(), rookPosition, PieceType.KING, move.getColor(), false, false, false, null, null))) {
+        if (isPathBlocked(bitBoard, new Move(move.getFrom(), rookPosition, PieceType.KING, move.getColor(), false, false, false, null, null, false, false))) {
             return false;
         }
 

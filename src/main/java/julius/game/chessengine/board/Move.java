@@ -12,11 +12,14 @@ public class Move {
     private final boolean isCastlingMove;
     private final boolean isEnPassantMove;
     private final PieceType promotionPieceType; // This can be null if no promotion
-
     private final PieceType capturedPieceType;
 
+    private final boolean isKingFirstMove;
+    private final boolean isRookFirstMove;
+
     public Move(Position from, Position to, PieceType pieceType, Color color,
-                boolean isCapture, boolean isCastlingMove, boolean isEnPassantMove, PieceType promotionPieceType, PieceType capturedPieceType) {
+                boolean isCapture, boolean isCastlingMove, boolean isEnPassantMove, PieceType promotionPieceType, PieceType capturedPieceType,
+                boolean isKingFirstMove, boolean isRookFirstMove) {
         this.from = from;
         this.to = to;
         this.pieceType = pieceType;
@@ -26,6 +29,8 @@ public class Move {
         this.isEnPassantMove = isEnPassantMove;
         this.promotionPieceType = promotionPieceType;
         this.capturedPieceType = isCapture ? capturedPieceType : null;
+        this.isKingFirstMove = isKingFirstMove;
+        this.isRookFirstMove = isRookFirstMove;
     }
 
     public Move(Move originalMove) {
@@ -38,6 +43,8 @@ public class Move {
         this.isEnPassantMove = originalMove.isEnPassantMove();
         this.promotionPieceType = originalMove.getPromotionPieceType();
         this.capturedPieceType = originalMove.getCapturedPieceType();
+        this.isKingFirstMove = originalMove.isKingFirstMove();
+        this.isRookFirstMove = originalMove.isRookFirstMove();
     }
 
     // Getters for all the fields
@@ -79,6 +86,14 @@ public class Move {
 
     public PieceType getCapturedPieceType() {
         return capturedPieceType;
+    }
+
+    public boolean isKingFirstMove() {
+        return isKingFirstMove;
+    }
+
+    public boolean isRookFirstMove() {
+        return isRookFirstMove;
     }
 
 

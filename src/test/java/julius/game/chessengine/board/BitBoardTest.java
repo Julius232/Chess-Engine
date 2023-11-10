@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static julius.game.chessengine.board.Position.convertStringToPosition;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -90,6 +91,20 @@ public class BitBoardTest {
         List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.WHITE);
 
         assertEquals(moves.size(), 35);
+    }
+
+    @Test
+    public void checkRookFirstMove() {
+        Engine engine = new Engine(); // The chess engine
+
+        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("g1"), convertStringToPosition("f3"));
+        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("g8"), convertStringToPosition("f6"));
+        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h1"), convertStringToPosition("g1"));
+        engine.undoLastMove();
+
+        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.WHITE);
+
+        assertEquals(moves.stream().filter(Move::isRookFirstMove).toList().size(), 1);
     }
 
     @Test
