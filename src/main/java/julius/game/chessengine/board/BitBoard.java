@@ -2,6 +2,7 @@ package julius.game.chessengine.board;
 
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.figures.PieceType;
+import julius.game.chessengine.helper.PawnHelper;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.utils.Score;
 import lombok.extern.log4j.Log4j2;
@@ -10,68 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static julius.game.chessengine.helper.BitHelper.*;
+import static julius.game.chessengine.helper.KnightHelper.knightMoves;
+import static julius.game.chessengine.helper.PawnHelper.*;
+
 @Log4j2
 public class BitBoard {
-
-    final int[] WHITE_PAWN_POSITIONAL_VALUES = {
-            // Rank 1 - Base rank for white, no pawns should be here
-            0, 0, 0, 0, 0, 0, 0, 0,
-            // Rank 2 - Initial rank for white pawns
-            5, 10, 10, -10, -10, 10, 10, 5,
-            // Rank 3 - Pawns have moved one square
-            5, -5, -10, 0, 0, -10, -5, 5,
-            // Rank 4 - Pawns have moved two squares
-            10, 0, 0, 20, 20, 0, 0, 10,
-            // Rank 5 - Pawns are advancing and potentially supporting attack
-            15, 10, 10, 25, 25, 10, 10, 15,
-            // Rank 6 - Pawns are far advanced and can become very dangerous
-            20, 20, 20, 30, 30, 20, 20, 20,
-            // Rank 7 - Pawns are very close to promotion
-            25, 25, 25, 40, 40, 25, 25, 25,
-            // Rank 8 - Pawns should never be here (promotion should have occurred)
-            0, 0, 0, 0, 0, 0, 0, 0
-    };
-
-    final int[] BLACK_PAWN_POSITIONAL_VALUES = {
-            // Rank 1 - Base rank for white, no pawns should be here
-            0, 0, 0, 0, 0, 0, 0, 0,
-            // Rank 2 - Initial rank for white pawns
-            25, 25, 25, 40, 40, 25, 25, 25,
-            // Rank 3 - Pawns have moved one square
-            20, 20, 20, 30, 30, 20, 20, 20,
-            // Rank 4 - Pawns have moved two squares
-            15, 10, 10, 25, 25, 10, 10, 15,
-            // Rank 5 - Pawns are advancing and potentially supporting attack
-            10, 0, 0, 20, 20, 0, 0, 10,
-            // Rank 6 - Pawns are far advanced and can become very dangerous
-            5, -5, -10, 0, 0, -10, -5, 5,
-            // Rank 7 - Pawns are very close to promotion
-            5, 10, 10, -10, -10, 10, 10, 5,
-            // Rank 8 - Pawns should never be here (promotion should have occurred)
-            0, 0, 0, 0, 0, 0, 0, 0
-    };
-
-    final long[] RankMasks = new long[]{
-            0x00000000000000FFL, // Rank 1
-            0x000000000000FF00L, // Rank 2
-            0x0000000000FF0000L, // Rank 3
-            0x00000000FF000000L, // Rank 4
-            0x000000FF00000000L, // Rank 5
-            0x0000FF0000000000L, // Rank 6
-            0x00FF000000000000L, // Rank 7
-            0xFF00000000000000L  // Rank 8
-    };
-
-    final long[] FileMasks = new long[]{
-            0x0101010101010101L, // File A
-            0x0202020202020202L, // File B
-            0x0404040404040404L, // File C
-            0x0808080808080808L, // File D
-            0x1010101010101010L, // File E
-            0x2020202020202020L, // File F
-            0x4040404040404040L, // File G
-            0x8080808080808080L  // File H
-    };
     public boolean whitesTurn = true;
     // Add score field to the BitBoard class
     private Score currentScore;
@@ -110,7 +55,6 @@ public class BitBoard {
         this.currentScore = new Score(0, 0);
         updateScore();
         setInitialPosition();
-
     }
 
     public BitBoard(BitBoard other) {
@@ -202,7 +146,7 @@ public class BitBoard {
         blackScore += blackCenterBonus + blackDoubledPenalty + blackIsolatedPenalty;
 
         // Apply positional values to the pawns
-        whiteScore += applyPositionalValues(whitePawns, WHITE_PAWN_POSITIONAL_VALUES);
+        whiteScore += applyPositionalValues(whitePawns, PawnHelper.WHITE_PAWN_POSITIONAL_VALUES);
         blackScore += applyPositionalValues(blackPawns, BLACK_PAWN_POSITIONAL_VALUES);
 
         // Return the score encapsulated in a Score object
@@ -515,13 +459,7 @@ public class BitBoard {
         long knights = (color == Color.WHITE) ? whiteKnights : blackKnights;
         long ownPieces = (color == Color.WHITE) ? whitePieces : blackPieces;
 
-        // The possible moves for a knight from its current position
-        int[][] knightOffsets = {
-                {-2, -1}, {-2, 1}, // Upwards L-moves
-                {2, -1}, {2, 1},   // Downwards L-moves
-                {-1, -2}, {1, -2}, // Leftwards L-moves
-                {-1, 2}, {1, 2}    // Rightwards L-moves
-        };
+
 
         // Iterate over all bits where knights exist
         for (int i = Long.numberOfTrailingZeros(knights); i < 64 - Long.numberOfLeadingZeros(knights); i++) {
@@ -531,7 +469,7 @@ public class BitBoard {
                 Position fromPosition = indexToPosition(i);
 
                 // Iterate through all possible L moves
-                for (int[] offset : knightOffsets) {
+                for (int[] offset : knightMoves) {
                     int toFile = fromFile + offset[0];
                     int toRank = fromRank + offset[1];
 
@@ -1411,12 +1349,7 @@ public class BitBoard {
     }
 
     // Method to count pawns in the center (e4, d4, e5, d5 squares)
-    private int countCenterPawns(long pawnsBitboard) {
-        // Bit positions for e4, d4, e5, d5
-        long centerSquares = (1L << bitIndex('e', 4)) | (1L << bitIndex('d', 4))
-                | (1L << bitIndex('e', 5)) | (1L << bitIndex('d', 5));
-        return Long.bitCount(pawnsBitboard & centerSquares);
-    }
+
 
     // Method to count doubled pawns, which are two pawns of the same color on the same file
     private int countDoubledPawns(long pawnsBitboard) {
@@ -1488,14 +1421,6 @@ public class BitBoard {
         }
         logBoard.append("  a b c d e f g h"); // Append file letters at the bottom
         log.info(logBoard.toString()); // Log the current board state
-    }
-
-
-    // ... Additional methods to work with bitboards
-
-    // Method to calculate the bit index based on position
-    public int bitIndex(char file, int rank) {
-        return (rank - 1) * 8 + (file - 'a');
     }
 
     // Helper method to move a piece on a bitboard
@@ -1633,22 +1558,8 @@ public class BitBoard {
         // Update the aggregated bitboards
         updateAggregatedBitboards();
 
-        if (countPawns(whitePawns) > 8 || countPawns(blackPawns) > 8) {
-            log.info("Invalid amount of pawns");
-        }
-
         whitesTurn = !whitesTurn;
     }
-
-    public static int countPawns(long bitboard) {
-        int count = 0;
-        while (bitboard != 0) {
-            count += bitboard & 1;
-            bitboard >>>= 1; // Unsigned right shift
-        }
-        return count;
-    }
-
 
     @Override
     public boolean equals(Object o) {

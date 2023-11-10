@@ -22,12 +22,6 @@ public class Position {
         this.y = other.y;
     }
 
-
-    public boolean isPositionInFields(List<Field> fields) {
-        return fields.stream()
-                .anyMatch(field -> this.equals(field.getPosition()));
-    }
-
     public String toString() {
         return x + String.valueOf(y);
     }

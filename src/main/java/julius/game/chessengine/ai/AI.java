@@ -54,7 +54,7 @@ public class AI {
         Move calculatedMove = getBestMove(board, moves, color, levelOfDepth);
         long endTime = System.nanoTime();
 
-        if(calculatedMove == null && moves.size() > 0) {
+        if (calculatedMove == null && moves.size() > 0) {
             log.error("Calculated move is null but there are moves available!!!!!!!");
         }
 
@@ -71,13 +71,10 @@ public class AI {
         Move bestMove = null;
         double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 
-        log.debug("Starting best move calculation for color {}", color);
         BitBoard dummyBoard = new BitBoard(board);
         for (Move move : sortMovesByEfficiency(moves, dummyBoard, color)) {
             dummyBoard.performMove(move);
-            log.debug("Evaluating move: {}", move);
             double score = alphaBeta(dummyBoard, levelOfDepth - 1, alpha, beta, Color.WHITE == color, color);
-            log.debug("Move {} evaluated with score {}", move, score);
             dummyBoard.undoMove(move);
 
             if (Color.WHITE == color ? score > bestScore : score < bestScore) {
@@ -86,7 +83,6 @@ public class AI {
                 log.info("New best move found: {} with score {}", move, bestScore);
             }
         }
-        log.info("Alpha: {} Beta {}", alpha, beta);
         log.info("Score [{}] was best move [{}] calculation completed for color {}", bestScore, bestMove, color);
 
         return bestMove;
@@ -111,7 +107,7 @@ public class AI {
         }
 
         if (depth == 0 || engine.isInStateCheckMate(board, color)) {
-            double staticEval = board.getScore().getScoreDifference(color);
+            double staticEval = board.getScore().getScoreDifference(color) / 100.0;
             transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, NodeType.EXACT));
             return staticEval;
         }
@@ -249,7 +245,6 @@ public class AI {
 
         // Undo the move to restore the board state
         board.undoMove(move);
-
 
 
         return threatScore;
