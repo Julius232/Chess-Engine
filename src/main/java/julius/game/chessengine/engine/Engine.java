@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -19,6 +18,7 @@ import java.util.stream.Collectors;
 @Service
 @Log4j2
 public class Engine {
+
 
     private LinkedList<Move> moves = new LinkedList<>();
     private BitBoard bitBoard = new BitBoard();
@@ -35,6 +35,13 @@ public class Engine {
         return bitBoard.getAllCurrentPossibleMoves()
                 .stream()
                 .filter(move -> isLegalMove(bitBoard, move))
+                .collect(Collectors.toList());
+    }
+
+    public List<Move> getAllLegalMovesForBitBoard(BitBoard b) {
+        return b.getAllCurrentPossibleMoves()
+                .stream()
+                .filter(move -> isLegalMove(b, move))
                 .collect(Collectors.toList());
     }
 
@@ -55,6 +62,11 @@ public class Engine {
 
         Random rand = new Random();
         Move randomMove = moves.get(rand.nextInt(moves.size()));
+
+        if (randomMove.isEnPassantMove()) {
+            // Clear the captured pawn from its position for en passant
+            bitBoard.clearSquare(bitBoard.bitIndex(randomMove.getTo().getX(), randomMove.getFrom().getY()), Color.getOpponentColor(color));
+        }
 
         // Execute the move on the bitboard
         bitBoard.performMove(randomMove);
@@ -113,6 +125,11 @@ public class Engine {
         Move move = getAllLegalMoves().stream()
                 .filter(m -> m.getFrom().equals(fromPosition) && m.getTo().equals(toPosition))
                 .findAny().orElseThrow(() -> new IllegalStateException("Move not found"));
+
+        if (move.isEnPassantMove()) {
+            // Clear the captured pawn from its position for en passant
+            bitBoard.clearSquare(bitBoard.bitIndex(move.getTo().getX(), move.getFrom().getY()), Color.getOpponentColor(color));
+        }
         // Perform the move on the bitboard
         bitBoard.performMove(move);
 
@@ -126,12 +143,13 @@ public class Engine {
 
     private boolean isLegalMove(BitBoard bitBoard, Move move) {
         // Check if the move is within bounds of the board
-        if (!isMoveOnBoard(move)) {
+/*        if (!isMoveOnBoard(move)) {
             return false;
-        }
+        }*/
 
         // Check if the move adheres to the specific movement rules of the piece
-        if (!moveMatchesPieceRules(bitBoard, move)) {
+/*       if (!moveMatchesPieceRules(bitBoard, move)) {
+            log.info(move + "does not match the piece rules");
             return false;
         }
 
@@ -146,7 +164,7 @@ public class Engine {
         }
         if (move.isEnPassantMove() && !canEnPassant(bitBoard, move)) {
             return false;
-        }
+        }*/
 
         // Simulate the move and check for check
         BitBoard testBoard = simulateMove(bitBoard, move);
@@ -157,7 +175,7 @@ public class Engine {
 
     private BitBoard simulateMove(BitBoard bitBoard, Move move) {
         // Create a deep copy of the BitBoard object to avoid mutating the original board.
-        BitBoard boardCopy = new BitBoard(bitBoard); // You need to implement a copy constructor in your BitBoard class.
+        BitBoard boardCopy = new BitBoard(bitBoard);
 
         // Perform the move on the copied board.
         boardCopy.performMove(move);

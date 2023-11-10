@@ -648,18 +648,6 @@ public class BitBoard {
                             boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
                             PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
 
-                            boolean firstRookMove = false;
-
-                            if (fromPosition.equals(new Position('a', 1))) {
-                                firstRookMove = whiteRookA1Moved;
-                            } else if (fromPosition.equals(new Position('h', 1))) {
-                                firstRookMove = whiteRookA1Moved;
-                            } else if (fromPosition.equals(new Position('a', 8))) {
-                                firstRookMove = whiteRookA1Moved;
-                            } else if (fromPosition.equals(new Position('h', 8))) {
-                                firstRookMove = whiteRookA1Moved;
-                            }
-
                             boolean isFirstRookMove = !hasRookMoved(fromPosition);
 
                             moves.add(new Move(fromPosition, toPosition, PieceType.ROOK, color, isCapture, false, false, null, capturedPieceType, false, isFirstRookMove));
@@ -1528,19 +1516,35 @@ public class BitBoard {
     }
 
     public void undoMove(Move move) {
+
+
         int fromIndex = bitIndex(move.getFrom().getX(), move.getFrom().getY());
         int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
 
         // 1. Handle Captured Piece Restoration
         if (move.isCapture()) {
+            boolean isEnPassantWhite = move.isEnPassantMove() && move.getColor() == Color.WHITE;
+            boolean isEnPassantBlack = move.isEnPassantMove() && move.getColor() == Color.BLACK;
+
+            int enPassantModifier = 0;
+
+            if(isEnPassantWhite) {
+                enPassantModifier = -8;
+                lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
+            }
+            if (isEnPassantBlack) {
+                enPassantModifier = +8;
+                lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
+            }
+
             PieceType capturedPieceType = move.getCapturedPieceType();
             Color opponentColor = getOpponentColor(move.getColor());
             long capturedPieceBitboard = getBitboardForPiece(capturedPieceType, opponentColor);
-
             // Restore the captured piece on its bitboard
-            capturedPieceBitboard |= (1L << toIndex);
+            capturedPieceBitboard |= (1L << toIndex + enPassantModifier);
             setBitboardForPiece(capturedPieceType, opponentColor, capturedPieceBitboard);
         }
+
 
         // 2. Handle Pawn Promotion
         if (move.isPromotionMove()) {
@@ -1559,7 +1563,7 @@ public class BitBoard {
 
         // Moving the piece back...
         // Ensure that if the piece is a king, it's handled correctly
-        PieceType movedPieceType = move.getPieceType() == PieceType.PAWN && move.isPromotionMove() ? move.getPromotionPieceType() : move.getPieceType();
+        PieceType movedPieceType = move.getPieceType();
         long pieceBitboard = getBitboardForPiece(movedPieceType, move.getColor());
         pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
         setBitboardForPiece(movedPieceType, move.getColor(), pieceBitboard);
@@ -1590,24 +1594,27 @@ public class BitBoard {
         }
 
         // Restore the state of the king and rook moved flags if necessary
-        if (move.getPieceType() == PieceType.KING && move.isKingFirstMove() && move.isRookFirstMove()) {
+        if (move.getPieceType() == PieceType.KING && move.isKingFirstMove()) {
             if (move.getColor() == Color.WHITE) {
                 whiteKingMoved = false;
-                if(move.getTo().getX() == 'g') {
-                    whiteRookH1Moved = false;
-                }
-                else {
-                    whiteRookA1Moved = false;
+                if (move.isRookFirstMove()) {
+                    if (move.getTo().getX() == 'g') {
+                        whiteRookH1Moved = false;
+                    } else {
+                        whiteRookA1Moved = false;
+                    }
                 }
             } else {
                 blackKingMoved = false;
-                if(move.getTo().getX() == 'g') {
-                    blackRookH8Moved = false;
-                }
-                else {
-                    blackRookA8Moved = false;
+                if (move.isRookFirstMove()) {
+                    if (move.getTo().getX() == 'g') {
+                        blackRookH8Moved = false;
+                    } else {
+                        blackRookA8Moved = false;
+                    }
                 }
             }
+
         }
 
         // Assuming we also track the moves of the rooks for castling purposes, restore their moved state
@@ -1625,8 +1632,23 @@ public class BitBoard {
 
         // Update the aggregated bitboards
         updateAggregatedBitboards();
+
+        if (countPawns(whitePawns) > 8 || countPawns(blackPawns) > 8) {
+            log.info("Invalid amount of pawns");
+        }
+
         whitesTurn = !whitesTurn;
     }
+
+    public static int countPawns(long bitboard) {
+        int count = 0;
+        while (bitboard != 0) {
+            count += bitboard & 1;
+            bitboard >>>= 1; // Unsigned right shift
+        }
+        return count;
+    }
+
 
     @Override
     public boolean equals(Object o) {
@@ -1669,6 +1691,7 @@ public class BitBoard {
     public long getBoardStateHash() {
         long hash = 0;
 
+
         // Combine the hash codes of all individual piece bitboards and other state indicators
         hash ^= whitePawns ^ blackPawns ^ whiteKnights ^ blackKnights ^ whiteBishops ^ blackBishops;
         hash ^= whiteRooks ^ blackRooks ^ whiteQueens ^ blackQueens ^ whiteKing ^ blackKing;
@@ -1676,7 +1699,6 @@ public class BitBoard {
         hash ^= (whiteRookA1Moved ? 4 : 0) ^ (whiteRookH1Moved ? 8 : 0);
         hash ^= (blackRookA8Moved ? 16 : 0) ^ (blackRookH8Moved ? 32 : 0);
         hash ^= (whitesTurn ? 64 : 0); // Assuming you have a field indicating whose turn it is
-
         return hash;
     }
 }

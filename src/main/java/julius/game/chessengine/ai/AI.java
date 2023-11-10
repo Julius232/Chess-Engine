@@ -18,6 +18,8 @@ public class AI {
 
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
+    // Adjust the level of depth according to your requirements
+    int levelOfDepth = 5;
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -41,10 +43,10 @@ public class AI {
 
 
     private Move calculateMove(BitBoard board, Color color) {
-        int levelOfDepth = 5; // Adjust the level of depth according to your requirements
+
 
         // Get all possible moves for the given color
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(color);
+        List<Move> moves = engine.getAllLegalMovesForBitBoard(board);
 
         // Get the best move from the sorted list
         // This is just a placeholder; you'll need to implement the actual logic for selecting the best move
@@ -74,18 +76,19 @@ public class AI {
         for (Move move : sortMovesByEfficiency(moves, dummyBoard, color)) {
             dummyBoard.performMove(move);
             log.debug("Evaluating move: {}", move);
-            double score = alphaBeta(dummyBoard, levelOfDepth - 1, alpha, beta, color == Color.WHITE, color);
+            double score = alphaBeta(dummyBoard, levelOfDepth - 1, alpha, beta, Color.WHITE == color, color);
             log.debug("Move {} evaluated with score {}", move, score);
             dummyBoard.undoMove(move);
 
-            if (color == Color.WHITE && score > bestScore || color == Color.BLACK && score < bestScore) {
+            if (Color.WHITE == color ? score > bestScore : score < bestScore) {
                 bestScore = score;
                 bestMove = move;
                 log.info("New best move found: {} with score {}", move, bestScore);
             }
         }
-
+        log.info("Alpha: {} Beta {}", alpha, beta);
         log.info("Score [{}] was best move [{}] calculation completed for color {}", bestScore, bestMove, color);
+
         return bestMove;
     }
 
@@ -108,25 +111,27 @@ public class AI {
         }
 
         if (depth == 0 || engine.isInStateCheckMate(board, color)) {
-            double staticEval = board.getScore().getScoreDifference(color) * (maximizingPlayer ? 1 : -1);
+            double staticEval = board.getScore().getScoreDifference(color);
             transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, NodeType.EXACT));
             return staticEval;
         }
 
         double alphaOriginal = alpha;
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(color);
+        List<Move> moves = engine.getAllLegalMovesForBitBoard(board);
 
         if (maximizingPlayer) {
-            double maxEval = Double.NEGATIVE_INFINITY;
+            double maxEval = Double.POSITIVE_INFINITY;
             for (Move move : sortMovesByEfficiency(moves, board, color)) {
                 board.performMove(move);
                 double eval = alphaBeta(board, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
                 board.undoMove(move);
-                maxEval = Math.max(maxEval, eval);
-                alpha = Math.max(alpha, eval);
+                maxEval = Math.min(maxEval, eval);
+                alpha = Math.min(alpha, eval);
                 if (beta <= alpha) {
+                    log.info("pruning Move: " + move);
                     break;
                 }
+
             }
             if (maxEval <= alphaOriginal) {
                 transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND));
@@ -137,16 +142,18 @@ public class AI {
             }
             return maxEval;
         } else {
-            double minEval = Double.POSITIVE_INFINITY;
+            double minEval = Double.NEGATIVE_INFINITY;
             for (Move move : sortMovesByEfficiency(moves, board, color)) {
                 board.performMove(move);
                 double eval = alphaBeta(board, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
                 board.undoMove(move);
-                minEval = Math.min(minEval, eval);
-                beta = Math.min(beta, eval);
+                minEval = Math.max(minEval, eval);
+                beta = Math.max(beta, eval);
                 if (alpha >= beta) {
+                    log.info("pruning Move: " + move);
                     break;
                 }
+
             }
             if (minEval <= alphaOriginal) {
                 transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.UPPERBOUND));
@@ -173,9 +180,9 @@ public class AI {
 
             // Check for checkmate or check
             if (engine.isInStateCheckMate(dummy, Color.getOpponentColor(color))) {
-                score += 10000; // Checkmate should have the highest score
+                score += 100; // Checkmate should have the highest score
             } else if (dummy.isInCheck(Color.getOpponentColor(color))) {
-                score += 5000; // Checks should have a high score
+                score += 50; // Checks should have a high score
             }
 
             // Captures
@@ -206,10 +213,10 @@ public class AI {
 
     private int getPieceValue(PieceType pieceType) {
         return switch (pieceType) {
-            case PAWN -> 100;
-            case KNIGHT, BISHOP -> 300;
-            case ROOK -> 500;
-            case QUEEN -> 900;
+            case PAWN -> 1;
+            case KNIGHT, BISHOP -> 3;
+            case ROOK -> 5;
+            case QUEEN -> 9;
             default -> 0; // King has no value because it cannot be captured
         };
     }
@@ -221,7 +228,7 @@ public class AI {
         board.performMove(move);
 
         // Get all possible moves for the opponent after this move
-        List<Move> opponentMoves = board.getAllCurrentPossibleMoves();
+        List<Move> opponentMoves = engine.getAllLegalMovesForBitBoard(board);
 
         // Analyze each of the opponent's moves
         for (Move opponentMove : opponentMoves) {
@@ -242,6 +249,8 @@ public class AI {
 
         // Undo the move to restore the board state
         board.undoMove(move);
+
+
 
         return threatScore;
     }
