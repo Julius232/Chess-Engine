@@ -19,7 +19,7 @@ public class AI {
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 5;
+    int levelOfDepth = 4;
     private final Engine engine;
 
     public AI(Engine engine) {

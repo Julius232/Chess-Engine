@@ -15,6 +15,6 @@ public class Score {
     }
 
     public int getScoreDifference(Color color) {
-        return getScoreWhite() - getScoreBlack();
+        return (getScoreWhite() - getScoreBlack()) / 1000;
     }
 }

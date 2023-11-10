@@ -149,11 +149,11 @@ public class BitBoard {
 
     public void updateScore() {
         // Define the piece values
-        final int PAWN_VALUE = 1000;   // Pawns are worth 1 point, scaled by 100
-        final int KNIGHT_VALUE = 3000; // Knights are worth 3 points
-        final int BISHOP_VALUE = 3000; // Bishops are worth 3 points
-        final int ROOK_VALUE = 5000;   // Rooks are worth 5 points
-        final int QUEEN_VALUE = 9000;  // Queens are worth 9 points
+        final int PAWN_VALUE = 100;   // Pawns are worth 1 point, scaled by 100
+        final int KNIGHT_VALUE = 300; // Knights are worth 3 points
+        final int BISHOP_VALUE = 300; // Bishops are worth 3 points
+        final int ROOK_VALUE = 500;   // Rooks are worth 5 points
+        final int QUEEN_VALUE = 900;  // Queens are worth 9 points
 
         // Initialize scores
         int whiteScore = 0;
