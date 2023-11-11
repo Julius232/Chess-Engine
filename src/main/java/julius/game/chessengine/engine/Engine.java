@@ -6,7 +6,6 @@ import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
-import julius.game.chessengine.utils.Score;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -99,43 +98,12 @@ public class Engine {
             bitBoard.logBoard();
             throw new IllegalStateException("It's not " + pieceColor + "'s turn");
         }
-/*
-
-        // Determine if the move is a capture and if the move is en passant
-        boolean isCapture = bitBoard.isOccupiedByOpponent(toPosition, color);
-        PieceType capturedPieceType = isCapture ? bitBoard.getPieceTypeAtPosition(toPosition) : null;
-        boolean isEnPassantMove = bitBoard.isEnPassantPossible(toPosition, color) && pieceType == PieceType.PAWN;
-        if (isEnPassantMove) {
-            // Clear the captured pawn from its position for en passant
-            bitBoard.clearSquare(bitBoard.bitIndex(toPosition.getX(), fromPosition.getY()), Color.getOpponentColor(color));
-        }
-
-        // Determine if the move is castling
-        boolean isCastlingMove = pieceType == PieceType.KING && (Math.abs(toPosition.getX() - fromPosition.getX()) == 2);
-
-        // Determine if the move is a promotion
-        boolean isPromotion = pieceType == PieceType.PAWN && (toPosition.getY() == 1 || toPosition.getY() == 8);
-        PieceType promotionPieceType = isPromotion ? PieceType.QUEEN : null; // Assume queen promotion for simplicity
-
-
-        // Create a Move object for the move
-        Move move = new Move(fromPosition, toPosition, pieceType, color, isCapture, isCastlingMove, isEnPassantMove, promotionPieceType, capturedPieceType, isCastlingMove, isCastlingMove);
-
-        // Check if the move is legal and doesn't result in a check
-        if (!isLegalMove(bitBoard, move)) {
-            log.info(move.toString());
-            bitBoard.logBoard();
-            throw new IllegalStateException("Move is not legal or results in a check");
-        }*/
 
         Move move = getAllLegalMoves().stream()
                 .filter(m -> m.getFrom().equals(fromPosition) && m.getTo().equals(toPosition))
                 .findAny().orElseThrow(() -> new IllegalStateException("Move not found"));
 
-        if (move.isEnPassantMove()) {
-            // Clear the captured pawn from its position for en passant
-            bitBoard.clearSquare(bitIndex(move.getTo().getX(), move.getFrom().getY()), Color.getOpponentColor(color));
-        }
+
         // Perform the move on the bitboard
         bitBoard.performMove(move);
 
@@ -153,31 +121,8 @@ public class Engine {
             return false;
         }
 
-        // Check if the move adheres to the specific movement rules of the piece
-/*       if (!moveMatchesPieceRules(bitBoard, move)) {
-            log.info(move + "does not match the piece rules");
-            bitBoard.logBoard();
-            return false;
-        }*/
-
-        // Check if the path is clear for moves that require it
-        if (requiresClearPath(move.getPieceType()) && isPathBlocked(bitBoard, move)) {
-            return false;
-        }
-
-        // Check for special moves like castling or en passant
-        if (move.isCastlingMove() && !canCastle(bitBoard, move)) {
-            return false;
-        }
-        if (move.isEnPassantMove() && !canEnPassant(bitBoard, move)) {
-            return false;
-        }
-
-        // Simulate the move and check for check
         BitBoard testBoard = simulateMove(bitBoard, move);
         return !testBoard.isInCheck(move.getColor());
-
-        // If all checks pass, the move is legal
     }
 
     private BitBoard simulateMove(BitBoard bitBoard, Move move) {
@@ -190,33 +135,6 @@ public class Engine {
         // Return the new board state.
         return boardCopy;
     }
-
-    private boolean canEnPassant(BitBoard bitBoard, Move move) {
-        // En passant is only possible if the last move made by the opponent was a pawn moving two steps from the starting rank
-        Position lastPawnPosition = bitBoard.getLastMoveDoubleStepPawnPosition();
-        if (lastPawnPosition == null) {
-            return false; // No pawn made the double step, or it's the first move of the game
-        }
-
-        // Check if the current pawn is on its fifth rank
-        int currentPawnRank = move.getFrom().getY();
-        if ((move.getColor() == Color.WHITE && currentPawnRank != 5) || (move.getColor() == Color.BLACK && currentPawnRank != 4)) {
-            return false; // The pawn is not on the correct rank for en passant
-        }
-
-        // Check if the capturing pawn is adjacent to the pawn it is trying to capture en passant
-        int fileDifference = Math.abs(move.getFrom().getX() - lastPawnPosition.getX());
-        if (fileDifference != 1 || move.getFrom().getY() != lastPawnPosition.getY()) {
-            return false; // The pawn is not adjacent or not on the same rank as the double-stepped pawn
-        }
-
-        // Check if the to position is the en passant target square
-        return move.getTo().equals(new Position(lastPawnPosition.getX(), currentPawnRank == 5 ? 6 : 3)); // The move is not capturing the double-stepped pawn en passant
-
-        // All conditions are satisfied for en passant
-    }
-
-
     private boolean isInCheck(BitBoard bitBoard, Color color) {
         Color opponentColor = Color.getOpponentColor(color);
         // Find the king's position
@@ -228,13 +146,13 @@ public class Engine {
         }
 
         // Check if the king is under attack by any knights
-        if (isAttackedByKnights(bitBoard, kingPosition, color, opponentColor)) {
+        if (isAttackedByKnights(bitBoard, kingPosition, opponentColor)) {
             return true;
         }
 
         // Check if the king is under attack horizontally or vertically (by rooks or queens)
-        if (isAttackedHorizontallyOrVertically(bitBoard, kingPosition, color, opponentColor, PieceType.ROOK) ||
-                isAttackedHorizontallyOrVertically(bitBoard, kingPosition, color, opponentColor, PieceType.QUEEN)) {
+        if (isAttackedHorizontallyOrVertically(bitBoard, kingPosition, opponentColor, PieceType.ROOK) ||
+                isAttackedHorizontallyOrVertically(bitBoard, kingPosition, opponentColor, PieceType.QUEEN)) {
             return true;
         }
 
@@ -245,7 +163,7 @@ public class Engine {
         }
 
         // Check if the king is under attack by the opposing king
-        return isAttackedByKing(bitBoard, kingPosition, color, opponentColor);
+        return isAttackedByKing(bitBoard, kingPosition, opponentColor);
 
         // If none of the checks return true, the king is not in check
     }
@@ -273,7 +191,7 @@ public class Engine {
         // No pawns are attacking the king
     }
 
-    private boolean isAttackedByKnights(BitBoard bitBoard, Position kingPosition, Color color, Color opponentColor) {
+    private boolean isAttackedByKnights(BitBoard bitBoard, Position kingPosition, Color opponentColor) {
 
         // Check all possible positions a knight could attack the king from
         for (int[] move : knightMoves) {
@@ -295,7 +213,7 @@ public class Engine {
         return false;
     }
 
-    private boolean isAttackedHorizontallyOrVertically(BitBoard bitBoard, Position kingPosition, Color color, Color opponentColor, PieceType pieceType) {
+    private boolean isAttackedHorizontallyOrVertically(BitBoard bitBoard, Position kingPosition, Color opponentColor, PieceType pieceType) {
         int[][] directions = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}}; // Up, Right, Down, Left
 
         for (int[] dir : directions) {
@@ -355,7 +273,7 @@ public class Engine {
         return false;
     }
 
-    private boolean isAttackedByKing(BitBoard bitBoard, Position kingPosition, Color color, Color opponentColor) {
+    private boolean isAttackedByKing(BitBoard bitBoard, Position kingPosition, Color opponentColor) {
         // The king can move one square in any direction, check all surrounding squares
         int[][] moves = {
                 {1, 0}, {1, 1}, {0, 1}, {-1, 1},
@@ -390,257 +308,6 @@ public class Engine {
         return new Position('e', color == Color.WHITE ? 1 : 8); // Placeholder
     }
 
-    private boolean canCastle(BitBoard bitBoard, Move move) {
-        // Check if the king has moved, which would make castling illegal
-        if (bitBoard.hasKingMoved(move.getColor())) {
-            return false;
-        }
-
-        // Determine the rook's position based on the castling side (kingside or queenside)
-        Position rookPosition = move.getColor() == Color.WHITE
-                ? (move.getTo().getX() > move.getFrom().getX() ? new Position('h', 1) : new Position('a', 1))
-                : (move.getTo().getX() > move.getFrom().getX() ? new Position('h', 8) : new Position('a', 8));
-
-        // Check if the rook has moved
-        if (bitBoard.hasRookMoved(rookPosition)) {
-            return false;
-        }
-
-        // Check if the path between the king and the rook is clear
-        if (isPathBlocked(bitBoard, new Move(move.getFrom(), rookPosition, PieceType.KING, move.getColor(), false, false, false, null, null, false, false))) {
-            return false;
-        }
-
-        // Check if the king is in check
-        return !isInCheck(bitBoard, move.getColor());
-
-        // All checks passed, castling is legal
-    }
-
-
-    private boolean isPathBlocked(BitBoard bitBoard, Move move) {
-        // Calculate the direction of the move
-        int xDirection = Integer.compare(move.getTo().getX(), move.getFrom().getX());
-        int yDirection = Integer.compare(move.getTo().getY(), move.getFrom().getY());
-
-        // Calculate the distance of the move
-        int distance = Math.max(Math.abs(move.getTo().getX() - move.getFrom().getX()),
-                Math.abs(move.getTo().getY() - move.getFrom().getY()));
-
-        // Start from the next position after 'from' and go up to (but not including) 'to'
-        for (int i = 1; i < distance; i++) {
-            char file = (char) (move.getFrom().getX() + i * xDirection);
-            int rank = move.getFrom().getY() + i * yDirection;
-
-            // If any position between from and to (excluding to) is occupied, the path is not clear
-            if (bitBoard.isOccupied(new Position(file, rank))) {
-                return true;
-            }
-        }
-
-        // If we checked all intervening squares and found no pieces, the path is clear
-        return false;
-    }
-
-
-    private boolean requiresClearPath(PieceType pieceType) {
-        // Knights can jump over other pieces, so they don't require a clear path.
-        if (pieceType == PieceType.KNIGHT) {
-            return false;
-        }
-        // Kings, pawns, and queens move in straight or diagonal lines and cannot jump over other pieces.
-        return pieceType == PieceType.BISHOP || pieceType == PieceType.ROOK || pieceType == PieceType.QUEEN;
-    }
-
-
-    private boolean moveMatchesPieceRules(BitBoard bitBoard, Move move) {
-        // Get the piece type from the move
-        PieceType pieceType = move.getPieceType();
-
-        // The logic will vary based on the piece type
-        return switch (pieceType) {
-            case PAWN -> pawnMoveMatchesRules(bitBoard, move);
-            case KNIGHT -> knightMoveMatchesRules(bitBoard, move);
-            case BISHOP -> bishopMoveMatchesRules(bitBoard, move);
-            case ROOK -> rookMoveMatchesRules(bitBoard, move);
-            case QUEEN -> queenMoveMatchesRules(bitBoard, move);
-            case KING -> kingMoveMatchesRules(bitBoard, move);
-            // If the piece type is not recognized, return false
-        };
-    }
-
-    private boolean kingMoveMatchesRules(BitBoard bitBoard, Move move) {
-        // Calculate the change in position
-        int deltaX = Math.abs(move.getFrom().getX() - move.getTo().getX());
-        int deltaY = Math.abs(move.getFrom().getY() - move.getTo().getY());
-
-        // King moves only one square in any direction
-        if ((deltaX <= 1 && deltaY <= 1) && !(deltaX == 0 && deltaY == 0)) {
-            // Check if the destination square is either empty or occupied by an opponent
-            if (!bitBoard.isOccupiedByOpponent(move.getTo(), move.getColor()) || bitBoard.isOccupied(move.getTo())) {
-                return true;
-            }
-        }
-
-        // Special move: castling
-        // Implement the specific rules for castling here, which include checks for:
-        // - The king and the chosen rook have not moved yet
-        // - The squares between the king and the rook are unoccupied
-        // - The king is not currently in check
-        // - The king does not pass through or end up in a square that is under attack
-        // (This is a placeholder, the actual castling logic should be implemented)
-        return move.isCastlingMove();
-
-        // If the move is not one square in any direction or a valid castling move, it's illegal
-    }
-
-
-    private boolean queenMoveMatchesRules(BitBoard bitBoard, Move move) {
-        // The queen combines the power of a rook and a bishop, so it can move both
-        // straight and diagonally. We can use the move matching rules for both pieces.
-
-        // Check if the move is along a file or rank (like a rook)
-        if (move.getFrom().getX() == move.getTo().getX() || move.getFrom().getY() == move.getTo().getY()) {
-            return rookMoveMatchesRules(bitBoard, move);
-        }
-        // Check if the move is along a diagonal (like a bishop)
-        else if (Math.abs(move.getFrom().getX() - move.getTo().getX()) == Math.abs(move.getFrom().getY() - move.getTo().getY())) {
-            return bishopMoveMatchesRules(bitBoard, move);
-        }
-
-        // If the move is neither horizontal/vertical nor diagonal, it's not a valid queen move
-        return false;
-    }
-
-    private boolean rookMoveMatchesRules(BitBoard bitBoard, Move move) {
-        // Rooks move horizontally or vertically, so deltaX or deltaY should be zero
-        int deltaX = Math.abs(move.getFrom().getX() - move.getTo().getX());
-        int deltaY = Math.abs(move.getFrom().getY() - move.getTo().getY());
-
-        if (deltaX != 0 && deltaY != 0) {
-            // If both deltaX and deltaY are non-zero, it's not a horizontal or vertical move
-            return false;
-        }
-
-        // Determine the direction of the move
-        int xDirection = Integer.signum(move.getTo().getX() - move.getFrom().getX());
-        int yDirection = Integer.signum(move.getTo().getY() - move.getFrom().getY());
-
-        // Check if the path between the start and end position is clear
-        // Start checking from the next square to the 'from' position, up to (but not including) the 'to' position
-        int distance = Math.max(deltaX, deltaY); // Distance the rook will move
-        for (int i = 1; i < distance; i++) {
-            char file = (char) (move.getFrom().getX() + i * xDirection);
-            int rank = move.getFrom().getY() + i * yDirection;
-            Position position = new Position(file, rank);
-            if (bitBoard.isOccupied(position)) {
-                // If there is a piece in the way, the move is not legal
-                return false;
-            }
-        }
-
-        // Check if the destination square is occupied by a piece of the same color
-        // You cannot capture your own pieces
-        return !bitBoard.isOccupiedByColor(move.getTo(), move.getColor());
-
-        // If all checks pass, the move is legal
-    }
-
-
-    private boolean bishopMoveMatchesRules(BitBoard bitBoard, Move move) {
-        // Bishops move diagonally, so the change in the x (file) and y (rank) should be the same
-        int deltaX = Math.abs(move.getFrom().getX() - move.getTo().getX());
-        int deltaY = Math.abs(move.getFrom().getY() - move.getTo().getY());
-
-        if (deltaX != deltaY) {
-            // If deltaX and deltaY are not equal, it's not a diagonal move
-            return false;
-        }
-
-        // Check if the path between the start and end position is clear
-        int xDirection = Integer.signum(move.getTo().getX() - move.getFrom().getX());
-        int yDirection = Integer.signum(move.getTo().getY() - move.getFrom().getY());
-
-        // Start checking from the next square to the from position, up to (but not including) the to position
-        for (int i = 1; i < deltaX; i++) {
-            char file = (char) (move.getFrom().getX() + i * xDirection);
-            int rank = move.getFrom().getY() + i * yDirection;
-            Position position = new Position(file, rank);
-            if (bitBoard.isOccupied(position)) {
-                // If there is a piece in the way, the move is not legal
-                return false;
-            }
-        }
-
-        // Check if the destination square is occupied by a piece of the same color
-        // You cannot capture your own pieces
-        return !bitBoard.isOccupiedByColor(move.getTo(), move.getColor());
-
-        // If all checks pass, the move is legal
-    }
-
-
-    private boolean pawnMoveMatchesRules(BitBoard bitBoard, Move move) {
-        // Calculate movement direction based on pawn color
-        int direction = move.getColor() == Color.WHITE ? 1 : -1;
-
-        // Get the start and end positions
-        Position from = move.getFrom();
-        Position to = move.getTo();
-
-        // Calculate the differences in the x and y coordinates
-        int xDiff = Math.abs(from.getX() - to.getX());
-        int yDiff = (to.getY() - from.getY()) * direction; // Multiplied by direction for forward movement
-
-        // Check for single square move
-        if (xDiff == 0 && yDiff == 1 && !bitBoard.isOccupied(to)) {
-            return true;
-        }
-
-        // Check for initial double square move
-        if (xDiff == 0 && yDiff == 2 && (from.getY() == (direction == 1 ? 2 : 7)) &&
-                !bitBoard.isOccupied(to) && !bitBoard.isOccupied(new Position(from.getX(), from.getY() + direction))) {
-            return true;
-        }
-
-        // Check for capture
-        if (xDiff == 1 && yDiff == 1 && bitBoard.isOccupiedByOpponent(to, move.getColor())) {
-            return true;
-        }
-
-        // Check for en passant (requires additional state to be tracked by the engine)
-        if (xDiff == 1 && yDiff == 1 && bitBoard.isEnPassantPossible(to, move.getColor())) {
-            return true;
-        }
-
-        // Check for promotion (not the full logic, just the position requirement)
-        if (xDiff == 0 && (to.getY() == (direction == 1 ? 8 : 1))) {
-            // Further checks are needed to ensure a promotion piece type is set in the move
-            return move.getPromotionPieceType() != null;
-        }
-
-        // If none of the conditions are met, the move is not legal for a pawn
-        return false;
-    }
-
-
-    // Here is an example implementation for the knight:
-    private boolean knightMoveMatchesRules(BitBoard bitBoard, Move move) {
-        // Calculate the differences in the x and y coordinates
-        int xDiff = Math.abs(move.getFrom().getX() - move.getTo().getX());
-        int yDiff = Math.abs(move.getFrom().getY() - move.getTo().getY());
-
-        // Check if the knight's move is an L shape
-        boolean isLShapedMove = (xDiff == 2 && yDiff == 1) || (xDiff == 1 && yDiff == 2);
-
-        // Use the bitboard to check if the destination square is occupied by a piece of the same color
-        boolean isDestinationOccupiedByOwnPiece = bitBoard.isOccupiedByColor(move.getTo(), move.getColor());
-
-        // The move is legal if it's an L-shaped move and the destination is not occupied by a friendly piece
-        return isLShapedMove && !isDestinationOccupiedByOwnPiece;
-    }
-
-
     private boolean isMoveOnBoard(Move move) {
         // Check if the 'from' position is on the board
         if (move.getFrom().getX() < 'a' || move.getFrom().getX() > 'h' ||
@@ -653,17 +320,6 @@ public class Engine {
                 move.getTo().getY() >= 1 && move.getTo().getY() <= 8;
 
         // If both positions are within the valid range, the move is on the board
-    }
-
-    private boolean isInCheckAfterMoveSimulation(BitBoard board, Move move, Color color) {
-        // Create a copy of the bitboard to simulate the move
-        BitBoard boardCopy = new BitBoard(board);
-
-        // Perform the move on the copy
-        boardCopy.performMove(move);
-
-        // Check if the move results in a check against the moving player's king
-        return boardCopy.isInCheck(color);
     }
 
     public List<Position> getPossibleMovesForPosition(Position fromPosition) {
@@ -700,20 +356,10 @@ public class Engine {
         return isInCheck && legalMovesCount == 0;
     }
 
-    public BitBoard simulateMoveAndGetDummyBoard(BitBoard board, Move move) {
-        // Create a copy of the original BitBoard
-        BitBoard dummyBoard = new BitBoard(board);
-
-        // Perform the move on the dummy board
-        dummyBoard.performMove(move);
-
-        return dummyBoard;
-    }
-
     private void updateGameState() {
         if (getAllLegalMoves().size() == 0 && isInStateCheck(bitBoard, Color.WHITE) && bitBoard.whitesTurn) {
             gameState.setState("BLACK WON");
-        } else if (getAllLegalMoves().size() == 0 && isInStateCheck(bitBoard, Color.WHITE) && !bitBoard.whitesTurn) {
+        } else if (getAllLegalMoves().size() == 0 && isInStateCheck(bitBoard, Color.BLACK) && !bitBoard.whitesTurn) {
             gameState.setState("WHITE WON");
         } else if (getAllLegalMoves().size() == 0) {
             gameState.setState("DRAW");
