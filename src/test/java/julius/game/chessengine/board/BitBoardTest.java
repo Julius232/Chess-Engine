@@ -120,6 +120,67 @@ public class BitBoardTest {
         assertEquals(0, d4.getCastles());
         assertEquals(0, d4.getPromotions());
 
+        engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
+
+    }
+
+    @Test
+//    r . . . k . . r   8
+//    p . p p q p b .   7
+//    b n . . p n p .   6
+//    . . . P N . . .   5
+//    . p . . P . . .   4
+//    . . N . . Q . p   3
+//    P P P B B P P P   2
+//    R . . . K . . R   1
+//    a b c d e f g h
+    public void PERFTfromFEN_1() {
+
+        Engine engine = new Engine();
+        engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");// The chess engine
+        engine.getBitBoard().logBoard();
+
+        // Depth 1
+        PerftNode d1 = perft(1, engine);
+        assertEquals(48, d1.getNodes());
+        assertEquals(8, d1.getCaptures());
+        assertEquals(0, d1.getEnPassant());
+        assertEquals(2, d1.getCastles());
+        assertEquals(0, d1.getPromotions());
+        assertEquals(0, d1.getChecks());
+        assertEquals(0, d1.getCheckmates());
+
+        // Depth 2
+        PerftNode d2 = perft(2, engine);
+        assertEquals(2039, d2.getNodes());
+        assertEquals(351, d2.getCaptures());
+        assertEquals(1, d2.getEnPassant());
+        assertEquals(91, d2.getCastles());
+        assertEquals(0, d2.getPromotions());
+        assertEquals(3, d2.getChecks());
+        assertEquals(0, d2.getCheckmates());
+
+        // Depth 3
+        PerftNode d3 = perft(3, engine);
+        assertEquals(97862, d3.getNodes());
+        assertEquals(17102, d3.getCaptures());
+        assertEquals(45, d3.getEnPassant());
+        assertEquals(3162, d3.getCastles());
+        assertEquals(0, d3.getPromotions());
+        assertEquals(993, d3.getChecks());
+        assertEquals(1, d3.getCheckmates());
+
+        // Depth 4
+        PerftNode d4 = perft(4, engine);
+        assertEquals(4085603, d4.getNodes());
+        assertEquals(757163, d4.getCaptures());
+        assertEquals(1929, d4.getEnPassant());
+        assertEquals(128013, d4.getCastles());
+        assertEquals(15172, d4.getPromotions());
+        assertEquals(25523, d4.getChecks());
+        assertEquals(43, d4.getCheckmates());
+
+        engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
     }
 
 

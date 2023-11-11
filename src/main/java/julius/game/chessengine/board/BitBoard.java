@@ -47,12 +47,34 @@ public class BitBoard {
     private boolean blackRookA8Moved = false;
     private boolean blackRookH8Moved = false;
 
-    public List<Move> getAllCurrentPossibleMoves() {
-        return generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
+    public BitBoard(boolean whitesTurn, long whitePawns, long blackPawns, long whiteKnights, long blackKnights, long whiteBishops, long blackBishops, long whiteRooks, long blackRooks, long whiteQueens, long blackQueens, long whiteKing, long blackKing, long whitePieces, long blackPieces, long allPieces, Position lastMoveDoubleStepPawnPosition, boolean whiteKingMoved, boolean blackKingMoved, boolean whiteRookA1Moved, boolean whiteRookH1Moved, boolean blackRookA8Moved, boolean blackRookH8Moved) {
+        this.whitesTurn = whitesTurn;
+        this.whitePawns = whitePawns;
+        this.blackPawns = blackPawns;
+        this.whiteKnights = whiteKnights;
+        this.blackKnights = blackKnights;
+        this.whiteBishops = whiteBishops;
+        this.blackBishops = blackBishops;
+        this.whiteRooks = whiteRooks;
+        this.blackRooks = blackRooks;
+        this.whiteQueens = whiteQueens;
+        this.blackQueens = blackQueens;
+        this.whiteKing = whiteKing;
+        this.blackKing = blackKing;
+        this.whitePieces = whitePieces;
+        this.blackPieces = blackPieces;
+        this.allPieces = allPieces;
+        this.lastMoveDoubleStepPawnPosition = lastMoveDoubleStepPawnPosition;
+        this.whiteKingMoved = whiteKingMoved;
+        this.blackKingMoved = blackKingMoved;
+        this.whiteRookA1Moved = whiteRookA1Moved;
+        this.whiteRookH1Moved = whiteRookH1Moved;
+        this.blackRookA8Moved = blackRookA8Moved;
+        this.blackRookH8Moved = blackRookH8Moved;
+        updateScore();
     }
 
     public BitBoard() {
-        this.currentScore = new Score(0, 0);
         updateScore();
         setInitialPosition();
     }
@@ -153,6 +175,10 @@ public class BitBoard {
         // Return the score encapsulated in a Score object
         this.currentScore = new Score(whiteScore, blackScore);
         log.debug("Update Score called" + currentScore);
+    }
+
+    public List<Move> getAllCurrentPossibleMoves() {
+        return generateAllPossibleMoves(whitesTurn ? Color.WHITE : Color.BLACK);
     }
 
     private int applyPositionalValues(long bitboard, int[] positionalValues) {

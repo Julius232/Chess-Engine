@@ -1,6 +1,7 @@
 package julius.game.chessengine.engine;
 
 import julius.game.chessengine.board.BitBoard;
+import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.PieceType;
@@ -743,5 +744,9 @@ public class Engine {
             bitBoard.undoMove(moves.getLast());
             moves.removeLast();
         }
+    }
+
+    public void importBoardFromFen(String fen) {
+        this.bitBoard = FEN.translateFENtoBitBoard(fen);
     }
 }
