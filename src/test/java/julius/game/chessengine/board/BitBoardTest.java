@@ -134,11 +134,11 @@ public class BitBoardTest {
 //    P P P B B P P P   2
 //    R . . . K . . R   1
 //    a b c d e f g h
-    public void PERFTfromFEN_1() {
+    //https://www.chessprogramming.org/Perft_Results
+    public void PERFTPos_2() {
 
         Engine engine = new Engine();
         engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");// The chess engine
-        engine.getBitBoard().logBoard();
 
         // Depth 1
         PerftNode d1 = perft(1, engine);
@@ -153,65 +153,198 @@ public class BitBoardTest {
         // Depth 2
         PerftNode d2 = perft(2, engine);
         assertEquals(2039, d2.getNodes());
+        assertEquals(3, d2.getChecks());
+        assertEquals(91, d2.getCastles());
         assertEquals(351, d2.getCaptures());
         assertEquals(1, d2.getEnPassant());
-        assertEquals(91, d2.getCastles());
         assertEquals(0, d2.getPromotions());
-        assertEquals(3, d2.getChecks());
         assertEquals(0, d2.getCheckmates());
 
         // Depth 3
         PerftNode d3 = perft(3, engine);
-        assertEquals(97862, d3.getNodes());
         assertEquals(17102, d3.getCaptures());
         assertEquals(45, d3.getEnPassant());
         assertEquals(3162, d3.getCastles());
         assertEquals(0, d3.getPromotions());
         assertEquals(993, d3.getChecks());
         assertEquals(1, d3.getCheckmates());
+        assertEquals(97862, d3.getNodes());
 
         // Depth 4
         PerftNode d4 = perft(4, engine);
-        assertEquals(4085603, d4.getNodes());
-        assertEquals(757163, d4.getCaptures());
+        assertEquals(43, d4.getCheckmates());
         assertEquals(1929, d4.getEnPassant());
-        assertEquals(128013, d4.getCastles());
         assertEquals(15172, d4.getPromotions());
         assertEquals(25523, d4.getChecks());
-        assertEquals(43, d4.getCheckmates());
+        assertEquals(128013, d4.getCastles());
+        assertEquals(757163, d4.getCaptures());
+        assertEquals(4085603, d4.getNodes());
 
         engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
     }
 
+    @Test
+    public void PERFTPos_3() {
 
+        Engine engine = new Engine();
+        engine.importBoardFromFen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ");// The chess engine
+
+        // Depth 1
+        PerftNode d1 = perft(1, engine);
+        assertEquals(14, d1.getNodes());
+        assertEquals(1, d1.getCaptures());
+        assertEquals(0, d1.getEnPassant());
+        assertEquals(0, d1.getCastles());
+        assertEquals(0, d1.getPromotions());
+        assertEquals(2, d1.getChecks());
+        assertEquals(0, d1.getCheckmates());
+
+        // Depth 2
+        PerftNode d2 = perft(2, engine);
+        assertEquals(191, d2.getNodes());
+        assertEquals(14, d2.getCaptures());
+        assertEquals(0, d2.getEnPassant());
+        assertEquals(0, d2.getCastles());
+        assertEquals(0, d2.getPromotions());
+        assertEquals(10, d2.getChecks());
+        assertEquals(0, d2.getCheckmates());
+
+        // Depth 3
+        PerftNode d3 = perft(3, engine);
+        assertEquals(2812, d3.getNodes());
+        assertEquals(209, d3.getCaptures());
+        assertEquals(2, d3.getEnPassant());
+        assertEquals(0, d3.getCastles());
+        assertEquals(0, d3.getPromotions());
+        assertEquals(267, d3.getChecks());
+        assertEquals(0, d3.getCheckmates());
+
+        // Depth 4
+        PerftNode d4 = perft(4, engine);
+        assertEquals(43238, d4.getNodes());
+        assertEquals(3348, d4.getCaptures());
+        assertEquals(123, d4.getEnPassant());
+        assertEquals(0, d4.getCastles());
+        assertEquals(0, d4.getPromotions());
+        assertEquals(1680, d4.getChecks());
+        assertEquals(17, d4.getCheckmates());
+    }
+
+    @Test
+    public void PERFTPos_4() {
+
+        Engine engine = new Engine();
+        engine.importBoardFromFen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");// The chess engine
+
+        // Depth 1
+        PerftNode d1 = perft(1, engine);
+        assertEquals(6, d1.getNodes());
+        assertEquals(0, d1.getCaptures());
+        assertEquals(0, d1.getEnPassant());
+        assertEquals(0, d1.getCastles());
+        assertEquals(0, d1.getPromotions());
+        assertEquals(0, d1.getChecks());
+        assertEquals(0, d1.getCheckmates());
+
+        // Depth 2
+        PerftNode d2 = perft(2, engine);
+        assertEquals(6, d2.getCastles());
+        assertEquals(264, d2.getNodes());
+        assertEquals(87, d2.getCaptures());
+        assertEquals(0, d2.getEnPassant());
+        assertEquals(48, d2.getPromotions());
+        assertEquals(10, d2.getChecks());
+        assertEquals(0, d2.getCheckmates());
+
+        // Depth 3
+        PerftNode d3 = perft(3, engine);
+        assertEquals(9467, d3.getNodes());
+        assertEquals(1021, d3.getCaptures());
+        assertEquals(4, d3.getEnPassant());
+        assertEquals(0, d3.getCastles());
+        assertEquals(120, d3.getPromotions());
+        assertEquals(38, d3.getChecks());
+        assertEquals(22, d3.getCheckmates());
+
+        // Depth 4
+        PerftNode d4 = perft(4, engine);
+        assertEquals(422333, d4.getNodes());
+        assertEquals(131393, d4.getCaptures());
+        assertEquals(0, d4.getEnPassant());
+        assertEquals(7795, d4.getCastles());
+        assertEquals(60032, d4.getPromotions());
+        assertEquals(15492, d4.getChecks());
+        assertEquals(5, d4.getCheckmates());
+
+    }
+
+    //https://www.chessprogramming.net/perfect-perft/
+    @Test
+    public void PERFT_castling_rights() {
+
+        Engine engine = new Engine();
+        engine.importBoardFromFen("r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1");// The chess engine
+
+        // Depth 4
+        PerftNode d4 = perft(4, engine);
+        assertEquals(1274206, d4.getNodes());
+
+    }
 
     private PerftNode perft(int depth, Engine engine) {
+        return perft(depth, engine, null);
+    }
+
+
+    private PerftNode perft(int depth, Engine engine, Move lastMove) {
         PerftNode node = new PerftNode(depth);
 
         if (depth == 0) {
-            node.addNode();
+            node.addNode(); // Increment the node count at the leaf
+            if (lastMove != null) {
+                if (lastMove.isCapture()) {
+                    node.addCaptures(1);
+                }
+                if (lastMove.isEnPassantMove()) {
+                    node.addEnPassant(1);
+                }
+                if (lastMove.isCastlingMove()) {
+                    node.addCastle(1);
+                }
+                if (lastMove.isPromotionMove()) {
+                    node.addPromotion(1);
+                }
+                if (engine.getBitBoard().isInCheck(Color.getOpponentColor(lastMove.getColor()))) {
+                    node.addCheck(1);
+                }
+                if (engine.isInStateCheckMate(engine.getBitBoard(), Color.getOpponentColor(lastMove.getColor()))) {
+                    node.addCheckmate(1);
+                }
+            }
             return node;
         }
 
         List<Move> moves = engine.getAllLegalMoves();
-
         for (Move move : moves) {
             engine.getBitBoard().performMove(move);
 
-            PerftNode childNode = perft(depth - 1, engine);
-            node.addNodes(childNode.getNodes());
-            node.addCaptures(childNode.getCaptures() + (move.isCapture() ? 1 : 0));
-            node.addEnPassant(childNode.getEnPassant() + (move.isEnPassantMove() ? 1 : 0));
-            node.addCastle(childNode.getCastles() + (move.isCastlingMove() ? 1 : 0));
-            node.addPromotion(childNode.getPromotions() + (move.isPromotionMove() ? 1 : 0));
-            node.addCheck(childNode.getChecks() + (engine.getBitBoard().isInCheck(Color.getOpponentColor(move.getColor())) ? 1 :0));
-            node.addCheckmate(childNode.getCheckmates() + (engine.isInStateCheckMate(engine.getBitBoard(), Color.getOpponentColor(move.getColor()))? 1 :0));
+            PerftNode childNode = perft(depth - 1, engine, move); // Pass the current move as lastMove
+            node.addNodes(childNode.getNodes()); // Aggregate the count of nodes from child nodes
+            node.addCaptures(childNode.getCaptures());
+            node.addCastle(childNode.getCastles());
+            node.addCheck(childNode.getChecks());
+            node.addCheckmate(childNode.getCheckmates());
+            node.addEnPassant(childNode.getEnPassant());
+            node.addPromotion(childNode.getPromotions());
+
+
 
             engine.getBitBoard().undoMove(move);
         }
 
         return node;
     }
+
 
 
     @Test
@@ -320,7 +453,6 @@ public class BitBoardTest {
     @Test
     public void checkForEnPassantBlackRight() {
         Engine engine = new Engine(); // The chess engine
-        BitBoard board = engine.getBitBoard();
 
         engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h2"), convertStringToPosition("h3"));
         engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e7"), convertStringToPosition("e5"));
@@ -338,7 +470,6 @@ public class BitBoardTest {
     @Test
     public void checkForCapturesBlack() {
         Engine engine = new Engine(); // The chess engine
-        BitBoard board = engine.getBitBoard();
 
         engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e2"), convertStringToPosition("e4"));
         engine.moveFigure(engine.getBitBoard(), convertStringToPosition("f7"), convertStringToPosition("f5"));
@@ -353,8 +484,8 @@ public class BitBoardTest {
 
     @Test
     public void testPawnMovesWithBitshifting() {
-        long whitePawns = 0L;
-        long blackPawns = 0L;
+        long whitePawns;
+        long blackPawns;
 
         // Setting white pawns on the second rank
         whitePawns = 0x000000000000FF00L;

@@ -1,4 +1,4 @@
-$(document).ready(function() {
+$(document).ready(function () {
     let computerColor = 'black'; // Default computer color
 
     const makeRequest = async (method, url, callback) => {
@@ -11,6 +11,20 @@ $(document).ready(function() {
             console.error('Request failed:', error);
         }
     };
+
+    function importFEN(fenString) {
+        var encodedFenString = encodeURIComponent(fenString);
+        makeRequest('PATCH', `http://localhost:8080/chess/fen?fen=${encodedFenString}`, () => {
+            reloadBoard();
+        });
+    }
+
+    document.getElementById('importFEN').addEventListener('click', function() {
+        var fenString = prompt("Please enter FEN:");
+        if(fenString) {
+            importFEN(fenString);
+        }
+    });
 
     const checkState = (state) => {
         if (state !== "PLAY") {

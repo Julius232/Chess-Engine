@@ -39,6 +39,12 @@ public class ChessController {
         return ResponseEntity.ok().build();
     }
 
+    @PatchMapping(value = "/fen")
+    public ResponseEntity<?> setBoardToFEN(@RequestParam("fen") String fen) {
+        engine.importBoardFromFen(fen);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping(value = "/undo")
     public ResponseEntity<?> undoLastMove() {
         engine.undoLastMove();

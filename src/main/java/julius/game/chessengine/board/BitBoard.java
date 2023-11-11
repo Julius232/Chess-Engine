@@ -191,37 +191,6 @@ public class BitBoard {
         return score;
     }
 
-    private boolean isPieceUnderThreat(long pieceBitboard, Color color) {
-        // Convert the piece bitboard into positions and check for threats against each position
-        while (pieceBitboard != 0) {
-            int positionIndex = Long.numberOfTrailingZeros(pieceBitboard);
-            Position piecePosition = indexToPosition(positionIndex);
-
-            // If any opponent's piece can legally move to the piece position, then the piece is under threat
-            if (isPositionUnderThreat(piecePosition, color)) {
-                return true;
-            }
-
-            // Clear the checked position bit so that we can proceed to the next piece
-            pieceBitboard &= pieceBitboard - 1;
-        }
-        return false;
-    }
-
-    private boolean isPositionUnderThreat(Position position, Color color) {
-        // Get the opponent's color
-        Color opponentColor = getOpponentColor(color);
-
-        // Check if any of the opponent's piece attacks include the position
-        // For example, you would check if any opponent's pawns, knights, bishops, rooks, queens, or king can attack the position
-        return canPawnAttackPosition(position, opponentColor) ||
-                canKnightAttackPosition(position, opponentColor) ||
-                canBishopAttackPosition(position, opponentColor) ||
-                canRookAttackPosition(position, opponentColor) ||
-                canQueenAttackPosition(position, opponentColor) ||
-                canKingAttackPosition(position, opponentColor);
-    }
-
     // Method to set up the initial position
     public void setInitialPosition() {
         // Setting white pawns on the second rank
@@ -471,10 +440,9 @@ public class BitBoard {
             PieceType capturedType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
 
             // Calculate the differences in the x and y coordinates
-            int xDiff = Math.abs(fromPosition.getX() - toPosition.getX());
             int yDiff = (toPosition.getY() - fromPosition.getY()) * direction; // Multiplied by direction for forward movement
 
-            if(checkForInitialDoubleSquareMove(direction, fromPosition, toPosition, xDiff, yDiff))
+            if(checkForInitialDoubleSquareMove(direction, fromPosition, toPosition, yDiff))
             {
                 if (isPromotion) {
                     moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.QUEEN, capturedType, false, false));
@@ -490,18 +458,14 @@ public class BitBoard {
         }
     }
 
-    private boolean checkForInitialDoubleSquareMove(int direction, Position fromPosition, Position toPosition, int xDiff, int yDiff) {
+    private boolean checkForInitialDoubleSquareMove(int direction, Position fromPosition, Position toPosition, int yDiff) {
         return !(yDiff == 2 && (isOccupied(toPosition) | isOccupied(new Position(fromPosition.getX(), fromPosition.getY() + direction))));
     }
-
-
 
     private List<Move> generateKnightMoves(Color color) {
         List<Move> moves = new ArrayList<>();
         long knights = (color == Color.WHITE) ? whiteKnights : blackKnights;
         long ownPieces = (color == Color.WHITE) ? whitePieces : blackPieces;
-
-
 
         // Iterate over all bits where knights exist
         for (int i = Long.numberOfTrailingZeros(knights); i < 64 - Long.numberOfLeadingZeros(knights); i++) {
@@ -715,7 +679,7 @@ public class BitBoard {
         // Offsets for a king's normal moves
         int[] offsets = {-9, -8, -7, -1, 1, 7, 8, 9};
 
-        boolean isFirstKingMove = !hasKingMoved(color);
+        boolean isFirstKingMove = hasKingNotMoved(color);
 
         for (int offset : offsets) {
             int targetIndex = kingPositionIndex + offset;
@@ -748,7 +712,7 @@ public class BitBoard {
 
     private boolean canKingCastle(Color color) {
         // The king must not have moved and must not be in check
-        return !hasKingMoved(color) && !isInCheck(color);
+        return hasKingNotMoved(color) && !isInCheck(color);
     }
 
     private boolean canCastleKingside(Color color, int kingPositionIndex) {
@@ -759,18 +723,35 @@ public class BitBoard {
                 return false;
             }
         }
-        return !hasRookMoved(new Position('h', color == Color.WHITE ? 1 : 8));
+
+        // Check if the rook has moved
+        if (hasRookMoved(new Position('h', color == Color.WHITE ? 1 : 8))) {
+            return false;
+        }
+
+        // Check if the rook still exists
+        Position rookPosition = new Position('h', color == Color.WHITE ? 1 : 8);
+        return isRookAtPosition(rookPosition);
     }
 
     private boolean canCastleQueenside(Color color, int kingPositionIndex) {
         // Ensure the squares between the king and the rook are unoccupied and not under attack
         int[] queensideSquares = {kingPositionIndex - 1, kingPositionIndex - 2, kingPositionIndex - 3};
         for (int square : queensideSquares) {
-            if (isOccupied(indexToPosition(square)) || isSquareUnderAttack(indexToPosition(square), color)) {
+            if (isOccupied(indexToPosition(square)) || (square != kingPositionIndex - 3 && isSquareUnderAttack(indexToPosition(square), color))) {
                 return false;
             }
         }
-        return !hasRookMoved(new Position('a', color == Color.WHITE ? 1 : 8));
+        if (hasRookMoved(new Position('a', color == Color.WHITE ? 1 : 8))) {
+            return false;
+        }
+        Position rookPosition = new Position('a', color == Color.WHITE ? 1 : 8);
+        return isRookAtPosition(rookPosition);
+    }
+
+    private boolean isRookAtPosition(Position position) {
+        PieceType pieceAtPosition = getPieceTypeAtPosition(position);
+        return pieceAtPosition == PieceType.ROOK;
     }
 
     private boolean isSquareUnderAttack(Position position, Color kingColor) {
@@ -897,6 +878,11 @@ public class BitBoard {
             lastMoveDoubleStepPawnPosition = null;
         }
 
+        if (move.isEnPassantMove()) {
+            // Clear the captured pawn from its position for en passant
+            clearSquare(bitIndex(move.getTo().getX(), move.getFrom().getY()), Color.getOpponentColor(move.getColor()));
+        }
+
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
     }
@@ -980,28 +966,8 @@ public class BitBoard {
         }
     }
 
-    public boolean isEnPassantPossible(Position to, Color color) {
-        // En passant is only possible if the last move made by the opponent was a pawn moving two steps from the starting rank
-        if (lastMoveDoubleStepPawnPosition == null) {
-            return false; // No pawn made the double step, or it's the first move of the game
-        }
-
-        // Calculate the rank where en passant is possible (which is rank 3 for white, rank 6 for black)
-        int enPassantRank = color == Color.WHITE ? 6 : 3;
-
-        // Check if the to position is at the correct rank for en passant
-        if (to.getY() != enPassantRank) {
-            return false;
-        }
-
-        // Check if the to position is next to the last move double step pawn
-        int fileDifference = Math.abs(to.getX() - lastMoveDoubleStepPawnPosition.getX());
-        return fileDifference == 0 &&
-                to.getY() == (lastMoveDoubleStepPawnPosition.getY() == 5 ? lastMoveDoubleStepPawnPosition.getY() + 1 : lastMoveDoubleStepPawnPosition.getY() - 1);
-    }
-
-    public boolean hasKingMoved(Color color) {
-        return (color == Color.WHITE) ? whiteKingMoved : blackKingMoved;
+    public boolean hasKingNotMoved(Color color) {
+        return (color == Color.WHITE) ? !whiteKingMoved : !blackKingMoved;
     }
 
     public boolean hasRookMoved(Position rookPosition) {
@@ -1461,7 +1427,7 @@ public class BitBoard {
             }
             logBoard.append("  ").append(rank).append('\n'); // Append the rank number at the end of each line
         }
-        logBoard.append("  a b c d e f g h"); // Append file letters at the bottom
+        logBoard.append("a b c d e f g h"); // Append file letters at the bottom
         log.info(logBoard.toString()); // Log the current board state
     }
 
@@ -1500,7 +1466,7 @@ public class BitBoard {
                 lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
             }
             if (isEnPassantBlack) {
-                enPassantModifier = +8;
+                enPassantModifier = 8;
                 lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
             }
 
