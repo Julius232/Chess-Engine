@@ -1,7 +1,5 @@
 package julius.game.chessengine.board;
 
-import julius.game.chessengine.board.BitBoard;
-import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
 import lombok.Data;

@@ -5,6 +5,7 @@ import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
+import julius.game.chessengine.utils.Score;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -147,15 +148,16 @@ public class Engine {
 
     private boolean isLegalMove(BitBoard bitBoard, Move move) {
         // Check if the move is within bounds of the board
-/*        if (!isMoveOnBoard(move)) {
+        if (!isMoveOnBoard(move)) {
             return false;
-        }*/
+        }
 
         // Check if the move adheres to the specific movement rules of the piece
 /*       if (!moveMatchesPieceRules(bitBoard, move)) {
             log.info(move + "does not match the piece rules");
+            bitBoard.logBoard();
             return false;
-        }
+        }*/
 
         // Check if the path is clear for moves that require it
         if (requiresClearPath(move.getPieceType()) && isPathBlocked(bitBoard, move)) {
@@ -168,7 +170,7 @@ public class Engine {
         }
         if (move.isEnPassantMove() && !canEnPassant(bitBoard, move)) {
             return false;
-        }*/
+        }
 
         // Simulate the move and check for check
         BitBoard testBoard = simulateMove(bitBoard, move);
@@ -188,7 +190,7 @@ public class Engine {
         return boardCopy;
     }
 
-/*    private boolean canEnPassant(BitBoard bitBoard, Move move) {
+    private boolean canEnPassant(BitBoard bitBoard, Move move) {
         // En passant is only possible if the last move made by the opponent was a pawn moving two steps from the starting rank
         Position lastPawnPosition = bitBoard.getLastMoveDoubleStepPawnPosition();
         if (lastPawnPosition == null) {
@@ -211,7 +213,7 @@ public class Engine {
         return move.getTo().equals(new Position(lastPawnPosition.getX(), currentPawnRank == 5 ? 6 : 3)); // The move is not capturing the double-stepped pawn en passant
 
         // All conditions are satisfied for en passant
-    }*/
+    }
 
 
     private boolean isInCheck(BitBoard bitBoard, Color color) {

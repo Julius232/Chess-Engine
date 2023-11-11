@@ -76,6 +76,84 @@ public class BitBoardTest {
     }
 
     @Test
+    public void PERFT() {
+
+        Engine engine = new Engine(); // The chess engine
+
+        // Depth 1
+        PerftNode d1 = perft(1, engine);
+        assertEquals(0, d1.getCaptures());
+        assertEquals(0, d1.getEnPassant());
+        assertEquals(0, d1.getCastles());
+        assertEquals(0, d1.getPromotions());
+        assertEquals(0, d1.getChecks());
+        assertEquals(0, d1.getCheckmates());
+        assertEquals(20, d1.getNodes());
+
+        // Depth 2
+        PerftNode d2 = perft(2, engine);
+        assertEquals(0, d2.getCaptures());
+        assertEquals(0, d2.getEnPassant());
+        assertEquals(0, d2.getCastles());
+        assertEquals(0, d2.getPromotions());
+        assertEquals(0, d2.getChecks());
+        assertEquals(0, d2.getCheckmates());
+        assertEquals(400, d2.getNodes());
+
+        // Depth 3
+        PerftNode d3 = perft(3, engine);
+        assertEquals(34, d3.getCaptures());
+        assertEquals(0, d3.getEnPassant());
+        assertEquals(0, d3.getCastles());
+        assertEquals(0, d3.getPromotions());
+        assertEquals(12, d3.getChecks());
+        assertEquals(0, d3.getCheckmates());
+        assertEquals(8902, d3.getNodes());
+
+        // Depth 4
+        PerftNode d4 = perft(4, engine);
+        assertEquals(197281, d4.getNodes());
+        assertEquals(8, d4.getCheckmates());
+        assertEquals(469, d4.getChecks());
+        assertEquals(1576, d4.getCaptures());
+        assertEquals(0, d4.getEnPassant());
+        assertEquals(0, d4.getCastles());
+        assertEquals(0, d4.getPromotions());
+
+    }
+
+
+
+    private PerftNode perft(int depth, Engine engine) {
+        PerftNode node = new PerftNode(depth);
+
+        if (depth == 0) {
+            node.addNode();
+            return node;
+        }
+
+        List<Move> moves = engine.getAllLegalMoves();
+
+        for (Move move : moves) {
+            engine.getBitBoard().performMove(move);
+
+            PerftNode childNode = perft(depth - 1, engine);
+            node.addNodes(childNode.getNodes());
+            node.addCaptures(childNode.getCaptures() + (move.isCapture() ? 1 : 0));
+            node.addEnPassant(childNode.getEnPassant() + (move.isEnPassantMove() ? 1 : 0));
+            node.addCastle(childNode.getCastles() + (move.isCastlingMove() ? 1 : 0));
+            node.addPromotion(childNode.getPromotions() + (move.isPromotionMove() ? 1 : 0));
+            node.addCheck(childNode.getChecks() + (engine.getBitBoard().isInCheck(Color.getOpponentColor(move.getColor())) ? 1 :0));
+            node.addCheckmate(childNode.getCheckmates() + (engine.isInStateCheckMate(engine.getBitBoard(), Color.getOpponentColor(move.getColor()))? 1 :0));
+
+            engine.getBitBoard().undoMove(move);
+        }
+
+        return node;
+    }
+
+
+    @Test
     public void checkForEngine() {
         Engine engine = new Engine(); // The chess engine
         BitBoard board = engine.getBitBoard();
@@ -237,7 +315,7 @@ public class BitBoardTest {
     public void testSinglePawnDoubleStepWithBitshifting() {
         // All white pawns are on the second rank
         long whitePawns = 0x000000000000FF00L;
-        System.out.println(whitePawns);
+        log.info(whitePawns);
 
         printBitboard(whitePawns);
 
@@ -246,7 +324,7 @@ public class BitBoardTest {
         // Clear the e2 square by using bitwise AND with the inverse of the e2 mask
         whitePawns &= ~eFileMask;
 
-        System.out.println(whitePawns);
+        log.info(whitePawns);
 
         printBitboard(whitePawns);
 
@@ -255,7 +333,7 @@ public class BitBoardTest {
         // Set the e4 square by using bitwise OR with the e4 mask
         whitePawns |= e4Mask;
 
-        System.out.println(whitePawns);
+        log.info(whitePawns);
 
         // Print out the bitboard in a human-readable form
         printBitboard(whitePawns);
@@ -302,22 +380,22 @@ public class BitBoardTest {
         whitePawns = movePawn(1, Color.WHITE, whitePawns, 'e', false, false);
         blackPawns = movePawn(2, Color.BLACK, blackPawns, 'd', false, false);
 
-        testing(Color.WHITE, whitePawns | blackPawns);
+        testing(whitePawns | blackPawns);
 
     }
 
-    private void testing(Color color, long pawns) {
+    private void testing(long pawns) {
         Position lastMoveDoubleStepPawnPosition = new Position('d', 5);
 
 
-        int enPassantRank = (color == Color.WHITE) ? 5 : 2; // For white, the en passant rank is 6 (5 in 0-based index); for black, it's 3 (2 in 0-based index).
+        int enPassantRank = 5; // For white, the en passant rank is 6 (5 in 0-based index); for black, it's 3 (2 in 0-based index).
         int fileIndexOfDoubleSteppedPawn = lastMoveDoubleStepPawnPosition.getX() - 'a';
         int enPassantIndex = (enPassantRank * 8) + fileIndexOfDoubleSteppedPawn;
         long enPassantTargetSquare = 1L << enPassantIndex;
 
         // Calculate potential en passant capture moves to the left and right
-        long attacksLeftEnPassant = (color == Color.WHITE) ? (pawns & ~FileMasks[7]) >>> 1 : (~FileMasks[7]) << 1;
-        long attacksRightEnPassant = (color == Color.WHITE) ? (~FileMasks[0]) << 1 : (pawns & ~FileMasks[0]) >>> 1;
+        long attacksLeftEnPassant = (pawns & ~FileMasks[7]) >>> 1;
+        long attacksRightEnPassant = ~FileMasks[0] << 1;
 
         //long attacksLeftEnPassant = 0x800003780L;
         //long attacksRightEnPassant = 0x200001dc00L;
@@ -332,12 +410,12 @@ public class BitBoardTest {
         long validEnPassantCapturesRight = attacksRightEnPassant & enPassantTargetSquare;
 
         if (validEnPassantCapturesLeft != 0) {
-            System.out.println("LEFT");
+            log.info("LEFT");
             printBitboard(validEnPassantCapturesLeft);
         }
 
         if (validEnPassantCapturesRight != 0) {
-            System.out.println("RIGHT");
+            log.info("RIGHT");
             printBitboard(validEnPassantCapturesRight);
         }
     }
@@ -382,10 +460,9 @@ public class BitBoardTest {
                     System.out.print(". ");
                 }
             }
-            System.out.println();
         }
-        System.out.println();
     }
+
 
 }
 

@@ -116,18 +116,16 @@ public class AI {
         List<Move> moves = engine.getAllLegalMovesForBitBoard(board);
 
         if (maximizingPlayer) {
-            double maxEval = Double.POSITIVE_INFINITY;
+            double maxEval = Double.NEGATIVE_INFINITY;;
             for (Move move : sortMovesByEfficiency(moves, board, color)) {
                 board.performMove(move);
                 double eval = alphaBeta(board, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
                 board.undoMove(move);
-                maxEval = Math.min(maxEval, eval);
-                alpha = Math.min(alpha, eval);
-                if (alpha >= beta) {
-                    log.info("pruning Move: " + move);
-                    break;
+                maxEval = Math.max(maxEval, eval);
+                alpha = Math.max(alpha, eval);
+                if (beta <= alpha) {
+                    break; // Alpha-beta pruning
                 }
-
             }
             if (maxEval <= alphaOriginal) {
                 transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND));
@@ -138,18 +136,16 @@ public class AI {
             }
             return maxEval;
         } else {
-            double minEval = Double.NEGATIVE_INFINITY;
+            double minEval = Double.POSITIVE_INFINITY;
             for (Move move : sortMovesByEfficiency(moves, board, color)) {
                 board.performMove(move);
                 double eval = alphaBeta(board, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
                 board.undoMove(move);
-                minEval = Math.max(minEval, eval);
-                beta = Math.max(beta, eval);
+                minEval = Math.min(minEval, eval);
+                beta = Math.min(beta, eval);
                 if (alpha >= beta) {
-                    log.info("pruning Move: " + move);
-                    break;
+                    break; // Alpha-beta pruning
                 }
-
             }
             if (minEval <= alphaOriginal) {
                 transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.UPPERBOUND));

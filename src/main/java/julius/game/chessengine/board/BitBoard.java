@@ -92,12 +92,13 @@ public class BitBoard {
     }
 
     public void updateScore() {
+
         // Define the piece values
         final int PAWN_VALUE = 100;   // Pawns are worth 1 point, scaled by 100
         final int KNIGHT_VALUE = 300; // Knights are worth 3 points
         final int BISHOP_VALUE = 300; // Bishops are worth 3 points
         final int ROOK_VALUE = 500;   // Rooks are worth 5 points
-        final int QUEEN_VALUE = 900;  // Queens are worth 9 points
+        final int QUEEN_VALUE = 9000;  // Queens are worth 9 points
 
         // Initialize scores
         int whiteScore = 0;
@@ -151,6 +152,7 @@ public class BitBoard {
 
         // Return the score encapsulated in a Score object
         this.currentScore = new Score(whiteScore, blackScore);
+        log.debug("Update Score called" + currentScore);
     }
 
     private int applyPositionalValues(long bitboard, int[] positionalValues) {
@@ -431,6 +433,8 @@ public class BitBoard {
     }
 
     private void addPawnMoves(List<Move> moves, long bitboard, int shift, boolean isCapture, Color color) {
+        int direction = color == Color.WHITE ? 1 : -1;
+
         while (bitboard != 0) {
             int toIndex = Long.numberOfTrailingZeros(bitboard);
             int fromIndex = color == Color.WHITE ? toIndex - shift : toIndex + shift;
@@ -440,18 +444,30 @@ public class BitBoard {
 
             PieceType capturedType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
 
-            if (isPromotion) {
-                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.QUEEN, capturedType, false, false));
-                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.ROOK, capturedType, false, false));
-                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.BISHOP, capturedType, false, false));
-                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.KNIGHT, capturedType, false, false));
-            } else {
-                moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, null, capturedType, false, false));
+            // Calculate the differences in the x and y coordinates
+            int xDiff = Math.abs(fromPosition.getX() - toPosition.getX());
+            int yDiff = (toPosition.getY() - fromPosition.getY()) * direction; // Multiplied by direction for forward movement
+
+            if(checkForInitialDoubleSquareMove(direction, fromPosition, toPosition, xDiff, yDiff))
+            {
+                if (isPromotion) {
+                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.QUEEN, capturedType, false, false));
+                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.ROOK, capturedType, false, false));
+                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.BISHOP, capturedType, false, false));
+                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.KNIGHT, capturedType, false, false));
+                } else {
+                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, null, capturedType, false, false));
+                }
             }
 
             bitboard &= bitboard - 1; // Clear the processed bit
         }
     }
+
+    private boolean checkForInitialDoubleSquareMove(int direction, Position fromPosition, Position toPosition, int xDiff, int yDiff) {
+        return !(yDiff == 2 && (isOccupied(toPosition) | isOccupied(new Position(fromPosition.getX(), fromPosition.getY() + direction))));
+    }
+
 
 
     private List<Move> generateKnightMoves(Color color) {
