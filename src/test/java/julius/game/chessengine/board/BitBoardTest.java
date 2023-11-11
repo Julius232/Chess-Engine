@@ -345,12 +345,9 @@ public class BitBoardTest {
         return node;
     }
 
-
-
     @Test
     public void checkForEngine() {
         Engine engine = new Engine(); // The chess engine
-        BitBoard board = engine.getBitBoard();
 
         engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e2"), convertStringToPosition("e4"));
         engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e7"), convertStringToPosition("e5"));
