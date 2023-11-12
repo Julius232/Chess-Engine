@@ -1,6 +1,5 @@
 package julius.game.chessengine.ai;
 
-import julius.game.chessengine.board.BitBoard;
 import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
@@ -16,12 +15,10 @@ import java.util.*;
 @Component
 public class AI {
 
-    private final long CHECKMATE = 1000000;
-
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 5;
+    int levelOfDepth = 3;
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -29,7 +26,7 @@ public class AI {
     }
 
     public void startAutoPlay() {
-        while (engine.getGameState().getState().equals("PLAY"))  {
+        while (engine.getGameState().getState().equals("PLAY")) {
             engine.logBoard();
             executeCalculatedMove();
         }
@@ -94,7 +91,8 @@ public class AI {
             double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor);
             engine.undoMove(move, false);
 
-            if(color.equals(Color.WHITE) ? score == CHECKMATE : score == -CHECKMATE) {
+
+            if (color.equals(Color.WHITE) ? score == Engine.CHECKMATE : score == -Engine.CHECKMATE) {
                 return move;
             }
 
@@ -106,10 +104,10 @@ public class AI {
         }
         log.info("Score [{}] was best move [{}] calculation completed for color {}", bestScore, bestMove, color);
 
-        if(bestMove == null) {
+        if (bestMove == null) {
             return sortedMoves.stream()
                     .findAny()
-                    .orElseThrow(() ->new IllegalStateException("No moves possible"));
+                    .orElseThrow(() -> new IllegalStateException("No moves possible"));
         }
 
         return bestMove;
@@ -123,10 +121,12 @@ public class AI {
     private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color) {
         long boardHash = engine.getBoardStateHash();
 
-        if (depth == 0) {
-            double staticEval = engine.getScore().getScoreDifference() / 100.0;
-            transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, NodeType.EXACT));
-            return staticEval;
+        if (depth == 0 || engine.isGameOver()) {
+            double eval = engine.evaluateBoard(color, maximizingPlayer);
+            // Store the evaluation in the transposition table
+            transpositionTable.put(boardHash, new TranspositionTableEntry(eval, depth, NodeType.EXACT));
+
+            return eval;
         }
 
         TranspositionTableEntry entry = transpositionTable.get(boardHash);
@@ -150,59 +150,53 @@ public class AI {
         List<Move> moves = engine.getAllLegalMoves();
 
         if (maximizingPlayer) {
-            double maxEval = Double.NEGATIVE_INFINITY;
-            for (Move move : sortMovesByEfficiency(moves, engine, color)) {
-                engine.performMove(move);
-                if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
-                    double checkmateValue = CHECKMATE;
-                    transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
-                    engine.undoMove(move, false);
-                    return checkmateValue;
-                }
-                double eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
-
-                engine.undoMove(move, false);
-                maxEval = Math.max(maxEval, eval);
-                alpha = Math.max(alpha, eval);
-                if (beta <= alpha) {
-                    break; // Alpha-beta pruning
-                }
-            }
-            if (maxEval <= alphaOriginal) {
-                transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND));
-            } else if (maxEval >= beta) {
-                transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.LOWERBOUND));
-            } else {
-                transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT));
-            }
-            return maxEval;
+            return maximizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves);
         } else {
-            double minEval = Double.POSITIVE_INFINITY;
-            for (Move move : sortMovesByEfficiency(moves, engine, color)) {
-                engine.performMove(move);
-                if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
-                    double checkmateValue = -CHECKMATE;
-                    transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
-                    engine.undoMove(move, false);
-                    return checkmateValue;
-                }
-                double eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
+            return minimizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves);
+        }
+    }
 
-                engine.undoMove(move, false);
-                minEval = Math.min(minEval, eval); // min -1000
-                beta = Math.min(beta, eval);// beta -1000
-                if (alpha >= beta) {
-                    break; // Alpha-beta pruning
-                }
+    private double maximizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves) {
+        double maxEval = Double.NEGATIVE_INFINITY;
+        for (Move move : sortMovesByEfficiency(moves, engine, color)) {
+            engine.performMove(move);
+            double eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
+            engine.undoMove(move, false);
+            maxEval = Math.max(maxEval, eval);
+            alpha = Math.max(alpha, eval);
+            if (beta <= alpha) {
+                break; // Alpha-beta pruning
             }
-            if (minEval <= alphaOriginal) {
-                transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.UPPERBOUND));
-            } else if (minEval >= beta) {
-                transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.LOWERBOUND));
-            } else {
-                transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.EXACT));
+        }
+        updateTanspositionTable(depth, beta, boardHash, alphaOriginal, maxEval);
+        return maxEval;
+    }
+
+
+
+    private double minimizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves) {
+        double minEval = Double.POSITIVE_INFINITY;
+        for (Move move : sortMovesByEfficiency(moves, engine, color)) {
+            engine.performMove(move);
+            double eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
+            engine.undoMove(move, false);
+            minEval = Math.min(minEval, eval); // min -1000
+            beta = Math.min(beta, eval);// beta -1000
+            if (alpha >= beta) {
+                break; // Alpha-beta pruning
             }
-            return minEval;
+        }
+        updateTanspositionTable(depth, beta, boardHash, alphaOriginal, minEval);
+        return minEval;
+    }
+
+    private void updateTanspositionTable(int depth, double beta, long boardHash, double alphaOriginal, double maxEval) {
+        if (maxEval <= alphaOriginal) {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND));
+        } else if (maxEval >= beta) {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.LOWERBOUND));
+        } else {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT));
         }
     }
 
@@ -284,7 +278,6 @@ public class AI {
                 }
             }
         }
-
 
 
         return threatScore;

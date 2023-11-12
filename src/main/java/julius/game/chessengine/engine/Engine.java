@@ -22,6 +22,7 @@ import static julius.game.chessengine.helper.BitHelper.bitIndex;
 @Log4j2
 public class Engine {
 
+    public static final double CHECKMATE = 1000000;
     private boolean legalMovesNeedUpdate = true;
     private List<Move> legalMoves = new ArrayList<>();
     private LinkedList<Move> line = new LinkedList<>();
@@ -61,7 +62,9 @@ public class Engine {
 
     public void importBoardFromFen(String fen) {
         this.bitBoard = FEN.translateFENtoBitBoard(fen);
-        legalMovesNeedUpdate = true; // Set flag
+        this.gameState = new GameState();
+        generateLegalMoves();
+        updateGameState();
     }
 
     public Engine createSimulation() {
@@ -268,15 +271,46 @@ public class Engine {
         return gameState;
     }
 
-    public void setGameState(GameState gameState) {
-        this.gameState = gameState;
-    }
-
     public Score getScore() {
         return bitBoard.getScore();
     }
 
     public FEN translateBoardToFen() {
         return FEN.translateBoardToFEN(bitBoard);
+    }
+
+    public boolean isGameOver() {
+        Color currentPlayer = bitBoard.whitesTurn ? Color.WHITE : Color.BLACK;
+        boolean noLegalMoves = getAllLegalMoves().isEmpty();
+        boolean isInCheck = isInStateCheck(bitBoard, currentPlayer);
+
+        // Checkmate condition
+        if (noLegalMoves && isInCheck) {
+            return true;
+        }
+
+        // Stalemate condition
+        if (noLegalMoves) {
+            return true;
+        }
+
+        // Draw by insufficient material (more complex rules like threefold repetition are not covered here)
+        return isDrawByInsufficientMaterial();
+    }
+
+    private boolean isDrawByInsufficientMaterial() {
+        // Implement logic to check for draw due to insufficient material
+        // For instance, only kings left, king and bishop vs king, king and knight vs king, etc.
+        // You need to inspect the bitboards to determine the material left on the board.
+        return false; // Placeholder
+    }
+
+    public double evaluateBoard(Color color, boolean maximizer) {
+        if (isInStateCheckMate(color)) {
+            return maximizer ? -CHECKMATE : CHECKMATE;
+        }
+        // Implement your board evaluation logic here.
+        // This should return a score based on material, position, and other chess strategies.
+        return getScore().getScoreDifference() / 100.0;
     }
 }
