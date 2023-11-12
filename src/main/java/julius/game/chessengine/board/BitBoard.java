@@ -12,12 +12,31 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.BitHelper.*;
+import static julius.game.chessengine.helper.KnightHelper.KNIGHT_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.KnightHelper.knightMoves;
 import static julius.game.chessengine.helper.PawnHelper.*;
+import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES;
 
 @Log4j2
 public class BitBoard {
+
+    // Constants for the initial positions of each piece type
+    private static final long INITIAL_WHITE_PAWN_POSITION = 0x000000000000FF00L; // Pawns on the second rank (a2-h2)
+    private static final long INITIAL_BLACK_PAWN_POSITION = 0x00FF000000000000L; // Pawns on the seventh rank (a7-h7)
+    private static final long INITIAL_WHITE_KNIGHT_POSITION = 0x0000000000000042L; // Knights on b1 and g1
+    private static final long INITIAL_BLACK_KNIGHT_POSITION = 0x4200000000000000L; // Knights on b8 and g8
+    private static final long INITIAL_WHITE_BISHOP_POSITION = 0x0000000000000024L; // Bishops on c1 and f1
+    private static final long INITIAL_BLACK_BISHOP_POSITION = 0x2400000000000000L; // Bishops on c8 and f8
+    private static final long INITIAL_WHITE_ROOK_POSITION = 0x0000000000000081L; // Rooks on a1 and h1
+    private static final long INITIAL_BLACK_ROOK_POSITION = 0x8100000000000000L; // Rooks on a8 and h8
+    private static final long INITIAL_WHITE_QUEEN_POSITION = 0x0000000000000008L; // Queen on d1
+    private static final long INITIAL_BLACK_QUEEN_POSITION = 0x0800000000000000L; // Queen on d8
+    private static final long INITIAL_WHITE_KING_POSITION = 0x0000000000000010L; // King on e1
+    private static final long INITIAL_BLACK_KING_POSITION = 0x1000000000000000L; // King on e8
+
+
     public boolean whitesTurn = true;
     // Add score field to the BitBoard class
     private Score currentScore;
@@ -115,6 +134,14 @@ public class BitBoard {
     }
 
     public void updateScore() {
+        // Initialize bonuses and penalties
+        int whiteCenterBonus = 0;
+        int blackCenterBonus = 0;
+        int whiteDoubledPenalty = 0;
+        int blackDoubledPenalty = 0;
+        int whiteIsolatedPenalty = 0;
+        int blackIsolatedPenalty = 0;
+
         // Define the piece values
         final int PAWN_VALUE = 100;   // Pawns are worth 1 point, scaled by 100
         final int KNIGHT_VALUE = 300; // Knights are worth 3 points
@@ -125,6 +152,12 @@ public class BitBoard {
         // Initialize scores
         int whiteScore = 0;
         int blackScore = 0;
+
+        final int CENTER_PAWN_BONUS = 10;   // Bonus points for pawns in the center
+        final int DOUBLED_PAWN_PENALTY = -20; // Penalty points for doubled pawns
+        final int ISOLATED_PAWN_PENALTY = -10; // Penalty points for isolated pawns
+
+        final int START_POSITION_PENALTY = -50; // Define the penalty value for starting position
 
         // Calculate scores based on bitboards
         whiteScore += Long.bitCount(whitePawns) * PAWN_VALUE;
@@ -142,17 +175,6 @@ public class BitBoard {
         // Factor in king safety, piece positions, control of center, etc., for a more advanced scoring
         // These advanced concepts are omitted for brevity, but would involve additional logic.
         // Define additional score values
-        final int CENTER_PAWN_BONUS = 10;   // Bonus points for pawns in the center
-        final int DOUBLED_PAWN_PENALTY = -20; // Penalty points for doubled pawns
-        final int ISOLATED_PAWN_PENALTY = -10; // Penalty points for isolated pawns
-
-        // Initialize bonuses and penalties
-        int whiteCenterBonus = 0;
-        int blackCenterBonus = 0;
-        int whiteDoubledPenalty = 0;
-        int blackDoubledPenalty = 0;
-        int whiteIsolatedPenalty = 0;
-        int blackIsolatedPenalty = 0;
 
         // Calculate bonuses and penalties for white
         whiteCenterBonus += countCenterPawns(whitePawns) * CENTER_PAWN_BONUS;
@@ -172,8 +194,49 @@ public class BitBoard {
         whiteScore += applyPositionalValues(whitePawns, PawnHelper.WHITE_PAWN_POSITIONAL_VALUES);
         blackScore += applyPositionalValues(blackPawns, BLACK_PAWN_POSITIONAL_VALUES);
 
+        // Calculate positional values for white and black knights
+        whiteScore += applyPositionalValues(whiteKnights, KNIGHT_POSITIONAL_VALUES);
+        blackScore += applyPositionalValues(blackKnights, KNIGHT_POSITIONAL_VALUES);
+
+        // Calculate positional values for white and black knights
+        whiteScore += applyPositionalValues(whiteBishops, BISHOP_POSITIONAL_VALUES);
+        blackScore += applyPositionalValues(blackBishops, BISHOP_POSITIONAL_VALUES);
+
+        whiteScore += applyPositionalValues(whiteQueens, QUEEN_POSITIONAL_VALUES);
+        blackScore += applyPositionalValues(blackQueens, QUEEN_POSITIONAL_VALUES);
+
+        // Check if white pieces are all on starting squares
+        if (areAllPiecesOnStartingSquares(whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing, true)) {
+            whiteScore += START_POSITION_PENALTY;
+        }
+        else {
+            System.out.println();
+        }
+
+        // Check if black pieces are all on starting squares
+        if (areAllPiecesOnStartingSquares(blackKnights, blackBishops, blackRooks, blackQueens, blackKing, false)) {
+            blackScore += START_POSITION_PENALTY;
+        }
+        else {
+            System.out.println();
+        }
+
         // Return the score encapsulated in a Score object
         this.currentScore = new Score(whiteScore, blackScore);
+    }
+
+    private boolean areAllPiecesOnStartingSquares(long knights, long bishops, long rooks, long queens, long king, boolean isWhite) {
+        if (isWhite) {
+            return (knights == INITIAL_WHITE_KNIGHT_POSITION ||
+                    bishops == INITIAL_WHITE_BISHOP_POSITION ||
+                    rooks == INITIAL_WHITE_ROOK_POSITION ||
+                    king == INITIAL_WHITE_KING_POSITION);
+        } else {
+            return (knights == INITIAL_BLACK_KNIGHT_POSITION ||
+                    bishops == INITIAL_BLACK_BISHOP_POSITION ||
+                    rooks == INITIAL_BLACK_ROOK_POSITION ||
+                    king == INITIAL_BLACK_KING_POSITION);
+        }
     }
 
     public List<Move> getAllCurrentPossibleMoves() {
@@ -407,8 +470,7 @@ public class BitBoard {
             // Calculate the differences in the x and y coordinates
             int yDiff = (toPosition.getY() - fromPosition.getY()) * direction; // Multiplied by direction for forward movement
 
-            if(checkForInitialDoubleSquareMove(direction, fromPosition, toPosition, yDiff))
-            {
+            if (checkForInitialDoubleSquareMove(direction, fromPosition, toPosition, yDiff)) {
                 if (isPromotion) {
                     moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.QUEEN, capturedType, false, false));
                     moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, color, isCapture, false, false, PieceType.ROOK, capturedType, false, false));
@@ -851,7 +913,7 @@ public class BitBoard {
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
 
-        if(scoreNeedsUpdate) {
+        if (scoreNeedsUpdate) {
             updateScore();
         }
     }
@@ -1404,7 +1466,7 @@ public class BitBoard {
 
             int enPassantModifier = 0;
 
-            if(isEnPassantWhite) {
+            if (isEnPassantWhite) {
                 enPassantModifier = -8;
                 lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
             }
@@ -1508,7 +1570,7 @@ public class BitBoard {
 
         // Update the aggregated bitboards
         updateAggregatedBitboards();
-        if(scoreNeedsUpdate) {
+        if (scoreNeedsUpdate) {
             updateScore();
         }
         whitesTurn = !whitesTurn;

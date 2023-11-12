@@ -18,7 +18,7 @@ public class AI {
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 3;
+    int levelOfDepth = 5;
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -49,8 +49,6 @@ public class AI {
 
 
     private Move calculateMove(Color color) {
-
-
         // Get all possible moves for the given color
         List<Move> moves = engine.getAllLegalMoves();
 

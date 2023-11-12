@@ -1,79 +1,86 @@
 package julius.game.chessengine.pgn;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import julius.game.chessengine.board.Move;
+import julius.game.chessengine.board.Position;
+import julius.game.chessengine.figures.PieceType;
+import julius.game.chessengine.utils.Color;
+
+import java.util.LinkedList;
 
 public class PgnParser {
 
-    private static final Pattern TAG_PAIR_PATTERN = Pattern.compile("\\[([A-Za-z0-9]+) \"(.*)\"\\]");
-    private static final Pattern MOVE_TEXT_PATTERN = Pattern.compile("\\d+\\.\\s*(\\S+)(?:\\s+(\\S+))?");
+    String pgn = """
+            
+            """;
 
-    public Game parsePgnFile(String filePath) throws IOException {
-        Game game = new Game();
-        List<String> moves = new ArrayList<>();
+    public LinkedList<Move> parsePgn(String pgn) {
+        LinkedList<Move> moves = new LinkedList<>();
+        String[] moveStrings = pgn.split("\\s+"); // Split the PGN string by whitespace
 
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            boolean readingMoves = false;
-            while ((line = br.readLine()) != null) {
-                if (line.startsWith("[")) {
-                    Matcher matcher = TAG_PAIR_PATTERN.matcher(line);
-                    if (matcher.find()) {
-                        game.addTagPair(matcher.group(1), matcher.group(2));
-                    }
-                } else if (!line.isEmpty()) {
-                    readingMoves = true;
-                }
+        Color currentTurn = Color.WHITE;
 
-                if (readingMoves) {
-                    Matcher matcher = MOVE_TEXT_PATTERN.matcher(line);
-                    while (matcher.find()) {
-                        if (matcher.group(1) != null) {
-                            moves.add(matcher.group(1));
-                        }
-                        if (matcher.group(2) != null) {
-                            moves.add(matcher.group(2));
-                        }
-                    }
-                }
+        for (String moveStr : moveStrings) {
+            // Ignore non-move text such as move numbers or game result indicators
+            if (!moveStr.matches("^[a-h1-8O\\-\\+\\#]+$")) {
+                continue;
+            }
+
+            Move move = parseMoveString(moveStr, currentTurn);
+            if (move != null) {
+                moves.add(move);
+                currentTurn = (currentTurn == Color.WHITE) ? Color.BLACK : Color.WHITE;
             }
         }
 
-        game.setMoves(moves);
-        return game;
+        return moves;
     }
 
-    public static class Game {
-        private final List<String> tags = new ArrayList<>();
-        private final List<String> moves = new ArrayList<>();
+    private Move parseMoveString(String moveStr, Color color) {
+        // Implement logic to interpret the move string and create a Move object
+        // This can get complex as you need to handle different types of moves (e.g., pawn moves, captures, castling, promotions, etc.)
+        // Example: e4, Nf3, exd5, O-O, e8=Q+
 
-        public void addTagPair(String tag, String value) {
-            tags.add(tag + ": " + value);
-        }
-
-        public void setMoves(List<String> moves) {
-            this.moves.addAll(moves);
-        }
-
-        public List<String> getTags() {
-            return tags;
-        }
-
-        public List<String> getMoves() {
-            return moves;
-        }
-
-        @Override
-        public String toString() {
-            return "Game{" +
-                    "tags=" + tags +
-                    ", moves=" + moves +
-                    '}';
+        // This is a placeholder - you'll need to expand this to handle various move types
+        if (moveStr.equals("O-O")) {
+            return parseCastlingMove(color, true); // Kingside castling
+        } else if (moveStr.equals("O-O-O")) {
+            return parseCastlingMove(color, false); // Queenside castling
+        } else {
+            // Parse standard moves (e.g., e4, Nf3, exd5)
+            return parseStandardMove(moveStr, color);
         }
     }
+
+    private Move parseStandardMove(String moveStr, Color color) {
+        // Logic to parse standard moves
+        // You'll need to determine the 'from' and 'to' positions and other details of the move
+        // This might involve keeping track of the board state to know where each piece is
+
+        // Placeholder for demonstration
+        // Example implementation for pawn moves like e4 or captures like exd5
+        Position from = null; // Determine 'from' based on moveStr and board state
+        Position to = null;   // Determine 'to' based on moveStr
+        boolean isCapture = moveStr.contains("x");
+        PieceType pieceType = determinePieceType(moveStr, color); // Implement this method
+
+        return new Move(from, to, pieceType, color, isCapture, false, false, null, null, false, false);
+    }
+
+    private Move parseCastlingMove(Color color, boolean isKingside) {
+        // Logic to create a Move object for castling
+        Position from = new Position(color == Color.WHITE ? 'e' : 'e', color == Color.WHITE ? 1 : 8);
+        Position to = new Position(isKingside ? 'g' : 'c', color == Color.WHITE ? 1 : 8);
+
+        return new Move(from, to, PieceType.KING, color, false, true, false, null, null, false, false);
+    }
+
+    private PieceType determinePieceType(String moveStr, Color color) {
+        // Implement logic to determine the piece type based on the move string
+        // Example: 'N' for knight, 'Q' for queen, etc.
+        // If no piece is specified, it's assumed to be a pawn
+
+        return PieceType.PAWN; // Placeholder
+    }
+
+    // Additional helper methods as needed...
 }
