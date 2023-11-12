@@ -206,36 +206,27 @@ public class BitBoard {
         blackScore += applyPositionalValues(blackQueens, QUEEN_POSITIONAL_VALUES);
 
         // Check if white pieces are all on starting squares
-        if (areAllPiecesOnStartingSquares(whiteKnights, whiteBishops, whiteRooks, whiteQueens, whiteKing, true)) {
+        if (areAllPiecesOnStartingSquares(whiteKnights, whiteBishops, whiteRooks, true)) {
             whiteScore += START_POSITION_PENALTY;
         }
-        else {
-            System.out.println();
-        }
-
         // Check if black pieces are all on starting squares
-        if (areAllPiecesOnStartingSquares(blackKnights, blackBishops, blackRooks, blackQueens, blackKing, false)) {
+        if (areAllPiecesOnStartingSquares(blackKnights, blackBishops, blackRooks, false)) {
             blackScore += START_POSITION_PENALTY;
-        }
-        else {
-            System.out.println();
         }
 
         // Return the score encapsulated in a Score object
         this.currentScore = new Score(whiteScore, blackScore);
     }
 
-    private boolean areAllPiecesOnStartingSquares(long knights, long bishops, long rooks, long queens, long king, boolean isWhite) {
+    private boolean areAllPiecesOnStartingSquares(long knights, long bishops, long rooks, boolean isWhite) {
         if (isWhite) {
             return (knights == INITIAL_WHITE_KNIGHT_POSITION ||
                     bishops == INITIAL_WHITE_BISHOP_POSITION ||
-                    rooks == INITIAL_WHITE_ROOK_POSITION ||
-                    king == INITIAL_WHITE_KING_POSITION);
+                    rooks == INITIAL_WHITE_ROOK_POSITION);
         } else {
             return (knights == INITIAL_BLACK_KNIGHT_POSITION ||
                     bishops == INITIAL_BLACK_BISHOP_POSITION ||
-                    rooks == INITIAL_BLACK_ROOK_POSITION ||
-                    king == INITIAL_BLACK_KING_POSITION);
+                    rooks == INITIAL_BLACK_ROOK_POSITION);
         }
     }
 

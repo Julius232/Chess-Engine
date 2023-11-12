@@ -16,9 +16,11 @@ import java.util.*;
 public class AI {
 
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
+    private static final double TIME_LIMIT_EXCEEDED_FLAG = Double.MAX_VALUE;
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 5;
+    int maxDepth = 18;
+    long timeLimit = 20000; // 10 seconds in milliseconds
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -36,87 +38,90 @@ public class AI {
         // Convert the string color to the Color enum
         Color color = engine.whitesTurn() ? Color.WHITE : Color.BLACK;
 
-        // Calculate the move using the AI logic
-        Move calculatedMove = calculateMove(color);
+        Move bestMove = null;
+        double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+        long startTime = System.currentTimeMillis(); // Record start time
 
-        // Convert the Move to fromPosition and toPosition
-        Position fromPosition = calculatedMove.getFrom();
-        Position toPosition = calculatedMove.getTo();
+        for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
+            MoveAndScore moveAndScore = getBestMove(engine.createSimulation(), engine.getAllLegalMoves(), color, currentDepth, startTime, timeLimit);
 
-        // Use the engine to move the figure on the bitboard
+            if (moveAndScore != null && (color == Color.WHITE ? moveAndScore.score > bestScore : moveAndScore.score < bestScore)) {
+                bestScore = moveAndScore.score;
+                bestMove = moveAndScore.move;
+                log.info("New best move found: {}, depth: {}", bestMove, currentDepth);
+            }
+
+            if (System.currentTimeMillis() - startTime > timeLimit) {
+                // Time limit exceeded, break out of the loop
+                break;
+            }
+        }
+
+        if (bestMove == null) {
+            throw new IllegalStateException("No move found within the time limit");
+        }
+
+        // Execute the best move found within the time frame
+        Position fromPosition = bestMove.getFrom();
+        Position toPosition = bestMove.getTo();
         return engine.moveFigure(fromPosition, toPosition);
     }
 
-
-    private Move calculateMove(Color color) {
-        // Get all possible moves for the given color
-        List<Move> moves = engine.getAllLegalMoves();
-
-        // Get the best move from the sorted list
-        // This is just a placeholder; you'll need to implement the actual logic for selecting the best move
-        long startTime = System.nanoTime(); // Start timing
-        Move calculatedMove = getBestMove(engine.createSimulation(), moves, color, levelOfDepth);
-        long endTime = System.nanoTime();
-
-        if (calculatedMove == null && moves.size() > 0) {
-            log.error("Calculated move is null but there are moves available!!!!!!!");
-        }
-
-        log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
-
-
-        // Return the calculated move directly without saving it
-        return calculatedMove;
-    }
-
-    private Move getBestMove(Engine engine, List<Move> moves, Color color, int levelOfDepth) {
+    private MoveAndScore getBestMove(Engine engine, List<Move> moves, Color color, int levelOfDepth, long startTime, long timeLimit) {
         double alpha = Double.NEGATIVE_INFINITY;
         double beta = Double.POSITIVE_INFINITY;
         Move bestMove = null;
         double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 
         Color opponentColor = Color.getOpponentColor(color);
+        ArrayList<Move> sortedMoves = sortMovesByEfficiency(moves, engine, color);
 
-        LinkedList<Move> sortedMoves = sortMovesByEfficiency(moves, engine, color);
-        log.info("AI: Im the {} player, and will destroy you", Color.WHITE == color ? "maximizing" : "minimizing");
         for (Move move : sortedMoves) {
-            engine.performMove(move);
-            if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
-                engine.undoMove(move, false);
-                return move;
+            // Check if time limit exceeded
+            if (System.currentTimeMillis() - startTime > timeLimit) {
+                break;
             }
 
-            double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor);
+            engine.performMove(move);
+
+            if (engine.isInStateCheckMate(opponentColor)) {
+                engine.undoMove(move, false);
+                return new MoveAndScore(move, color.equals(Color.WHITE) ? Engine.CHECKMATE : -Engine.CHECKMATE);
+            }
+
+            double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor, startTime, timeLimit);
             engine.undoMove(move, false);
 
+            // Check for time limit exceeded
+            if (score == TIME_LIMIT_EXCEEDED_FLAG) {
+                break;
+            }
 
             if (color.equals(Color.WHITE) ? score == Engine.CHECKMATE : score == -Engine.CHECKMATE) {
-                return move;
+                return new MoveAndScore(move, score);
             }
 
             if (Color.WHITE == color ? score > bestScore : score < bestScore) {
                 bestScore = score;
                 bestMove = move;
-                log.info("New best move found: {} with score {}", move, bestScore);
             }
         }
-        log.info("Score [{}] was best move [{}] calculation completed for color {}", bestScore, bestMove, color);
 
-        if (bestMove == null) {
-            return sortedMoves.stream()
-                    .findAny()
-                    .orElseThrow(() -> new IllegalStateException("No moves possible"));
-        }
-
-        return bestMove;
+        return bestMove != null ? new MoveAndScore(bestMove, bestScore) : null;
     }
+
 
     /**
      * *
      * 5rkr/pp2Rp2/1b1p1Pb1/3P2Q1/2n3P1/2p5/P4P2/4R1K1 w - - 1 0
      * *
      */
-    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color) {
+    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color, long startTime, long timeLimit) {
+        // Check for time limit exceeded
+        if (System.currentTimeMillis() - startTime > timeLimit) {
+            return TIME_LIMIT_EXCEEDED_FLAG;
+        }
+
         long boardHash = engine.getBoardStateHash();
 
         if (depth == 0 || engine.isGameOver()) {
@@ -148,22 +153,27 @@ public class AI {
         List<Move> moves = engine.getAllLegalMoves();
 
         if (maximizingPlayer) {
-            return maximizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves);
+            return maximizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves, startTime, timeLimit);
         } else {
-            return minimizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves);
+            return minimizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves, startTime, timeLimit);
         }
     }
 
-    private double maximizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves) {
+    private double maximizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit) {
         double maxEval = Double.NEGATIVE_INFINITY;
         for (Move move : sortMovesByEfficiency(moves, engine, color)) {
             engine.performMove(move);
-            double eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
+            double eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color), startTime, timeLimit);
             engine.undoMove(move, false);
+
+            if (eval == TIME_LIMIT_EXCEEDED_FLAG) { // Time limit exceeded
+                return TIME_LIMIT_EXCEEDED_FLAG;
+            }
+
             maxEval = Math.max(maxEval, eval);
             alpha = Math.max(alpha, eval);
             if (beta <= alpha) {
-                break; // Alpha-beta pruning
+                break;
             }
         }
         updateTanspositionTable(depth, beta, boardHash, alphaOriginal, maxEval);
@@ -171,22 +181,27 @@ public class AI {
     }
 
 
-
-    private double minimizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves) {
+    private double minimizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit) {
         double minEval = Double.POSITIVE_INFINITY;
         for (Move move : sortMovesByEfficiency(moves, engine, color)) {
             engine.performMove(move);
-            double eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
+            double eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color), startTime, timeLimit);
             engine.undoMove(move, false);
-            minEval = Math.min(minEval, eval); // min -1000
-            beta = Math.min(beta, eval);// beta -1000
+
+            if (eval == TIME_LIMIT_EXCEEDED_FLAG) { // Time limit exceeded
+                return TIME_LIMIT_EXCEEDED_FLAG;
+            }
+
+            minEval = Math.min(minEval, eval);
+            beta = Math.min(beta, eval);
             if (alpha >= beta) {
-                break; // Alpha-beta pruning
+                break;
             }
         }
         updateTanspositionTable(depth, beta, boardHash, alphaOriginal, minEval);
         return minEval;
     }
+
 
     private void updateTanspositionTable(int depth, double beta, long boardHash, double alphaOriginal, double maxEval) {
         if (maxEval <= alphaOriginal) {
@@ -199,32 +214,25 @@ public class AI {
     }
 
 
-    private LinkedList<Move> sortMovesByEfficiency(List<Move> moves, Engine engine, Color color) {
+    private ArrayList<Move> sortMovesByEfficiency(List<Move> moves, Engine engine, Color color) {
         // We use a TreeMap to sort by the move efficiency value automatically.
-        Map<Move, Integer> moveEfficiencyMap = new HashMap<>();
+        Map<Move, Double> moveEfficiencyMap = new HashMap<>();
 
         for (Move move : moves) {
             // Clone the board or create a new dummy board with the same state
             engine.performMove(move); // Perform the move on the dummy board
 
             // Start with a base score for sorting
-            int score = 0;
+            double score = 0;
 
-            // Check for checkmate or check
-            if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
-                score += 10000; // Checkmate should have the highest score
-            } else if (engine.isInStateCheck(Color.getOpponentColor(color))) {
-                score += 5000; // Checks should have a high score
+
+            if (transpositionTable.containsKey(engine.getBoardStateHash())) {
+                score = color == Color.WHITE ?
+                        transpositionTable.get(engine.getBoardStateHash()).score :
+                        (transpositionTable.get(engine.getBoardStateHash()).score * -1);
+            } else {
+                score = engine.evaluateBoard(color, Color.WHITE.equals(color));
             }
-
-            // Captures
-            if (move.isCapture()) {
-                // Add the value of the captured piece to the score
-                score += getPieceValue(move.getCapturedPieceType());
-            }
-
-            // Add points for threats (attacking high-value pieces without capturing)
-            score += evaluateThreats(move, engine);
 
             // Use the score for sorting
             moveEfficiencyMap.put(move, score);
@@ -232,52 +240,23 @@ public class AI {
         }
 
         // Sort the moves by their efficiency in descending order
-        List<Map.Entry<Move, Integer>> sortedEntries = new ArrayList<>(moveEfficiencyMap.entrySet());
-        sortedEntries.sort(Map.Entry.<Move, Integer>comparingByValue().reversed());
+        List<Map.Entry<Move, Double>> sortedEntries = new ArrayList<>(moveEfficiencyMap.entrySet());
+
+        if(color == Color.WHITE) {
+            sortedEntries.sort(Map.Entry.<Move, Double>comparingByValue().reversed());
+
+        } else {
+            sortedEntries.sort(Map.Entry.<Move, Double>comparingByValue());
+        }
 
         // Create a linked list to store the sorted moves
-        LinkedList<Move> sortedMoves = new LinkedList<>();
-        for (Map.Entry<Move, Integer> entry : sortedEntries) {
+        ArrayList<Move> sortedMoves = new ArrayList<>();
+        for (Map.Entry<Move, Double> entry : sortedEntries) {
             sortedMoves.add(entry.getKey());
         }
 
         return sortedMoves;
     }
 
-    private int getPieceValue(PieceType pieceType) {
-        return switch (pieceType) {
-            case PAWN -> 100;
-            case KNIGHT, BISHOP -> 300;
-            case ROOK -> 500;
-            case QUEEN -> 900;
-            default -> 0; // King has no value because it cannot be captured
-        };
-    }
 
-    private int evaluateThreats(Move move, Engine engine) {
-        int threatScore = 0;
-
-        // Get all possible moves for the opponent after this move
-        List<Move> opponentMoves = engine.getAllLegalMoves();
-
-        // Analyze each of the opponent's moves
-        for (Move opponentMove : opponentMoves) {
-            // Check if the move is a capture move
-            if (opponentMove.isCapture()) {
-                // Get the piece at the destination
-                PieceType capturedPiece = move.getPieceType();
-
-                // Check if the piece at the destination is the same as the one moved by the player
-                if (capturedPiece == move.getPieceType()) {
-                    // If so, then the player's move has created a threat to that piece
-                    // You can adjust the scores based on the importance of the piece threatened
-                    // For simplicity, using the getPieceValue method to get the value of the threatened piece
-                    threatScore += getPieceValue(capturedPiece);
-                }
-            }
-        }
-
-
-        return threatScore;
-    }
 }
