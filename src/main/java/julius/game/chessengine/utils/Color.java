@@ -21,7 +21,7 @@ public enum Color {
         }
     }
 
-    public static Color getOppositeColor(Color color) {
-        return color == WHITE ? BLACK : WHITE;
+    public Color opponent() {
+        return this == WHITE ? BLACK : WHITE;
     }
 }

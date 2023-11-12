@@ -21,7 +21,7 @@ public class AI {
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 3;
+    int levelOfDepth = 4;
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -82,10 +82,12 @@ public class AI {
 
         Color opponentColor = Color.getOpponentColor(color);
 
-        for (Move move : sortMovesByEfficiency(moves, engine, color)) {
+        LinkedList<Move> sortedMoves = sortMovesByEfficiency(moves, engine, color);
+
+        for (Move move : sortedMoves) {
             engine.performMove(move);
             double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor);
-            engine.undoMove(move);
+            engine.undoMove(move, false);
 
             if(color.equals(Color.WHITE) ? score == CHECKMATE : score == -CHECKMATE) {
                 return move;
@@ -98,6 +100,12 @@ public class AI {
             }
         }
         log.info("Score [{}] was best move [{}] calculation completed for color {}", bestScore, bestMove, color);
+
+        if(bestMove == null) {
+            return sortedMoves.stream()
+                    .findAny()
+                    .orElseThrow(() ->new IllegalStateException("No moves possible"));
+        }
 
         return bestMove;
     }
@@ -147,7 +155,7 @@ public class AI {
                 }
                 double eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
 
-                engine.undoMove(move);
+                engine.undoMove(move, false);
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
                 if (beta <= alpha) {
@@ -173,7 +181,7 @@ public class AI {
                 }
                 double eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
 
-                engine.undoMove(move);
+                engine.undoMove(move, false);
                 minEval = Math.min(minEval, eval); // min -1000
                 beta = Math.min(beta, eval);// beta -1000
                 if (alpha >= beta) {
@@ -221,7 +229,7 @@ public class AI {
 
             // Use the score for sorting
             moveEfficiencyMap.put(move, score);
-            engine.undoMove(move);
+            engine.undoMove(move, false);
         }
 
         // Sort the moves by their efficiency in descending order
@@ -250,9 +258,6 @@ public class AI {
     private int evaluateThreats(Move move, Engine engine) {
         int threatScore = 0;
 
-        // Simulate the move on the board
-        engine.performMove(move);
-
         // Get all possible moves for the opponent after this move
         List<Move> opponentMoves = engine.getAllLegalMoves();
 
@@ -273,8 +278,6 @@ public class AI {
             }
         }
 
-        // Undo the move to restore the board state
-        engine.undoMove(move);
 
 
         return threatScore;

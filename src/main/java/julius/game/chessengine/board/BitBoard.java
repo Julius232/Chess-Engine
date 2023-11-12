@@ -114,7 +114,6 @@ public class BitBoard {
     }
 
     public void updateScore() {
-
         // Define the piece values
         final int PAWN_VALUE = 100;   // Pawns are worth 1 point, scaled by 100
         final int KNIGHT_VALUE = 300; // Knights are worth 3 points
@@ -332,92 +331,59 @@ public class BitBoard {
         long opponentPieces = (color == Color.WHITE) ? blackPieces : whitePieces;
         long emptySquares = ~(whitePieces | blackPieces);
 
-        log.debug("Initial pawns: {}", "0x" + Long.toHexString(pawns));
-        log.debug("Opponent pieces: {}", "0x" + Long.toHexString(opponentPieces));
-        log.debug("Empty squares: {}", "0x" + Long.toHexString(emptySquares));
-
-        // Moves the pawns one rank up
         long singleStepForward = (color == Color.WHITE) ? pawns << 8 : pawns >>> 8;
         singleStepForward &= emptySquares;
-        log.debug("Single step forward: {}", "0x" + Long.toHexString(singleStepForward));
 
-        // Finds pawns on their initial rank that can move two steps forward
-
-        long doubleStepForward = 0L; // Initialize the variable
-
-        // For white pawns on their starting rank, move two steps forward if both squares are empty.
+        long doubleStepForward = 0L;
         if (color == Color.WHITE) {
-            long whitePawnsOnStartingRank = pawns & RankMasks[1];
-            long whitePawnsSingleStep = whitePawnsOnStartingRank << 8;
-            long whitePawnsDoubleStep = whitePawnsSingleStep << 8;
-            doubleStepForward = whitePawnsDoubleStep & emptySquares;
+            doubleStepForward = ((pawns & RankMasks[1]) << 8 & emptySquares) << 8 & emptySquares;
+        } else {
+            doubleStepForward = ((pawns & RankMasks[6]) >>> 8 & emptySquares) >>> 8 & emptySquares;
         }
 
-        // For black pawns on their starting rank, move two steps forward if both squares are empty.
-        if (color == Color.BLACK) {
-            long blackPawnsOnStartingRank = pawns & RankMasks[6];
-            long blackPawnsSingleStep = blackPawnsOnStartingRank >>> 8;
-            long blackPawnsDoubleStep = blackPawnsSingleStep >>> 8;
-            doubleStepForward = blackPawnsDoubleStep & emptySquares;
-        }
-        log.debug("Double step forward: {}", "0x" + Long.toHexString(doubleStepForward));
-
-        // Calculate potential capture moves to the left and right
         long attacksLeft = (color == Color.WHITE) ? (pawns & ~FileMasks[0]) << 7 : (pawns & ~FileMasks[0]) >>> 9;
         long attacksRight = (color == Color.WHITE) ? (pawns & ~FileMasks[7]) << 9 : (pawns & ~FileMasks[7]) >>> 7;
-
-        log.debug("Attacks left before masking: {}", "0x" + Long.toHexString(attacksLeft));
-        log.debug("Attacks right before masking: {}", "0x" + Long.toHexString(attacksRight));
-
-        // Filter out captures that don't have an opponent piece
         attacksLeft &= opponentPieces;
         attacksRight &= opponentPieces;
-
-        log.debug("Attacks left after masking: {}", "0x" + Long.toHexString(attacksLeft));
-        log.debug("Attacks right after masking: {}", "0x" + Long.toHexString(attacksRight));
 
         addPawnMoves(moves, singleStepForward, 8, false, color);
         addPawnMoves(moves, doubleStepForward, 16, false, color);
         addPawnMoves(moves, attacksLeft, (color == Color.WHITE) ? 7 : 9, true, color);
         addPawnMoves(moves, attacksRight, (color == Color.WHITE) ? 9 : 7, true, color);
 
-
         if (lastMoveDoubleStepPawnPosition != null) {
-            int enPassantRank = (color == Color.WHITE) ? 5 : 2; // For white, the en passant rank is 6 (5 in 0-based index); for black, it's 3 (2 in 0-based index).
-            int fileIndexOfDoubleSteppedPawn = lastMoveDoubleStepPawnPosition.getX() - 'a'; // Convert file character to 0-based index.
-
-            // The en passant target square is the square passed over by the double-stepping pawn
-            int enPassantTargetIndex = (enPassantRank * 8) + fileIndexOfDoubleSteppedPawn;
-            long enPassantTargetSquare = 1L << enPassantTargetIndex;
-
-            // Pawns that can potentially perform an en passant capture must be on the rank adjacent to the en passant target square
-            long potentialEnPassantAttackers = pawns & RankMasks[color == Color.WHITE ? 4 : 3];
-
-            // Make sure to add boundary checks here to prevent ArrayIndexOutOfBoundsException
-            if (fileIndexOfDoubleSteppedPawn > 0) { // There is a file to the left
-                long leftAttackers = potentialEnPassantAttackers & FileMasks[fileIndexOfDoubleSteppedPawn - 1];
-                if (color.equals(Color.WHITE) ?
-                        ((leftAttackers << 9 & enPassantTargetSquare) != 0) :
-                        ((leftAttackers >> 7 & enPassantTargetSquare) != 0)) {
-                    int fromIndex = Long.numberOfTrailingZeros(leftAttackers);
-                    addEnPassantMove(moves, fromIndex, enPassantTargetIndex, color);
-                }
-            }
-
-            if (fileIndexOfDoubleSteppedPawn < 7) { // There is a file to the right
-                long rightAttackers = potentialEnPassantAttackers & FileMasks[fileIndexOfDoubleSteppedPawn + 1];
-                if (color.equals(Color.WHITE) ?
-                        ((rightAttackers << 7 & enPassantTargetSquare) != 0) :
-                        ((rightAttackers >> 9 & enPassantTargetSquare) != 0)) {
-                    int fromIndex = Long.numberOfTrailingZeros(rightAttackers);
-                    addEnPassantMove(moves, fromIndex, enPassantTargetIndex, color);
-                }
-            }
+            generateEnPassantMoves(moves, pawns, color);
         }
-
 
         return moves;
     }
+
+    private void generateEnPassantMoves(List<Move> moves, long pawns, Color color) {
+        int enPassantRank = (color == Color.WHITE) ? 5 : 2;
+        int fileIndexOfDoubleSteppedPawn = lastMoveDoubleStepPawnPosition.getX() - 'a';
+        int enPassantTargetIndex = (enPassantRank * 8) + fileIndexOfDoubleSteppedPawn;
+        long enPassantTargetSquare = 1L << enPassantTargetIndex;
+        long potentialEnPassantAttackers = pawns & RankMasks[color == Color.WHITE ? 4 : 3];
+
+        if (fileIndexOfDoubleSteppedPawn > 0) {
+            long leftAttackers = potentialEnPassantAttackers & FileMasks[fileIndexOfDoubleSteppedPawn - 1];
+            if (color.equals(Color.WHITE) ?
+                    ((leftAttackers << 9 & enPassantTargetSquare) != 0) :
+                    ((leftAttackers >> 7 & enPassantTargetSquare) != 0)) {
+                addEnPassantMove(moves, Long.numberOfTrailingZeros(leftAttackers), enPassantTargetIndex, color);
+            }
+        }
+
+        if (fileIndexOfDoubleSteppedPawn < 7) {
+            long rightAttackers = potentialEnPassantAttackers & FileMasks[fileIndexOfDoubleSteppedPawn + 1];
+            if (color.equals(Color.WHITE) ?
+                    ((rightAttackers << 7 & enPassantTargetSquare) != 0) :
+                    ((rightAttackers >> 9 & enPassantTargetSquare) != 0)) {
+                addEnPassantMove(moves, Long.numberOfTrailingZeros(rightAttackers), enPassantTargetIndex, color);
+            }
+        }
+    }
+
 
     private void addEnPassantMove(List<Move> moves, int fromIndex, int toIndex, Color color) {
         Position fromPosition = indexToPosition(fromIndex);
@@ -814,7 +780,7 @@ public class BitBoard {
 // would generate all potential squares each piece can attack from a given position and compare it to the current
 // bitboard of that piece type to see if there's an overlap.
 
-    public void performMove(Move move) {
+    public void performMove(Move move, boolean scoreNeedsUpdate) {
         int fromIndex = bitIndex(move.getFrom().getX(), move.getFrom().getY());
         int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
 
@@ -884,7 +850,9 @@ public class BitBoard {
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
 
-        updateScore();
+        if(scoreNeedsUpdate) {
+            updateScore();
+        }
     }
 
 
@@ -1039,38 +1007,24 @@ public class BitBoard {
     }
 
     public boolean isInCheck(Color color) {
-        // Find the position of the king for the given color
         Position kingPosition = findKingPosition(color);
 
-        // Check attacks from pawns
-        if (canPawnAttackKing(kingPosition, color)) {
-            return true;
-        }
-
-        // Check attacks from knights
-        if (canKnightAttackKing(kingPosition, color)) {
-            return true;
-        }
-
-        // Check attacks from bishops
-        if (canBishopAttackKing(kingPosition, color)) {
-            return true;
-        }
-
-        // Check attacks from rooks
-        if (canRookAttackKing(kingPosition, color)) {
-            return true;
-        }
-
-        // Check attacks from queens
         if (canQueenAttackKing(kingPosition, color)) {
             return true;
         }
-
-        // Check if the opposing king can attack
+        if (canRookAttackKing(kingPosition, color)) {
+            return true;
+        }
+        if (canBishopAttackKing(kingPosition, color)) {
+            return true;
+        }
+        if (canKnightAttackKing(kingPosition, color)) {
+            return true;
+        }
+        if (canPawnAttackKing(kingPosition, color)) {
+            return true;
+        }
         return canKingAttackKing(kingPosition, color);
-
-        // If none of the pieces can attack the king, then the king is not in check
     }
 
     private Position findKingPosition(Color color) {
@@ -1083,55 +1037,52 @@ public class BitBoard {
 
     // Example for one attack check - similar methods needed for other piece types
     private boolean canPawnAttackKing(Position kingPosition, Color kingColor) {
-        // Determine the direction from which the pawn would attack
         int pawnAttackDirection = (kingColor == Color.WHITE) ? 1 : -1;
-        // Generate the positions from which an opponent pawn would attack
-        Position attackFromLeft = new Position((char) (kingPosition.getX() - 1), kingPosition.getY() + pawnAttackDirection);
-        Position attackFromRight = new Position((char) (kingPosition.getX() + 1), kingPosition.getY() + pawnAttackDirection);
-        // Check if there is an opponent pawn in either of those positions
-        Color opponentColor = (kingColor == Color.WHITE) ? Color.BLACK : Color.WHITE;
-        return (isOccupiedByPawn(attackFromLeft, opponentColor) || isOccupiedByPawn(attackFromRight, opponentColor));
+        int attackRank = kingPosition.getY() + pawnAttackDirection;
+        char kingFile = kingPosition.getX();
+        Color opponentColor = kingColor.opponent();
+
+        // Check left attack
+        if (kingFile > 'a') {
+            if (isOccupiedByPawn(new Position((char) (kingFile - 1), attackRank), opponentColor)) {
+                return true;
+            }
+        }
+
+        // Check right attack
+        if (kingFile < 'h') {
+            return isOccupiedByPawn(new Position((char) (kingFile + 1), attackRank), opponentColor);
+        }
+
+        return false;
     }
 
     private boolean canKnightAttackKing(Position kingPosition, Color kingColor) {
-        // Calculate the bit index of the king's position
         int kingIndex = bitIndex(kingPosition.getX(), kingPosition.getY());
-
-        // Generate the knight attack bitmask from the king's position
         long knightAttacks = knightAttackBitmask(kingIndex);
-
-        // Determine the opponent's knights bitboard based on the king's color
-        long opponentKnights = (kingColor == Color.WHITE) ? blackKnights : whiteKnights;
-
-        // Check if the opponent has knights that can attack the king's position
+        long opponentKnights = kingColor.opponent() == Color.WHITE ? whiteKnights : blackKnights;
         return (knightAttacks & opponentKnights) != 0;
     }
 
     private long knightAttackBitmask(int positionIndex) {
         // Define knight move offsets
-        int[] knightMoves = {
-                -17, -15, -10, -6, 6, 10, 15, 17
+        int[][] knightMoves = {
+                {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2},
+                {1, -2}, {1, 2}, {2, -1}, {2, 1}
         };
 
         long attacks = 0L;
-        for (int moveOffset : knightMoves) {
-            int targetIndex = positionIndex + moveOffset;
+        int originalFile = positionIndex % 8;
+        int originalRank = positionIndex / 8;
 
-            // Check if the target index is on the board
-            if (targetIndex >= 0 && targetIndex < 64) {
-                // Calculate the file and rank of the target index
-                int file = targetIndex % 8;
-                int rank = targetIndex / 8;
+        for (int[] move : knightMoves) {
+            int file = originalFile + move[0];
+            int rank = originalRank + move[1];
 
-                // Calculate the file and rank of the original position index
-                int originalFile = positionIndex % 8;
-                int originalRank = positionIndex / 8;
-
-                // Check if the move stays within the bounds of the chess board
-                if (Math.abs(file - originalFile) <= 2 && Math.abs(rank - originalRank) <= 2) {
-                    // Set the bit at the target index
-                    attacks |= 1L << targetIndex;
-                }
+            // Check if the move is within the bounds of the chess board
+            if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+                int targetIndex = rank * 8 + file;
+                attacks |= 1L << targetIndex;
             }
         }
 
@@ -1154,36 +1105,33 @@ public class BitBoard {
 
     private long bishopAttackBitmask(int positionIndex) {
         long attacks = 0L;
+        int originalFile = positionIndex % 8;
+        int originalRank = positionIndex / 8;
 
         // Directions a bishop can move: top-left, top-right, bottom-left, bottom-right
         int[][] directions = {{-1, 1}, {1, 1}, {-1, -1}, {1, -1}};
 
-        // Generate moves for each direction
         for (int[] direction : directions) {
-            int targetIndex = positionIndex;
-            while (true) {
-                // Apply the direction to the targetIndex
-                int targetFile = (targetIndex % 8) + direction[0];
-                int targetRank = (targetIndex / 8) + direction[1];
+            int targetFile = originalFile + direction[0];
+            int targetRank = originalRank + direction[1];
 
-                // If the target is outside the board, break the loop
-                if (targetFile < 0 || targetFile >= 8 || targetRank < 0 || targetRank >= 8) {
-                    break;
-                }
-
-                // Calculate the new target index and add it to the bitmask
-                targetIndex = targetRank * 8 + targetFile;
+            while (targetFile >= 0 && targetFile < 8 && targetRank >= 0 && targetRank < 8) {
+                int targetIndex = targetRank * 8 + targetFile;
                 attacks |= 1L << targetIndex;
 
-                // If there is a piece at the target index, break the loop
+                // Stop if a piece is encountered
                 if ((allPieces & (1L << targetIndex)) != 0) {
                     break;
                 }
+
+                targetFile += direction[0];
+                targetRank += direction[1];
             }
         }
 
         return attacks;
     }
+
 
     private boolean canRookAttackKing(Position kingPosition, Color kingColor) {
         // Calculate the bit index of the king's position
@@ -1201,36 +1149,32 @@ public class BitBoard {
 
     private long rookAttackBitmask(int positionIndex) {
         long attacks = 0L;
+        int originalFile = positionIndex % 8;
+        int originalRank = positionIndex / 8;
 
         // Directions a rook can move: up, down, left, right
         int[][] directions = {{0, 1}, {0, -1}, {-1, 0}, {1, 0}};
 
-        // Generate moves for each direction
         for (int[] direction : directions) {
-            int targetIndex = positionIndex;
-            while (true) {
-                // Apply the direction to the targetIndex
-                int targetFile = (targetIndex % 8) + direction[0];
-                int targetRank = (targetIndex / 8) + direction[1];
+            int targetFile = originalFile + direction[0];
+            int targetRank = originalRank + direction[1];
 
-                // If the target is outside the board, break the loop
-                if (targetFile < 0 || targetFile >= 8 || targetRank < 0 || targetRank >= 8) {
-                    break;
-                }
-
-                // Calculate the new target index and add it to the bitmask
-                targetIndex = targetRank * 8 + targetFile;
+            while (targetFile >= 0 && targetFile < 8 && targetRank >= 0 && targetRank < 8) {
+                int targetIndex = targetRank * 8 + targetFile;
                 attacks |= 1L << targetIndex;
 
-                // If there is a piece at the target index, break the loop
                 if ((allPieces & (1L << targetIndex)) != 0) {
-                    break;
+                    break; // Stop if a piece is encountered
                 }
+
+                targetFile += direction[0];
+                targetRank += direction[1];
             }
         }
 
         return attacks;
     }
+
 
     private boolean canQueenAttackKing(Position kingPosition, Color kingColor) {
         // Calculate the bit index of the king's position
@@ -1253,7 +1197,7 @@ public class BitBoard {
 
         // Combine both attack patterns
         return rookAttacks | bishopAttacks;
-    } // The rookAttackBitmask and bishopAttackBitmask methods would be similar to the ones implemented in previous answers.
+    }
 
     private boolean canKingAttackKing(Position kingPosition, Color kingColor) {
         // Calculate the bit index of the king's position
@@ -1448,7 +1392,7 @@ public class BitBoard {
         return Math.abs(fromFile - toFile) > 1 || toRank < 0 || toRank > 7;
     }
 
-    public void undoMove(Move move) {
+    public void undoMove(Move move, boolean scoreNeedsUpdate) {
         int fromIndex = bitIndex(move.getFrom().getX(), move.getFrom().getY());
         int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
 
@@ -1563,7 +1507,9 @@ public class BitBoard {
 
         // Update the aggregated bitboards
         updateAggregatedBitboards();
-
+        if(scoreNeedsUpdate) {
+            updateScore();
+        }
         whitesTurn = !whitesTurn;
     }
 

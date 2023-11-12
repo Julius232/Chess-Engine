@@ -17,8 +17,6 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 import static julius.game.chessengine.helper.BitHelper.bitIndex;
-import static julius.game.chessengine.helper.BitHelper.isValidBoardPosition;
-import static julius.game.chessengine.helper.KnightHelper.knightMoves;
 
 @Service
 @Log4j2
@@ -50,13 +48,13 @@ public class Engine {
     }
 
     public void performMove(Move move) {
-        this.bitBoard.performMove(move);
+        this.bitBoard.performMove(move, true);
         updateGameState();
         legalMovesNeedUpdate = true; // Set flag
     }
 
-    public void undoMove(Move move) {
-        this.bitBoard.undoMove(move);
+    public void undoMove(Move move, boolean scoreNeedsUpdate) {
+        this.bitBoard.undoMove(move, scoreNeedsUpdate);
         updateGameState();
         legalMovesNeedUpdate = true; // Set flag
     }
@@ -73,7 +71,7 @@ public class Engine {
     public void startNewGame() {
         bitBoard = new BitBoard();
         gameState = new GameState();
-
+        legalMovesNeedUpdate = true;
     }
 
     public int counter = 0;
@@ -170,183 +168,10 @@ public class Engine {
         BitBoard boardCopy = new BitBoard(bitBoard);
 
         // Perform the move on the copied board.
-        boardCopy.performMove(move);
+        boardCopy.performMove(move, false);
 
         // Return the new board state.
         return boardCopy;
-    }
-
-    private boolean isInCheck(BitBoard bitBoard, Color color) {
-        Color opponentColor = Color.getOpponentColor(color);
-        // Find the king's position
-        Position kingPosition = findKingPosition(color);
-
-        // Check if the king is under attack by any pawns
-        if (isAttackedByPawns(bitBoard, kingPosition, color, opponentColor)) {
-            return true;
-        }
-
-        // Check if the king is under attack by any knights
-        if (isAttackedByKnights(bitBoard, kingPosition, opponentColor)) {
-            return true;
-        }
-
-        // Check if the king is under attack horizontally or vertically (by rooks or queens)
-        if (isAttackedHorizontallyOrVertically(bitBoard, kingPosition, opponentColor, PieceType.ROOK) ||
-                isAttackedHorizontallyOrVertically(bitBoard, kingPosition, opponentColor, PieceType.QUEEN)) {
-            return true;
-        }
-
-        // Check if the king is under attack diagonally (by bishops or queens)
-        if (isAttackedDiagonally(bitBoard, kingPosition, opponentColor, PieceType.BISHOP) ||
-                isAttackedDiagonally(bitBoard, kingPosition, opponentColor, PieceType.QUEEN)) {
-            return true;
-        }
-
-        // Check if the king is under attack by the opposing king
-        return isAttackedByKing(bitBoard, kingPosition, opponentColor);
-
-        // If none of the checks return true, the king is not in check
-    }
-
-
-// Helper methods to check for attacks from each type of piece
-
-    private boolean isAttackedByPawns(BitBoard bitBoard, Position kingPosition, Color color, Color opponentColor) {
-        // Pawns attack one square diagonally forward
-        int pawnAttackDirection = color == Color.WHITE ? -1 : 1; // Pawns move in opposite directions for each color
-        int kingRank = kingPosition.getY();
-        char kingFile = kingPosition.getX();
-
-        // Check the two potential squares where an enemy pawn could be attacking from
-        Position attackFromLeft = new Position((char) (kingFile - 1), kingRank + pawnAttackDirection);
-        Position attackFromRight = new Position((char) (kingFile + 1), kingRank + pawnAttackDirection);
-
-        // Check if either of these positions are occupied by an enemy pawn
-        if (isValidBoardPosition(attackFromLeft) && bitBoard.isOccupiedByPawn(attackFromLeft, opponentColor)) {
-            return true;
-        }
-
-        return isValidBoardPosition(attackFromRight) && bitBoard.isOccupiedByPawn(attackFromRight, Color.getOpponentColor(color));
-
-        // No pawns are attacking the king
-    }
-
-    private boolean isAttackedByKnights(BitBoard bitBoard, Position kingPosition, Color opponentColor) {
-
-        // Check all possible positions a knight could attack the king from
-        for (int[] move : knightMoves) {
-            int targetX = kingPosition.getX() + move[0];
-            int targetY = kingPosition.getY() + move[1];
-
-            // Check if the target position is within the board bounds
-            if (targetX >= 'a' && targetX <= 'h' && targetY >= 1 && targetY <= 8) {
-                Position targetPosition = new Position((char) targetX, targetY);
-
-                // If a knight of the opposite color occupies one of these positions, the king is in check
-                if (bitBoard.isOccupiedByKnight(targetPosition, opponentColor)) {
-                    return true;
-                }
-            }
-        }
-
-        // If no knight attacks the king, return false
-        return false;
-    }
-
-    private boolean isAttackedHorizontallyOrVertically(BitBoard bitBoard, Position kingPosition, Color opponentColor, PieceType pieceType) {
-        int[][] directions = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}}; // Up, Right, Down, Left
-
-        for (int[] dir : directions) {
-            for (int i = 1; i <= 8; i++) {
-                char file = (char) (kingPosition.getX() + dir[0] * i);
-                int rank = kingPosition.getY() + dir[1] * i;
-
-                // Check board boundaries first
-                if (file < 'a' || file > 'h' || rank < 1 || rank > 8) {
-                    break; // Off the edge of the board
-                }
-
-                Position position = new Position(file, rank); // Consider optimizing this if possible
-                PieceType pieceAtPosition = bitBoard.getPieceTypeAtPosition(position);
-                Color pieceColor = bitBoard.getPieceColorAtPosition(position);
-
-                // If we encounter a piece
-                if (pieceAtPosition != null) {
-                    if (pieceColor == opponentColor && (pieceAtPosition == pieceType || pieceAtPosition == PieceType.QUEEN)) {
-                        return true;
-                    }
-                    break; // Hit a piece, can't look any further in this direction
-                }
-            }
-        }
-        return false;
-    }
-
-
-    private boolean isAttackedDiagonally(BitBoard bitBoard, Position kingPosition, Color opponentColor, PieceType pieceType) {
-        // Check all four diagonal directions from the king's position for bishops or queens
-        int[][] directions = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}}; // Diagonal directions
-        for (int[] dir : directions) {
-            for (int i = 1; i <= 8; i++) {
-                char file = (char) (kingPosition.getX() + dir[0] * i);
-                int rank = kingPosition.getY() + dir[1] * i;
-
-                if (file < 'a' || file > 'h' || rank < 1 || rank > 8) {
-                    break; // We've gone off the edge of the board
-                }
-
-                Position position = new Position(file, rank);
-                PieceType pieceAtPosition = bitBoard.getPieceTypeAtPosition(position);
-                Color pieceColor = bitBoard.getPieceColorAtPosition(position);
-
-                // If we encounter a piece
-                if (pieceAtPosition != null) {
-                    // If it's an opposing bishop or queen, and matches the piece type we're looking for
-                    if (pieceColor == opponentColor &&
-                            (pieceAtPosition == pieceType || pieceAtPosition == PieceType.QUEEN)) {
-                        return true;
-                    }
-                    break; // We've hit a piece, can't look any further in this direction
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean isAttackedByKing(BitBoard bitBoard, Position kingPosition, Color opponentColor) {
-        // The king can move one square in any direction, check all surrounding squares
-        int[][] moves = {
-                {1, 0}, {1, 1}, {0, 1}, {-1, 1},
-                {-1, 0}, {-1, -1}, {0, -1}, {1, -1}
-        };
-
-        for (int[] move : moves) {
-            char file = (char) (kingPosition.getX() + move[0]);
-            int rank = kingPosition.getY() + move[1];
-
-            if (file < 'a' || file > 'h' || rank < 1 || rank > 8) {
-                continue; // This move is off the board
-            }
-
-            Position position = new Position(file, rank);
-            PieceType pieceAtPosition = bitBoard.getPieceTypeAtPosition(position);
-            Color pieceColor = bitBoard.getPieceColorAtPosition(position);
-
-            // If there is a piece and it is the opposing king
-            if (pieceAtPosition == PieceType.KING && pieceColor == opponentColor) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    // Utility method to find the king's position
-    private Position findKingPosition(Color color) {
-        // Search through the bitboard to find the king's position
-        // This will likely involve iterating over all squares or using a more efficient lookup
-        return new Position('e', color == Color.WHITE ? 1 : 8); // Placeholder
     }
 
     private boolean isMoveOnBoard(Move move) {
@@ -427,18 +252,9 @@ public class Engine {
         return bitBoard.whitesTurn;
     }
 
-    private boolean wouldBeInCheckAfterMove(Move move, Color color) {
-        // Simulate the move on a copy of the bitboard
-        BitBoard boardCopy = new BitBoard(bitBoard);
-        boardCopy.performMove(move);
-
-        // Check if the player would be in check after the move
-        return isInCheck(boardCopy, color);
-    }
-
     public void undoLastMove() {
         if (moves.size() > 0) {
-            bitBoard.undoMove(moves.getLast());
+            bitBoard.undoMove(moves.getLast(), true);
             moves.removeLast();
         }
         generateLegalMoves();
