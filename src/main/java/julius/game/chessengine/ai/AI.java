@@ -21,14 +21,21 @@ public class AI {
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 3;
+    int levelOfDepth = 5;
     private final Engine engine;
 
     public AI(Engine engine) {
         this.engine = engine;
     }
 
-    public GameState executeCalculatedMove(String colorString) {
+    public void startAutoPlay() {
+        while (engine.getGameState().getState().equals("PLAY"))  {
+            engine.getBitBoard().logBoard();
+            executeCalculatedMove();
+        }
+    }
+
+    public GameState executeCalculatedMove() {
         // Convert the string color to the Color enum
         Color color = engine.getBitBoard().whitesTurn ? Color.WHITE : Color.BLACK;
 
@@ -139,9 +146,6 @@ public class AI {
                     transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
                     return checkmateValue;
                 }
-                if (depth == 2 && move.isCapture() && move.getCapturedPieceType() == PieceType.QUEEN && move.getPieceType() == PieceType.PAWN) {
-                    log.info("[+] Maximizing player: depth: {}, eval: {}, move: {}, alpha: {}, beta: {}", depth, null, move, alpha, beta);
-                }
                 double eval = alphaBeta(board, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
 
                 board.undoMove(move);
@@ -169,13 +173,6 @@ public class AI {
                     return checkmateValue;
                 }
                 double eval = alphaBeta(board, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
-
-                if (move.isCapture() && move.getCapturedPieceType() == PieceType.QUEEN) {
-                    log.info("[-] Minimizing player: depth: {}, eval: {}, move: {}, alpha: {}, beta: {}", depth, eval, move, alpha, beta);
-                    if (eval < beta) {
-                        board.logBoard();
-                    }
-                }
 
                 board.undoMove(move);
                 minEval = Math.min(minEval, eval); // min -1000

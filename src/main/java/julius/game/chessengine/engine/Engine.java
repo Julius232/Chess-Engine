@@ -395,4 +395,6 @@ public class Engine {
     public void importBoardFromFen(String fen) {
         this.bitBoard = FEN.translateFENtoBitBoard(fen);
     }
+
+
 }

@@ -19,13 +19,15 @@ $(document).ready(function () {
         });
     }
 
-    document.getElementById('importFEN').addEventListener('click', function() {
+    document.getElementById('importFEN').addEventListener('click', function () {
         var fenString = prompt("Please enter FEN:");
-        if(fenString) {
+        if (fenString) {
             importFEN(fenString);
         }
     });
 
+
+    
     const checkState = (state) => {
         if (state !== "PLAY") {
             document.getElementById("header").textContent = state;
@@ -86,6 +88,11 @@ $(document).ready(function () {
         });
         $('#undoMove').on('click', () => {
             makeRequest('GET', 'http://localhost:8080/chess/undo', () => {
+                reloadBoard();
+            });
+        });
+        $('#autoPlay').on('click', () => {
+            makeRequest('GET', 'http://localhost:8080/chess/autoplay', () => {
                 reloadBoard();
             });
         });

@@ -45,6 +45,12 @@ public class ChessController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping(value = "/autoplay")
+    public ResponseEntity<?> autoplay() {
+        ai.startAutoPlay();
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping(value = "/undo")
     public ResponseEntity<?> undoLastMove() {
         engine.undoLastMove();
@@ -83,7 +89,7 @@ public class ChessController {
     @PatchMapping(value = "/figure/move/intelligent/{color}")
     public ResponseEntity<GameState> calculateMoveForColor(@PathVariable("color") String color) {
         if (color != null) {
-            return ResponseEntity.ok(ai.executeCalculatedMove(color));
+            return ResponseEntity.ok(ai.executeCalculatedMove());
         } else return ResponseEntity.status(406).build();
     }
 
