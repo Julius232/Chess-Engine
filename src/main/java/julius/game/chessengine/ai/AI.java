@@ -21,7 +21,7 @@ public class AI {
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 4;
+    int levelOfDepth = 5;
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -83,9 +83,14 @@ public class AI {
         Color opponentColor = Color.getOpponentColor(color);
 
         LinkedList<Move> sortedMoves = sortMovesByEfficiency(moves, engine, color);
-
+        log.info("AI: Im the {} player, and will destroy you", Color.WHITE == color ? "maximizing" : "minimizing");
         for (Move move : sortedMoves) {
             engine.performMove(move);
+            if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
+                engine.undoMove(move, false);
+                return move;
+            }
+
             double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor);
             engine.undoMove(move, false);
 
@@ -151,6 +156,7 @@ public class AI {
                 if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
                     double checkmateValue = CHECKMATE;
                     transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
+                    engine.undoMove(move, false);
                     return checkmateValue;
                 }
                 double eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
@@ -177,6 +183,7 @@ public class AI {
                 if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
                     double checkmateValue = -CHECKMATE;
                     transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
+                    engine.undoMove(move, false);
                     return checkmateValue;
                 }
                 double eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color));

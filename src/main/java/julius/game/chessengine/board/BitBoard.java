@@ -3,6 +3,7 @@ package julius.game.chessengine.board;
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.helper.PawnHelper;
+import julius.game.chessengine.helper.ZobristTable;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.utils.Score;
 import lombok.extern.log4j.Log4j2;
@@ -1551,17 +1552,66 @@ public class BitBoard {
                 lastMoveDoubleStepPawnPosition);
     }
 
+    private PieceType getPieceTypeAtSquare(int square) {
+        Position position = indexToPosition(square);
+        return getPieceTypeAtPosition(position);
+    }
+
+    private Color getPieceColorAtSquare(int square) {
+        Position position = indexToPosition(square);
+        return getPieceColorAtPosition(position);
+    }
+
+    private int getPieceIndex(PieceType pieceType, Color pieceColor) {
+        int index = pieceType.ordinal() * 2; // There are two colors for each piece type
+        if (pieceColor == Color.BLACK) {
+            index++; // Add 1 for black pieces
+        }
+        return index;
+    }
+
     public long getBoardStateHash() {
         long hash = 0;
 
+        // Iterate over all squares and XOR the hash with the piece hash values
+        for (int square = 0; square < 64; square++) {
+            PieceType pieceType = getPieceTypeAtSquare(square);
+            Color pieceColor = getPieceColorAtSquare(square);
+            if (pieceType != null && pieceColor != null) {
+                int pieceIndex = getPieceIndex(pieceType, pieceColor); // You need to implement this method
+                hash ^= ZobristTable.getPieceSquareHash(pieceIndex, square);
+            }
+        }
 
-        // Combine the hash codes of all individual piece bitboards and other state indicators
-        hash ^= whitePawns ^ blackPawns ^ whiteKnights ^ blackKnights ^ whiteBishops ^ blackBishops;
-        hash ^= whiteRooks ^ blackRooks ^ whiteQueens ^ blackQueens ^ whiteKing ^ blackKing;
-        hash ^= (whiteKingMoved ? 1 : 0) ^ (blackKingMoved ? 2 : 0);
-        hash ^= (whiteRookA1Moved ? 4 : 0) ^ (whiteRookH1Moved ? 8 : 0);
-        hash ^= (blackRookA8Moved ? 16 : 0) ^ (blackRookH8Moved ? 32 : 0);
-        hash ^= (whitesTurn ? 64 : 0); // Assuming you have a field indicating whose turn it is
+        // Include castling rights in the hash
+        if (!whiteKingMoved) {
+            if (!whiteRookH1Moved) {
+                hash ^= ZobristTable.getCastlingRightsHash(0); // White Kingside
+            }
+            if (!whiteRookA1Moved) {
+                hash ^= ZobristTable.getCastlingRightsHash(1); // White Queenside
+            }
+        }
+        if (!blackKingMoved) {
+            if (!blackRookH8Moved) {
+                hash ^= ZobristTable.getCastlingRightsHash(2); // Black Kingside
+            }
+            if (!blackRookA8Moved) {
+                hash ^= ZobristTable.getCastlingRightsHash(3); // Black Queenside
+            }
+        }
+
+        // Include en passant square in the hash
+        if (lastMoveDoubleStepPawnPosition != null) {
+            int file = lastMoveDoubleStepPawnPosition.getX() - 'a';
+            hash ^= ZobristTable.getEnPassantSquareHash(file);
+        }
+
+        // Include the player's turn in the hash
+        if (whitesTurn) {
+            hash ^= ZobristTable.getBlackTurnHash(); // XOR with blackTurnHash means it's white's turn
+        }
+
         return hash;
     }
 }

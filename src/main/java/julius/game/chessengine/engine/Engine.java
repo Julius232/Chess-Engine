@@ -24,7 +24,7 @@ public class Engine {
 
     private boolean legalMovesNeedUpdate = true;
     private List<Move> legalMoves = new ArrayList<>();
-    private LinkedList<Move> moves = new LinkedList<>();
+    private LinkedList<Move> line = new LinkedList<>();
     private BitBoard bitBoard = new BitBoard();
     private GameState gameState = new GameState();
 
@@ -35,7 +35,7 @@ public class Engine {
     public Engine(BitBoard b, LinkedList<Move> m, List<Move> l) {
         bitBoard = b;
         gameState = new GameState();
-        moves = m;
+        line = m;
         legalMoves = l;
     }
 
@@ -65,7 +65,7 @@ public class Engine {
     }
 
     public Engine createSimulation() {
-        return new Engine(new BitBoard(bitBoard), moves, legalMoves);
+        return new Engine(new BitBoard(bitBoard), line, legalMoves);
     }
 
     public void startNewGame() {
@@ -144,7 +144,7 @@ public class Engine {
         // Perform the move on the bitboard
         performMove(move);
 
-        moves.add(move);
+        line.add(move);
         // Update the game state
         updateGameState();
 
@@ -253,11 +253,15 @@ public class Engine {
     }
 
     public void undoLastMove() {
-        if (moves.size() > 0) {
-            bitBoard.undoMove(moves.getLast(), true);
-            moves.removeLast();
+        if (line.size() > 0) {
+            bitBoard.undoMove(line.getLast(), true);
+            line.removeLast();
         }
         generateLegalMoves();
+    }
+
+    public LinkedList<Move> getLine() {
+        return line;
     }
 
     public GameState getGameState() {
