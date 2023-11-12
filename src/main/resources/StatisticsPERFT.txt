@@ -1,0 +1,2 @@
+POS_2
+Time taken for move calculation: 275747.8732 ms

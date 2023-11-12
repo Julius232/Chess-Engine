@@ -21,7 +21,7 @@ public class AI {
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 5;
+    int levelOfDepth = 3;
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -30,37 +30,37 @@ public class AI {
 
     public void startAutoPlay() {
         while (engine.getGameState().getState().equals("PLAY"))  {
-            engine.getBitBoard().logBoard();
+            engine.logBoard();
             executeCalculatedMove();
         }
     }
 
     public GameState executeCalculatedMove() {
         // Convert the string color to the Color enum
-        Color color = engine.getBitBoard().whitesTurn ? Color.WHITE : Color.BLACK;
+        Color color = engine.whitesTurn() ? Color.WHITE : Color.BLACK;
 
         // Calculate the move using the AI logic
-        Move calculatedMove = calculateMove(engine.getBitBoard(), color);
+        Move calculatedMove = calculateMove(color);
 
         // Convert the Move to fromPosition and toPosition
         Position fromPosition = calculatedMove.getFrom();
         Position toPosition = calculatedMove.getTo();
 
         // Use the engine to move the figure on the bitboard
-        return engine.moveFigure(engine.getBitBoard(), fromPosition, toPosition);
+        return engine.moveFigure(fromPosition, toPosition);
     }
 
 
-    private Move calculateMove(BitBoard board, Color color) {
+    private Move calculateMove(Color color) {
 
 
         // Get all possible moves for the given color
-        List<Move> moves = engine.getAllLegalMovesForBitBoard(board);
+        List<Move> moves = engine.getAllLegalMoves();
 
         // Get the best move from the sorted list
         // This is just a placeholder; you'll need to implement the actual logic for selecting the best move
         long startTime = System.nanoTime(); // Start timing
-        Move calculatedMove = getBestMove(board, moves, color, levelOfDepth);
+        Move calculatedMove = getBestMove(engine.createSimulation(), moves, color, levelOfDepth);
         long endTime = System.nanoTime();
 
         if (calculatedMove == null && moves.size() > 0) {
@@ -74,19 +74,18 @@ public class AI {
         return calculatedMove;
     }
 
-    private Move getBestMove(BitBoard board, List<Move> moves, Color color, int levelOfDepth) {
+    private Move getBestMove(Engine engine, List<Move> moves, Color color, int levelOfDepth) {
         double alpha = Double.NEGATIVE_INFINITY;
         double beta = Double.POSITIVE_INFINITY;
         Move bestMove = null;
         double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 
-        BitBoard dummyBoard = new BitBoard(board);
-
         Color opponentColor = Color.getOpponentColor(color);
-        for (Move move : sortMovesByEfficiency(moves, dummyBoard, color)) {
-            dummyBoard.performMove(move);
-            double score = alphaBeta(dummyBoard, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor);
-            dummyBoard.undoMove(move);
+
+        for (Move move : sortMovesByEfficiency(moves, engine, color)) {
+            engine.performMove(move);
+            double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor);
+            engine.undoMove(move);
 
             if(color.equals(Color.WHITE) ? score == CHECKMATE : score == -CHECKMATE) {
                 return move;
@@ -108,11 +107,11 @@ public class AI {
      * 5rkr/pp2Rp2/1b1p1Pb1/3P2Q1/2n3P1/2p5/P4P2/4R1K1 w - - 1 0
      * *
      */
-    private double alphaBeta(BitBoard board, int depth, double alpha, double beta, boolean maximizingPlayer, Color color) {
-        long boardHash = board.getBoardStateHash();
+    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color) {
+        long boardHash = engine.getBoardStateHash();
 
         if (depth == 0) {
-            double staticEval = board.getScore().getScoreDifference() / 100.0;
+            double staticEval = engine.getScore().getScoreDifference() / 100.0;
             transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, NodeType.EXACT));
             return staticEval;
         }
@@ -135,20 +134,20 @@ public class AI {
 
 
         double alphaOriginal = alpha;
-        List<Move> moves = engine.getAllLegalMovesForBitBoard(board);
+        List<Move> moves = engine.getAllLegalMoves();
 
         if (maximizingPlayer) {
             double maxEval = Double.NEGATIVE_INFINITY;
-            for (Move move : sortMovesByEfficiency(moves, board, color)) {
-                board.performMove(move);
-                if (engine.isInStateCheckMate(board, Color.getOpponentColor(color))) {
+            for (Move move : sortMovesByEfficiency(moves, engine, color)) {
+                engine.performMove(move);
+                if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
                     double checkmateValue = CHECKMATE;
                     transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
                     return checkmateValue;
                 }
-                double eval = alphaBeta(board, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
+                double eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
 
-                board.undoMove(move);
+                engine.undoMove(move);
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
                 if (beta <= alpha) {
@@ -165,16 +164,16 @@ public class AI {
             return maxEval;
         } else {
             double minEval = Double.POSITIVE_INFINITY;
-            for (Move move : sortMovesByEfficiency(moves, board, color)) {
-                board.performMove(move);
-                if (engine.isInStateCheckMate(board, Color.getOpponentColor(color))) {
+            for (Move move : sortMovesByEfficiency(moves, engine, color)) {
+                engine.performMove(move);
+                if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
                     double checkmateValue = -CHECKMATE;
                     transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
                     return checkmateValue;
                 }
-                double eval = alphaBeta(board, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
+                double eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
 
-                board.undoMove(move);
+                engine.undoMove(move);
                 minEval = Math.min(minEval, eval); // min -1000
                 beta = Math.min(beta, eval);// beta -1000
                 if (alpha >= beta) {
@@ -193,36 +192,36 @@ public class AI {
     }
 
 
-    private LinkedList<Move> sortMovesByEfficiency(List<Move> moves, BitBoard board, Color color) {
+    private LinkedList<Move> sortMovesByEfficiency(List<Move> moves, Engine engine, Color color) {
         // We use a TreeMap to sort by the move efficiency value automatically.
         Map<Move, Integer> moveEfficiencyMap = new HashMap<>();
 
         for (Move move : moves) {
             // Clone the board or create a new dummy board with the same state
-            board.performMove(move); // Perform the move on the dummy board
+            engine.performMove(move); // Perform the move on the dummy board
 
             // Start with a base score for sorting
             int score = 0;
 
             // Check for checkmate or check
-            if (engine.isInStateCheckMate(board, Color.getOpponentColor(color))) {
+            if (engine.isInStateCheckMate(Color.getOpponentColor(color))) {
                 score += 10000; // Checkmate should have the highest score
-            } else if (board.isInCheck(Color.getOpponentColor(color))) {
+            } else if (engine.isInStateCheck(Color.getOpponentColor(color))) {
                 score += 5000; // Checks should have a high score
             }
 
             // Captures
             if (move.isCapture()) {
                 // Add the value of the captured piece to the score
-                score += getPieceValue(board.getPieceTypeAtPosition(move.getTo()));
+                score += getPieceValue(move.getCapturedPieceType());
             }
 
             // Add points for threats (attacking high-value pieces without capturing)
-            score += evaluateThreats(move, board, color);
+            score += evaluateThreats(move, engine);
 
             // Use the score for sorting
             moveEfficiencyMap.put(move, score);
-            board.undoMove(move);
+            engine.undoMove(move);
         }
 
         // Sort the moves by their efficiency in descending order
@@ -248,21 +247,21 @@ public class AI {
         };
     }
 
-    private int evaluateThreats(Move move, BitBoard board, Color color) {
+    private int evaluateThreats(Move move, Engine engine) {
         int threatScore = 0;
 
         // Simulate the move on the board
-        board.performMove(move);
+        engine.performMove(move);
 
         // Get all possible moves for the opponent after this move
-        List<Move> opponentMoves = engine.getAllLegalMovesForBitBoard(board);
+        List<Move> opponentMoves = engine.getAllLegalMoves();
 
         // Analyze each of the opponent's moves
         for (Move opponentMove : opponentMoves) {
             // Check if the move is a capture move
             if (opponentMove.isCapture()) {
                 // Get the piece at the destination
-                PieceType capturedPiece = board.getPieceTypeAtPosition(opponentMove.getTo());
+                PieceType capturedPiece = move.getPieceType();
 
                 // Check if the piece at the destination is the same as the one moved by the player
                 if (capturedPiece == move.getPieceType()) {
@@ -275,7 +274,7 @@ public class AI {
         }
 
         // Undo the move to restore the board state
-        board.undoMove(move);
+        engine.undoMove(move);
 
 
         return threatScore;

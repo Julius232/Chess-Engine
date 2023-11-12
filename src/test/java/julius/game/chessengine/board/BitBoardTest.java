@@ -5,7 +5,6 @@ import julius.game.chessengine.utils.Color;
 import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static julius.game.chessengine.board.Position.convertStringToPosition;
@@ -37,46 +36,9 @@ public class BitBoardTest {
             0x8080808080808080L  // File H
     };
 
-
-    @Test
-    public void testDoAndUndoTenMoves() {
-        Engine engine = new Engine(); // The chess engine
-        BitBoard board = engine.getBitBoard(); // The current state of the board from the engine
-
-        // Lists to keep track of the moves and states
-        List<Move> movesPerformed = new ArrayList<>();
-        List<BitBoard> states = new ArrayList<>();
-
-        // Do 10 moves
-        for (int i = 0; i < 100; i++) {
-            log.info(i + ": MOVE");
-            // Assume generateAllPossibleMoves and performMove are properly defined methods
-            List<Move> possibleMoves = engine.getAllLegalMoves();
-            if (!possibleMoves.isEmpty()) {
-                Move move = possibleMoves.get(0); // or any other move selection strategy
-                board.performMove(move);
-                movesPerformed.add(move);
-
-                board.logBoard();
-                states.add(new BitBoard(board)); // Store the state after the move
-            }
-        }
-
-        // Now undo the 10 moves
-        for (int i = movesPerformed.size() - 1; i >= 0; i--) {
-
-            log.info(i + ": UNDO");
-            board.undoMove(movesPerformed.get(i));
-            board.logBoard();
-        }
-        BitBoard b = new BitBoard();
-        board.logBoard();
-        assertEquals(b, board); // Check if the board state matches the expected state
-        assertEquals(b.getBoardStateHash(), board.getBoardStateHash());
-    }
-
     @Test
     public void PERFT() {
+        long startTime = System.nanoTime(); // Start timing
 
         Engine engine = new Engine(); // The chess engine
 
@@ -122,6 +84,9 @@ public class BitBoardTest {
 
         engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
 
+        long endTime = System.nanoTime();
+        log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
+        log.info("Counter LegalMovesGeneration: " + engine.counter);
     }
 
     @Test
@@ -136,6 +101,8 @@ public class BitBoardTest {
 //    a b c d e f g h
     //https://www.chessprogramming.org/Perft_Results
     public void PERFTPos_2() {
+
+        long startTime = System.nanoTime(); // Start timing
 
         Engine engine = new Engine();
         engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");// The chess engine
@@ -180,7 +147,8 @@ public class BitBoardTest {
         assertEquals(757163, d4.getCaptures());
         assertEquals(4085603, d4.getNodes());
 
-        engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
+        long endTime = System.nanoTime();
+        log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
     }
 
     @Test
@@ -314,10 +282,10 @@ public class BitBoardTest {
                 if (lastMove.isPromotionMove()) {
                     node.addPromotion(1);
                 }
-                if (engine.getBitBoard().isInCheck(Color.getOpponentColor(lastMove.getColor()))) {
+                if (engine.isInStateCheck(Color.getOpponentColor(lastMove.getColor()))) {
                     node.addCheck(1);
                 }
-                if (engine.isInStateCheckMate(engine.getBitBoard(), Color.getOpponentColor(lastMove.getColor()))) {
+                if (engine.isInStateCheckMate(Color.getOpponentColor(lastMove.getColor()))) {
                     node.addCheckmate(1);
                 }
             }
@@ -326,7 +294,7 @@ public class BitBoardTest {
 
         List<Move> moves = engine.getAllLegalMoves();
         for (Move move : moves) {
-            engine.getBitBoard().performMove(move);
+            engine.performMove(move);
 
             PerftNode childNode = perft(depth - 1, engine, move); // Pass the current move as lastMove
             node.addNodes(childNode.getNodes()); // Aggregate the count of nodes from child nodes
@@ -337,7 +305,7 @@ public class BitBoardTest {
             node.addEnPassant(childNode.getEnPassant());
             node.addPromotion(childNode.getPromotions());
 
-            engine.getBitBoard().undoMove(move);
+            engine.undoMove(move);
         }
 
         return node;
@@ -347,16 +315,16 @@ public class BitBoardTest {
     public void checkForEngine() {
         Engine engine = new Engine(); // The chess engine
 
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e2"), convertStringToPosition("e4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e7"), convertStringToPosition("e5"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("g1"), convertStringToPosition("f3"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("g8"), convertStringToPosition("f6"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("b1"), convertStringToPosition("c3"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("b8"), convertStringToPosition("c6"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("f1"), convertStringToPosition("c4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("f6"), convertStringToPosition("d5"));
+        engine.moveFigure(convertStringToPosition("e2"), convertStringToPosition("e4"));
+        engine.moveFigure(convertStringToPosition("e7"), convertStringToPosition("e5"));
+        engine.moveFigure(convertStringToPosition("g1"), convertStringToPosition("f3"));
+        engine.moveFigure(convertStringToPosition("g8"), convertStringToPosition("f6"));
+        engine.moveFigure(convertStringToPosition("b1"), convertStringToPosition("c3"));
+        engine.moveFigure(convertStringToPosition("b8"), convertStringToPosition("c6"));
+        engine.moveFigure(convertStringToPosition("f1"), convertStringToPosition("c4"));
+        engine.moveFigure(convertStringToPosition("f6"), convertStringToPosition("d5"));
 
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.WHITE);
+        List<Move> moves = engine.getAllLegalMoves();
 
         assertEquals(moves.size(), 35);
     }
@@ -365,12 +333,12 @@ public class BitBoardTest {
     public void checkRookFirstMove() {
         Engine engine = new Engine(); // The chess engine
 
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("g1"), convertStringToPosition("f3"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("g8"), convertStringToPosition("f6"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h1"), convertStringToPosition("g1"));
+        engine.moveFigure(convertStringToPosition("g1"), convertStringToPosition("f3"));
+        engine.moveFigure(convertStringToPosition("g8"), convertStringToPosition("f6"));
+        engine.moveFigure(convertStringToPosition("h1"), convertStringToPosition("g1"));
         engine.undoLastMove();
 
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.WHITE);
+        List<Move> moves = engine.getAllLegalMoves();
 
         assertEquals(moves.stream().filter(Move::isRookFirstMove).toList().size(), 1);
     }
@@ -378,52 +346,47 @@ public class BitBoardTest {
     @Test
     public void checkForEnPassantWhiteLeft() {
         Engine engine = new Engine(); // The chess engine
-        BitBoard board = engine.getBitBoard();
 
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e2"), convertStringToPosition("e4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h7"), convertStringToPosition("h6"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e4"), convertStringToPosition("e5"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("d7"), convertStringToPosition("d5"));
+        engine.moveFigure(convertStringToPosition("e2"), convertStringToPosition("e4"));
+        engine.moveFigure(convertStringToPosition("h7"), convertStringToPosition("h6"));
+        engine.moveFigure(convertStringToPosition("e4"), convertStringToPosition("e5"));
+        engine.moveFigure(convertStringToPosition("d7"), convertStringToPosition("d5"));
 
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.WHITE);
+        List<Move> moves = engine.getAllLegalMoves();
 
-        engine.getBitBoard().logBoard();
+        engine.logBoard();
         assertEquals(31, moves.size());
     }
 
     @Test
     public void checkForEnPassantWhiteRight() {
         Engine engine = new Engine(); // The chess engine
-        BitBoard board = engine.getBitBoard();
+  
+        engine.moveFigure(convertStringToPosition("e2"), convertStringToPosition("e4"));
+        engine.moveFigure(convertStringToPosition("h7"), convertStringToPosition("h6"));
+        engine.moveFigure(convertStringToPosition("e4"), convertStringToPosition("e5"));
+        engine.moveFigure(convertStringToPosition("f7"), convertStringToPosition("f5"));
+        
 
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e2"), convertStringToPosition("e4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h7"), convertStringToPosition("h6"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e4"), convertStringToPosition("e5"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("f7"), convertStringToPosition("f5"));
-
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.WHITE);
-
-        engine.getBitBoard().logBoard();
-        List<Move> mightNotLegalMoves = engine.getBitBoard().generateAllPossibleMoves(Color.WHITE);
-
-        assertEquals(31, moves.size());
+        engine.logBoard();
+        List<Move> mightNotLegalMoves = engine.getAllLegalMoves();
+        
         assertEquals(31, mightNotLegalMoves.size());
     }
 
     @Test
     public void checkForEnPassantBlackLeft() {
         Engine engine = new Engine(); // The chess engine
-        BitBoard board = engine.getBitBoard();
 
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h2"), convertStringToPosition("h3"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e7"), convertStringToPosition("e5"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h3"), convertStringToPosition("h4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e5"), convertStringToPosition("e4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("f2"), convertStringToPosition("f4"));
+        engine.moveFigure(convertStringToPosition("h2"), convertStringToPosition("h3"));
+        engine.moveFigure(convertStringToPosition("e7"), convertStringToPosition("e5"));
+        engine.moveFigure(convertStringToPosition("h3"), convertStringToPosition("h4"));
+        engine.moveFigure(convertStringToPosition("e5"), convertStringToPosition("e4"));
+        engine.moveFigure(convertStringToPosition("f2"), convertStringToPosition("f4"));
 
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.BLACK);
+        List<Move> moves = engine.getAllLegalMoves();
 
-        engine.getBitBoard().logBoard();
+        engine.logBoard();
         assertEquals(31, moves.size());
     }
 
@@ -431,33 +394,33 @@ public class BitBoardTest {
     public void compareHashes() {
         Engine engine = new Engine(); // The chess engine
 
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h2"), convertStringToPosition("h3"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h7"), convertStringToPosition("h5"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h3"), convertStringToPosition("h4"));
+        engine.moveFigure(convertStringToPosition("h2"), convertStringToPosition("h3"));
+        engine.moveFigure(convertStringToPosition("h7"), convertStringToPosition("h5"));
+        engine.moveFigure(convertStringToPosition("h3"), convertStringToPosition("h4"));
 
 
         Engine engine2 = new Engine();
 
-        engine2.moveFigure(engine2.getBitBoard(), convertStringToPosition("h2"), convertStringToPosition("h4"));
-        engine2.moveFigure(engine2.getBitBoard(), convertStringToPosition("h7"), convertStringToPosition("h5"));
+        engine2.moveFigure(convertStringToPosition("h2"), convertStringToPosition("h4"));
+        engine2.moveFigure(convertStringToPosition("h7"), convertStringToPosition("h5"));
 
 
-        assertNotEquals(engine.getBitBoard().getBoardStateHash(), engine2.getBitBoard().getBoardStateHash());
+        assertNotEquals(engine.getBoardStateHash(), engine2.getBoardStateHash());
     }
 
     @Test
     public void checkForEnPassantBlackRight() {
         Engine engine = new Engine(); // The chess engine
 
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h2"), convertStringToPosition("h3"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e7"), convertStringToPosition("e5"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("h3"), convertStringToPosition("h4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e5"), convertStringToPosition("e4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("d2"), convertStringToPosition("d4"));
+        engine.moveFigure(convertStringToPosition("h2"), convertStringToPosition("h3"));
+        engine.moveFigure(convertStringToPosition("e7"), convertStringToPosition("e5"));
+        engine.moveFigure(convertStringToPosition("h3"), convertStringToPosition("h4"));
+        engine.moveFigure(convertStringToPosition("e5"), convertStringToPosition("e4"));
+        engine.moveFigure(convertStringToPosition("d2"), convertStringToPosition("d4"));
 
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.BLACK);
+        List<Move> moves = engine.getAllLegalMoves();
 
-        engine.getBitBoard().logBoard();
+        engine.logBoard();
         assertEquals(31, moves.size());
     }
 
@@ -466,13 +429,13 @@ public class BitBoardTest {
     public void checkForCapturesBlack() {
         Engine engine = new Engine(); // The chess engine
 
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("e2"), convertStringToPosition("e4"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("f7"), convertStringToPosition("f5"));
-        engine.moveFigure(engine.getBitBoard(), convertStringToPosition("g2"), convertStringToPosition("g4"));
+        engine.moveFigure(convertStringToPosition("e2"), convertStringToPosition("e4"));
+        engine.moveFigure(convertStringToPosition("f7"), convertStringToPosition("f5"));
+        engine.moveFigure(convertStringToPosition("g2"), convertStringToPosition("g4"));
 
-        List<Move> moves = engine.getAllPossibleMovesForPlayerColor(Color.BLACK);
+        List<Move> moves = engine.getAllLegalMoves();
 
-        engine.getBitBoard().logBoard();
+        engine.logBoard();
         assertEquals(22, moves.size());
     }
 

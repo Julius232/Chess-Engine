@@ -1,9 +1,6 @@
 package julius.game.chessengine.board
 
 
-import julius.game.chessengine.utils.Color
-
-
 import spock.lang.Specification
 
 class BoardTest extends Specification {

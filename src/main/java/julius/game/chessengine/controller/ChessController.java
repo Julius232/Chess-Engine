@@ -30,7 +30,7 @@ public class ChessController {
 
     @GetMapping(value = "/score")
     public ResponseEntity<Score> getScore() {
-        return ResponseEntity.ok(engine.getBitBoard().getScore());
+        return ResponseEntity.ok(engine.getScore());
     }
 
     @PutMapping(value = "/reset")
@@ -66,22 +66,16 @@ public class ChessController {
     public ResponseEntity<List<Move>> getAllPossibleFieldsBlack() {
         return ResponseEntity.ok(engine.getAllLegalMoves());
     }
-
-    @GetMapping(value = "/figure")
-    public ResponseEntity<List<Figure>> getFigures() {
-        return ResponseEntity.ok(engine.getBitBoard().getFigures());
-    }
-
     @GetMapping(value = "/figure/frontend")
     public ResponseEntity<FEN> getFiguresFrontend() {
-        return ResponseEntity.ok(FEN.translateBoardToFEN(engine.getBitBoard()));
+        return ResponseEntity.ok(engine.translateBoardToFen());
     }
 
     @PatchMapping(value = "/figure/move/{from}/{to}")
     public ResponseEntity<GameState> moveFigure(@PathVariable("from") String from,
                                                 @PathVariable("to") String to) {
         if (from != null && to != null) {
-            GameState state = engine.moveFigure(engine.getBitBoard(), convertStringToPosition(from), convertStringToPosition(to));
+            GameState state = engine.moveFigure(convertStringToPosition(from), convertStringToPosition(to));
             return ResponseEntity.ok(state);
         } else return ResponseEntity.status(406).build();
     }

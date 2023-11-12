@@ -6,10 +6,11 @@ import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
-import lombok.Data;
+import julius.game.chessengine.utils.Score;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -19,35 +20,70 @@ import static julius.game.chessengine.helper.BitHelper.bitIndex;
 import static julius.game.chessengine.helper.BitHelper.isValidBoardPosition;
 import static julius.game.chessengine.helper.KnightHelper.knightMoves;
 
-@Data
 @Service
 @Log4j2
 public class Engine {
 
-
+    private boolean legalMovesNeedUpdate = true;
+    private List<Move> legalMoves = new ArrayList<>();
     private LinkedList<Move> moves = new LinkedList<>();
     private BitBoard bitBoard = new BitBoard();
     private GameState gameState = new GameState();
 
-    public void startNewGame() {
-        bitBoard = new BitBoard();
+    public Engine() {
+        startNewGame();
+    }
+
+    public Engine(BitBoard b, LinkedList<Move> m, List<Move> l) {
+        bitBoard = b;
         gameState = new GameState();
-        // Set up the initial position of the pieces on the bitboard
-        bitBoard.setInitialPosition();
+        moves = m;
+        legalMoves = l;
     }
 
     public List<Move> getAllLegalMoves() {
-        return bitBoard.getAllCurrentPossibleMoves()
+        if (legalMovesNeedUpdate) {
+            generateLegalMoves();
+            legalMovesNeedUpdate = false; // Reset flag after generating
+        }
+        return this.legalMoves;
+    }
+
+    public void performMove(Move move) {
+        this.bitBoard.performMove(move);
+        updateGameState();
+        legalMovesNeedUpdate = true; // Set flag
+    }
+
+    public void undoMove(Move move) {
+        this.bitBoard.undoMove(move);
+        updateGameState();
+        legalMovesNeedUpdate = true; // Set flag
+    }
+
+    public void importBoardFromFen(String fen) {
+        this.bitBoard = FEN.translateFENtoBitBoard(fen);
+        legalMovesNeedUpdate = true; // Set flag
+    }
+
+    public Engine createSimulation() {
+        return new Engine(new BitBoard(bitBoard), moves, legalMoves);
+    }
+
+    public void startNewGame() {
+        bitBoard = new BitBoard();
+        gameState = new GameState();
+
+    }
+
+    public int counter = 0;
+
+    private void generateLegalMoves() {
+        this.legalMoves = bitBoard.getAllCurrentPossibleMoves()
                 .stream()
                 .filter(move -> isLegalMove(bitBoard, move))
                 .collect(Collectors.toList());
-    }
-
-    public List<Move> getAllLegalMovesForBitBoard(BitBoard b) {
-        return b.getAllCurrentPossibleMoves()
-                .stream()
-                .filter(move -> isLegalMove(b, move))
-                .collect(Collectors.toList());
+        counter++;
     }
 
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
@@ -74,7 +110,7 @@ public class Engine {
         }
 
         // Execute the move on the bitboard
-        bitBoard.performMove(randomMove);
+        performMove(randomMove);
 
         // Update the game state
         updateGameState();
@@ -82,6 +118,9 @@ public class Engine {
         return gameState;
     }
 
+    public GameState moveFigure(Position fromPosition, Position toPosition) {
+        return moveFigure(bitBoard, fromPosition, toPosition);
+    }
 
     public GameState moveFigure(BitBoard bitBoard, Position fromPosition, Position toPosition) {
         // Determine the piece type and color from the bitboard based on the 'from' position
@@ -105,11 +144,12 @@ public class Engine {
 
 
         // Perform the move on the bitboard
-        bitBoard.performMove(move);
+        performMove(move);
 
         moves.add(move);
         // Update the game state
         updateGameState();
+
 
         return gameState;
     }
@@ -135,6 +175,7 @@ public class Engine {
         // Return the new board state.
         return boardCopy;
     }
+
     private boolean isInCheck(BitBoard bitBoard, Color color) {
         Color opponentColor = Color.getOpponentColor(color);
         // Find the king's position
@@ -333,10 +374,18 @@ public class Engine {
         return !testBoard.isInCheck(move.getColor());
     }
 
+    public boolean isInStateCheck(Color color) {
+        // The BitBoard class already has a method to check if a king is in check
+        return isInStateCheck(this.bitBoard, color);
+    }
 
     private boolean isInStateCheck(BitBoard board, Color color) {
         // The BitBoard class already has a method to check if a king is in check
         return board.isInCheck(color);
+    }
+
+    public boolean isInStateCheckMate(Color color) {
+        return isInStateCheckMate(bitBoard, color);
     }
 
     public boolean isInStateCheckMate(BitBoard board, Color color) {
@@ -365,15 +414,17 @@ public class Engine {
             gameState.setState("DRAW");
         }
     }
+    public long getBoardStateHash() {
+        return bitBoard.getBoardStateHash();
+    }
 
-    public List<Move> getAllPossibleMovesForPlayerColor(Color color) {
-        // Generate all possible moves for the color
-        List<Move> allMoves = getAllLegalMoves();
 
-        // Filter out moves that would result in the player being in check
-        return allMoves.stream()
-                .filter(move -> !wouldBeInCheckAfterMove(move, color))
-                .collect(Collectors.toList());
+    public void logBoard() {
+        bitBoard.logBoard();
+    }
+
+    public boolean whitesTurn() {
+        return bitBoard.whitesTurn;
     }
 
     private boolean wouldBeInCheckAfterMove(Move move, Color color) {
@@ -390,11 +441,22 @@ public class Engine {
             bitBoard.undoMove(moves.getLast());
             moves.removeLast();
         }
+        generateLegalMoves();
     }
 
-    public void importBoardFromFen(String fen) {
-        this.bitBoard = FEN.translateFENtoBitBoard(fen);
+    public GameState getGameState() {
+        return gameState;
     }
 
+    public void setGameState(GameState gameState) {
+        this.gameState = gameState;
+    }
 
+    public Score getScore() {
+        return bitBoard.getScore();
+    }
+
+    public FEN translateBoardToFen() {
+        return FEN.translateBoardToFEN(bitBoard);
+    }
 }

@@ -174,7 +174,6 @@ public class BitBoard {
 
         // Return the score encapsulated in a Score object
         this.currentScore = new Score(whiteScore, blackScore);
-        log.debug("Update Score called" + currentScore);
     }
 
     public List<Move> getAllCurrentPossibleMoves() {
@@ -192,7 +191,7 @@ public class BitBoard {
     }
 
     // Method to set up the initial position
-    public void setInitialPosition() {
+    private void setInitialPosition() {
         // Setting white pawns on the second rank
         whitePawns = 0x000000000000FF00L;
         // Setting black pawns on the seventh rank
@@ -1450,8 +1449,6 @@ public class BitBoard {
     }
 
     public void undoMove(Move move) {
-
-
         int fromIndex = bitIndex(move.getFrom().getX(), move.getFrom().getY());
         int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
 
