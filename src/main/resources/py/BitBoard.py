@@ -38,4 +38,4 @@ def print_chessboard_from_number(number):
     return chessboard
 
 # Example usage with a hexadecimal input that represents pawns on file H
-print_chessboard_from_number("13186908160")  # This should print pawns on file H
+print_chessboard_from_number("-2286867602040676016")  # This should print pawns on file H

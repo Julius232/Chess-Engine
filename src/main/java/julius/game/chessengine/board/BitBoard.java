@@ -325,7 +325,6 @@ public class BitBoard {
         whitePieces = whitePawns | whiteKnights | whiteBishops | whiteRooks | whiteQueens | whiteKing;
         blackPieces = blackPawns | blackKnights | blackBishops | blackRooks | blackQueens | blackKing;
         allPieces = whitePieces | blackPieces;
-        updateScore();
     }
 
     private List<Move> generatePawnMoves(Color color) {
@@ -885,6 +884,8 @@ public class BitBoard {
 
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
+
+        updateScore();
     }
 
 

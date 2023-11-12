@@ -16,10 +16,12 @@ import java.util.*;
 @Component
 public class AI {
 
+    private final long CHECKMATE = 1000000;
+
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
 
     // Adjust the level of depth according to your requirements
-    int levelOfDepth = 4;
+    int levelOfDepth = 3;
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -28,7 +30,7 @@ public class AI {
 
     public GameState executeCalculatedMove(String colorString) {
         // Convert the string color to the Color enum
-        Color color = Color.valueOf(colorString.toUpperCase());
+        Color color = engine.getBitBoard().whitesTurn ? Color.WHITE : Color.BLACK;
 
         // Calculate the move using the AI logic
         Move calculatedMove = calculateMove(engine.getBitBoard(), color);
@@ -72,10 +74,16 @@ public class AI {
         double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 
         BitBoard dummyBoard = new BitBoard(board);
+
+        Color opponentColor = Color.getOpponentColor(color);
         for (Move move : sortMovesByEfficiency(moves, dummyBoard, color)) {
             dummyBoard.performMove(move);
-            double score = alphaBeta(dummyBoard, levelOfDepth - 1, alpha, beta, Color.WHITE == color, color);
+            double score = alphaBeta(dummyBoard, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor);
             dummyBoard.undoMove(move);
+
+            if(color.equals(Color.WHITE) ? score == CHECKMATE : score == -CHECKMATE) {
+                return move;
+            }
 
             if (Color.WHITE == color ? score > bestScore : score < bestScore) {
                 bestScore = score;
@@ -88,8 +96,20 @@ public class AI {
         return bestMove;
     }
 
+    /**
+     * *
+     * 5rkr/pp2Rp2/1b1p1Pb1/3P2Q1/2n3P1/2p5/P4P2/4R1K1 w - - 1 0
+     * *
+     */
     private double alphaBeta(BitBoard board, int depth, double alpha, double beta, boolean maximizingPlayer, Color color) {
         long boardHash = board.getBoardStateHash();
+
+        if (depth == 0) {
+            double staticEval = board.getScore().getScoreDifference() / 100.0;
+            transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, NodeType.EXACT));
+            return staticEval;
+        }
+
         TranspositionTableEntry entry = transpositionTable.get(boardHash);
 
         if (entry != null && entry.depth >= depth) {
@@ -106,20 +126,24 @@ public class AI {
             }
         }
 
-        if (depth == 0 || engine.isInStateCheckMate(board, color)) {
-            double staticEval = board.getScore().getScoreDifference() / 100.0;
-            transpositionTable.put(boardHash, new TranspositionTableEntry(staticEval, depth, NodeType.EXACT));
-            return staticEval;
-        }
 
         double alphaOriginal = alpha;
         List<Move> moves = engine.getAllLegalMovesForBitBoard(board);
 
         if (maximizingPlayer) {
-            double maxEval = Double.NEGATIVE_INFINITY;;
+            double maxEval = Double.NEGATIVE_INFINITY;
             for (Move move : sortMovesByEfficiency(moves, board, color)) {
                 board.performMove(move);
+                if (engine.isInStateCheckMate(board, Color.getOpponentColor(color))) {
+                    double checkmateValue = CHECKMATE;
+                    transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
+                    return checkmateValue;
+                }
+                if (depth == 2 && move.isCapture() && move.getCapturedPieceType() == PieceType.QUEEN && move.getPieceType() == PieceType.PAWN) {
+                    log.info("[+] Maximizing player: depth: {}, eval: {}, move: {}, alpha: {}, beta: {}", depth, null, move, alpha, beta);
+                }
                 double eval = alphaBeta(board, depth - 1, alpha, beta, false, Color.getOpponentColor(color));
+
                 board.undoMove(move);
                 maxEval = Math.max(maxEval, eval);
                 alpha = Math.max(alpha, eval);
@@ -139,10 +163,23 @@ public class AI {
             double minEval = Double.POSITIVE_INFINITY;
             for (Move move : sortMovesByEfficiency(moves, board, color)) {
                 board.performMove(move);
+                if (engine.isInStateCheckMate(board, Color.getOpponentColor(color))) {
+                    double checkmateValue = -CHECKMATE;
+                    transpositionTable.put(boardHash, new TranspositionTableEntry(checkmateValue, depth, NodeType.EXACT));
+                    return checkmateValue;
+                }
                 double eval = alphaBeta(board, depth - 1, alpha, beta, true, Color.getOpponentColor(color));
+
+                if (move.isCapture() && move.getCapturedPieceType() == PieceType.QUEEN) {
+                    log.info("[-] Minimizing player: depth: {}, eval: {}, move: {}, alpha: {}, beta: {}", depth, eval, move, alpha, beta);
+                    if (eval < beta) {
+                        board.logBoard();
+                    }
+                }
+
                 board.undoMove(move);
-                minEval = Math.min(minEval, eval);
-                beta = Math.min(beta, eval);
+                minEval = Math.min(minEval, eval); // min -1000
+                beta = Math.min(beta, eval);// beta -1000
                 if (alpha >= beta) {
                     break; // Alpha-beta pruning
                 }
@@ -164,30 +201,31 @@ public class AI {
         Map<Move, Integer> moveEfficiencyMap = new HashMap<>();
 
         for (Move move : moves) {
-            BitBoard dummy = new BitBoard(board); // Clone the board or create a new dummy board with the same state
-            dummy.performMove(move); // Perform the move on the dummy board
+            // Clone the board or create a new dummy board with the same state
+            board.performMove(move); // Perform the move on the dummy board
 
             // Start with a base score for sorting
             int score = 0;
 
             // Check for checkmate or check
-            if (engine.isInStateCheckMate(dummy, Color.getOpponentColor(color))) {
+            if (engine.isInStateCheckMate(board, Color.getOpponentColor(color))) {
                 score += 10000; // Checkmate should have the highest score
-            } else if (dummy.isInCheck(Color.getOpponentColor(color))) {
+            } else if (board.isInCheck(Color.getOpponentColor(color))) {
                 score += 5000; // Checks should have a high score
             }
 
             // Captures
             if (move.isCapture()) {
                 // Add the value of the captured piece to the score
-                score += getPieceValue(dummy.getPieceTypeAtPosition(move.getTo()));
+                score += getPieceValue(board.getPieceTypeAtPosition(move.getTo()));
             }
 
             // Add points for threats (attacking high-value pieces without capturing)
-            score += evaluateThreats(move, dummy, color);
+            score += evaluateThreats(move, board, color);
 
             // Use the score for sorting
             moveEfficiencyMap.put(move, score);
+            board.undoMove(move);
         }
 
         // Sort the moves by their efficiency in descending order

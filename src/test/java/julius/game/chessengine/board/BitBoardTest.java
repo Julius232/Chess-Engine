@@ -337,8 +337,6 @@ public class BitBoardTest {
             node.addEnPassant(childNode.getEnPassant());
             node.addPromotion(childNode.getPromotions());
 
-
-
             engine.getBitBoard().undoMove(move);
         }
 
