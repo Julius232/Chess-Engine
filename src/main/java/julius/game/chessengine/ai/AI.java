@@ -29,7 +29,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 200000; //milliseconds
+    long timeLimit = 3000; //milliseconds
     private final Engine engine;
 
 
@@ -56,13 +56,37 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
     }
 
     public void startAutoPlay() {
+        GameState state = null;
         while (engine.getGameState().getState().equals("PLAY")) {
-            performMove();
+
+            if (state == null) {
+                // Wait a bit before trying again, to give time for calculatedLine to be populated
+                try {
+                    Thread.sleep(timeLimit); // wait for 1 second, adjust as needed
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.error("AutoPlay interrupted", e);
+                    return;
+                }
+            }
+            state = performMove();
         }
     }
 
     public GameState performMove() {
-        engine.performMove(calculatedLine.get(0));
+        if (calculatedLine.isEmpty()) {
+            // calculatedLine is empty, either log an error or return null
+            log.info("Waiting for calculatedLine to be populated");
+            return null; // or handle differently
+        }
+
+        Move aiMove = calculatedLine.remove(0); // Retrieve and remove the move from the list
+        if (aiMove == null) {
+            log.error("Calculated move is null");
+            return null; // or handle differently
+        }
+
+        engine.performMove(aiMove);
         return engine.getGameState();
     }
 
@@ -142,15 +166,15 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         List<Move> newCalculatedLine = new LinkedList<>();
 
         if(!transpositionTable.containsKey(currentBoardHash)) {
-            log.debug("[{}] hash not exists", currentBoardHash);
+            log.info("[{}] hash not exists", currentBoardHash);
         }
 
         if(transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove == null) {
-            log.debug("[{}] hash exists but move: " + transpositionTable.get(currentBoardHash), currentBoardHash);
+            log.info("[{}] hash exists but move: " + transpositionTable.get(currentBoardHash), currentBoardHash);
         }
 
         while (transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove != null) {
-            log.debug("[{}] hash exists and move: {}", currentBoardHash, transpositionTable.get(currentBoardHash));
+            log.info("[{}] hash exists and move: {}", currentBoardHash, transpositionTable.get(currentBoardHash));
             TranspositionTableEntry entry = transpositionTable.get(currentBoardHash);
             Move move = entry.bestMove;
             newCalculatedLine.add(0, move); // Add at the beginning to maintain the order
@@ -170,7 +194,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         Collections.reverse(newCalculatedLine);
         this.calculatedLine = new ArrayList<>(newCalculatedLine);
 
-        log.info("Move Line: {}", newCalculatedLine.stream().map(Move::toString).collect(Collectors.joining(", ")));
+        log.debug("Move Line: {}", newCalculatedLine.stream().map(Move::toString).collect(Collectors.joining(", ")));
     }
 
 
