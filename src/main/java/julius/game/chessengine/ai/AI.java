@@ -20,7 +20,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
     private List<Move> calculatedLine = Collections.synchronizedList(new ArrayList<>());
 
     private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
-    private static final double TIME_LIMIT_EXCEEDED_FLAG = Double.MAX_VALUE;
+    private static final double EXIT_FLAG = Double.MAX_VALUE;
 
     private Thread calculationThread;
     private volatile boolean keepCalculating = true;
@@ -29,7 +29,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 20000; //milliseconds
+    long timeLimit = 200000; //milliseconds
     private final Engine engine;
 
 
@@ -96,6 +96,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                 // Convert the string color to the Color enum
                 Engine simulation = engine.createSimulation();
                 long boardStateHash = simulation.getBoardStateHash();
+                lastCalculatedHash = boardStateHash;
                 Color color = simulation.whitesTurn() ? Color.WHITE : Color.BLACK;
 
                 Move bestMove;
@@ -123,7 +124,6 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                     }
                 }
 
-                lastCalculatedHash = boardStateHash;
             }
 
             // Sleep logic to prevent over-utilization of CPU
@@ -141,22 +141,16 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         long currentBoardHash = simulation.getBoardStateHash();
         List<Move> newCalculatedLine = new LinkedList<>();
 
-        if(!engine.whitesTurn() && currentBoardHash != -7443709349783912750L) {
-            log.info("hash is different");
-            engine.logBoard();
-            log.info("hash = " + engine.getBoardStateHash());
-        }
-
         if(!transpositionTable.containsKey(currentBoardHash)) {
-            log.info("[{}] hash not exists", currentBoardHash);
+            log.debug("[{}] hash not exists", currentBoardHash);
         }
 
         if(transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove == null) {
-            log.info("[{}] hash exists but move: " + transpositionTable.get(currentBoardHash), currentBoardHash);
+            log.debug("[{}] hash exists but move: " + transpositionTable.get(currentBoardHash), currentBoardHash);
         }
 
         while (transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove != null) {
-            log.info("[{}] hash exists and move: {}", currentBoardHash, transpositionTable.get(currentBoardHash));
+            log.debug("[{}] hash exists and move: {}", currentBoardHash, transpositionTable.get(currentBoardHash));
             TranspositionTableEntry entry = transpositionTable.get(currentBoardHash);
             Move move = entry.bestMove;
             newCalculatedLine.add(0, move); // Add at the beginning to maintain the order
@@ -206,7 +200,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             } else {
                 score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor, startTime, timeLimit);
                 // Check for time limit exceeded after alphaBeta call
-                if (score == TIME_LIMIT_EXCEEDED_FLAG) {
+                if (score == EXIT_FLAG || positionChanged()) {
                     engine.undoLastMove();
                     break;
                 }
@@ -241,7 +235,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
         // Check for time limit exceeded
         if (System.currentTimeMillis() - startTime > timeLimit) {
-            return TIME_LIMIT_EXCEEDED_FLAG;
+            return EXIT_FLAG;
         }
 
         long boardHash = engine.getBoardStateHash();
@@ -295,10 +289,10 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             } else {
                 eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color), startTime, timeLimit);
 
-                if (eval == TIME_LIMIT_EXCEEDED_FLAG) {
+                if (eval == EXIT_FLAG || positionChanged()) {
                     // If time limit exceeded, exit the loop
                     engine.undoLastMove();
-                    return TIME_LIMIT_EXCEEDED_FLAG;
+                    return EXIT_FLAG;
                 }
             }
 
@@ -347,9 +341,9 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             } else {
                 eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color), startTime, timeLimit);
 
-                if (eval == TIME_LIMIT_EXCEEDED_FLAG) {
+                if (eval == EXIT_FLAG || positionChanged()) {
                     engine.undoLastMove();
-                    return TIME_LIMIT_EXCEEDED_FLAG;
+                    return EXIT_FLAG;
                 }
             }
 
