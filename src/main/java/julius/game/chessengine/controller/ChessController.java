@@ -6,7 +6,6 @@ import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
-import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.utils.Score;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static julius.game.chessengine.board.Position.convertStringToPosition;
 
@@ -66,6 +66,7 @@ public class ChessController {
     public ResponseEntity<List<Move>> getAllPossibleFieldsBlack() {
         return ResponseEntity.ok(engine.getAllLegalMoves());
     }
+
     @GetMapping(value = "/figure/frontend")
     public ResponseEntity<FEN> getFiguresFrontend() {
         return ResponseEntity.ok(engine.translateBoardToFen());
@@ -83,7 +84,7 @@ public class ChessController {
     @PatchMapping(value = "/figure/move/intelligent/{color}")
     public ResponseEntity<GameState> calculateMoveForColor(@PathVariable("color") String color) {
         if (color != null) {
-            return ResponseEntity.ok(ai.executeCalculatedMove());
+            return ResponseEntity.ok(ai.performMove());
         } else return ResponseEntity.status(406).build();
     }
 
@@ -101,6 +102,15 @@ public class ChessController {
         } else return ResponseEntity
                 .status(406)
                 .build();
+    }
+
+    @GetMapping(value = "/line")
+    public ResponseEntity<List<String>> getCalculatedLine() {
+        List<String> calculatedLine = ai.getCalculatedLine()
+                .stream()
+                .map(Move::toString)
+                .collect(Collectors.toList()); // Assuming this returns List<String>
+        return ResponseEntity.ok(calculatedLine);
     }
 
 }

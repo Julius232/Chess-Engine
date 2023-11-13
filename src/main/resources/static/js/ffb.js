@@ -12,6 +12,14 @@ $(document).ready(function () {
         }
     };
 
+    const updateCalculatedLine = () => {
+        makeRequest('GET', 'http://localhost:8080/chess/line', (data) => {
+            const lineText = data.join(", "); // Join the array elements with a comma and space
+            document.getElementById('calculatedLine').innerText = `Calculated Line: ${lineText}`;
+        });
+    };
+    
+
     function importFEN(fenString) {
         var encodedFenString = encodeURIComponent(fenString);
         makeRequest('PATCH', `http://localhost:8080/chess/fen?fen=${encodedFenString}`, () => {
@@ -56,6 +64,7 @@ $(document).ready(function () {
         makeRequest('GET', 'http://localhost:8080/chess/figure/frontend', (data) => {
             board.position(data.renderBoard);
             updateScore();
+            updateCalculatedLine(); // Update the calculated line
         });
     };
 

@@ -1,39 +1,71 @@
 package julius.game.chessengine.ai;
 
 import julius.game.chessengine.board.Move;
-import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
 import julius.game.chessengine.utils.Color;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Log4j2
 @Component
-public class AI {
+public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
-    Map<Long, Move> moveHistory = new HashMap<>();
+    private List<Move> calculatedLine = Collections.synchronizedList(new ArrayList<>());
 
-    private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
+    private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
     private static final double TIME_LIMIT_EXCEEDED_FLAG = Double.MAX_VALUE;
+
+    private Thread calculationThread;
+    private volatile boolean keepCalculating = true;
+
+    private volatile long lastCalculatedHash = -1;
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 3000; //milliseconds
+    long timeLimit = 30000; //milliseconds
     private final Engine engine;
+
 
     public AI(Engine engine) {
         this.engine = engine;
+        startCalculationThread();
+    }
+
+    @Override
+    public void onApplicationEvent(ContextRefreshedEvent event) {
+        // Start the thread when the application context is fully refreshed
+        startCalculationThread();
+    }
+
+    private void startCalculationThread() {
+        keepCalculating = true;
+        calculationThread = new Thread(this::calculateLine);
+        calculationThread.start();
+    }
+
+    public void stopCalculation() {
+        keepCalculating = false;
+        calculationThread.interrupt();
     }
 
     public void startAutoPlay() {
         while (engine.getGameState().getState().equals("PLAY")) {
-            executeCalculatedMove();
+            performMove();
         }
     }
+
+    public GameState performMove() {
+        engine.performMove(calculatedLine.get(0));
+        return engine.getGameState();
+    }
+
     public void logMoveLine(Engine engine) {
         long currentBoardHash = engine.getBoardStateHash();
         List<Move> moveLine = new ArrayList<>();
@@ -57,41 +89,79 @@ public class AI {
     }
 
 
-    public GameState executeCalculatedMove() {
-        log.info(" --- TranspositionTable[{}] --- ", transpositionTable.size());
-        // Convert the string color to the Color enum
-        Color color = engine.whitesTurn() ? Color.WHITE : Color.BLACK;
-        Engine simulation = engine.createSimulation();
+    private void calculateLine() {
+        while (keepCalculating) {
+            if (positionChanged()) {
+                log.info(" --- TranspositionTable[{}] --- ", transpositionTable.size());
+                // Convert the string color to the Color enum
+                Color color = engine.whitesTurn() ? Color.WHITE : Color.BLACK;
+                Engine simulation = engine.createSimulation();
 
-        Move bestMove = null;
-        double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-        long startTime = System.currentTimeMillis(); // Record start time
+                Move bestMove;
+                double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+                long startTime = System.currentTimeMillis(); // Record start time
 
-        for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
-            MoveAndScore moveAndScore = getBestMove(simulation, color, currentDepth, startTime, timeLimit);
-            log.info(" --- DEPTH<{}> --- ", currentDepth);
-            if (moveAndScore != null && (color == Color.WHITE ? moveAndScore.score > bestScore : moveAndScore.score < bestScore)) {
-                bestScore = moveAndScore.score;
-                bestMove = moveAndScore.move;
-                transpositionTable.put(engine.getBoardStateHash(), new TranspositionTableEntry(bestScore, currentDepth, NodeType.EXACT, bestMove));
+                for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
+                    if (!keepCalculating) break; // Check if we should stop calculating
+
+                    MoveAndScore moveAndScore = getBestMove(simulation, color, currentDepth, startTime, timeLimit);
+                    log.info(" --- DEPTH<{}> --- ", currentDepth);
+                    if (moveAndScore != null) {
+                        double score = moveAndScore.score;
+                        Move move = moveAndScore.move;
+                        if (move != null && (color == Color.WHITE ? score > bestScore : score < bestScore)) {
+                            bestScore = moveAndScore.score;
+                            bestMove = move;
+                            transpositionTable.put(engine.getBoardStateHash(), new TranspositionTableEntry(moveAndScore.score, currentDepth, NodeType.EXACT, bestMove));
+                        }
+                        fillCalculatedLine(simulation);
+                    }
+
+                    if (System.currentTimeMillis() - startTime > timeLimit) {
+                        log.info("Time limit exceeded at depth {}", currentDepth);
+                        break;
+                    }
+                }
+
+                lastCalculatedHash = engine.getBoardStateHash();
             }
 
-            if (System.currentTimeMillis() - startTime > timeLimit) {
-                break;
+            // Sleep logic to prevent over-utilization of CPU
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Calculation thread was interrupted", e);
+                return;
             }
         }
+    }
 
-        if (bestMove == null) {
-            throw new IllegalStateException("No move found within the time limit");
+    private boolean positionChanged() {
+        return engine.getBoardStateHash() != lastCalculatedHash;
+    }
+
+    private synchronized void fillCalculatedLine(Engine simulation) {
+        long currentBoardHash = simulation.getBoardStateHash();
+        List<Move> newCalculatedLine = new ArrayList<>();
+        int i = 0;
+        while (transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove != null) {
+            TranspositionTableEntry entry = transpositionTable.get(currentBoardHash);
+            Move move = entry.bestMove;
+            newCalculatedLine.add(i, move); // Add at the beginning to reverse the order
+            simulation.performMove(move);
+            currentBoardHash = simulation.getBoardStateHash();
+            i++;
         }
 
-        // Execute the best move found within the time frame
-        Position fromPosition = bestMove.getFrom();
-        Position toPosition = bestMove.getTo();
+        // Log the move line
+        log.info("Move Line: {}", newCalculatedLine.stream().map(Move::toString).collect(Collectors.joining(", ")));
 
-        logMoveLine(simulation);
-
-        return engine.moveFigure(fromPosition, toPosition);
+        // Redo the moves to restore the original board state
+        for (Move move : newCalculatedLine) {
+            simulation.undoMove(move, true); // Undo the moves
+        }
+        this.calculatedLine = newCalculatedLine;
     }
 
     private MoveAndScore getBestMove(Engine engine, Color color, int levelOfDepth, long startTime, long timeLimit) {
@@ -136,7 +206,6 @@ public class AI {
         }
 
 
-
         return bestMove != null ? new MoveAndScore(bestMove, bestScore) : null;
     }
 
@@ -156,11 +225,7 @@ public class AI {
         long boardHash = engine.getBoardStateHash();
 
         if (depth == 0 || engine.isGameOver()) {
-            double eval = engine.evaluateBoard(color, maximizingPlayer);
-            // Store the evaluation in the transposition table
-            transpositionTable.put(boardHash, new TranspositionTableEntry(eval, depth, NodeType.EXACT, null));
-
-            return eval;
+            return engine.evaluateBoard(color, maximizingPlayer);
         }
 
         TranspositionTableEntry entry = transpositionTable.get(boardHash);
@@ -291,8 +356,6 @@ public class AI {
     }
 
 
-
-
     private ArrayList<Move> sortMovesByEfficiency(List<Move> moves, Engine engine, Color color) {
         // We use a TreeMap to sort by the move efficiency value automatically.
         Map<Move, Double> moveEfficiencyMap = new HashMap<>();
@@ -337,5 +400,8 @@ public class AI {
         return sortedMoves;
     }
 
+    public List<Move> getCalculatedLine() {
+        return this.calculatedLine;
+    }
 
 }
