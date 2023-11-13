@@ -22,7 +22,7 @@ public class AI {
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 20000; //milliseconds
+    long timeLimit = 3000; //milliseconds
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -39,7 +39,8 @@ public class AI {
         List<Move> moveLine = new ArrayList<>();
         int i = 0;
         while (transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove != null) {
-            Move move = transpositionTable.get(currentBoardHash).bestMove;
+            TranspositionTableEntry entry = transpositionTable.get(currentBoardHash);
+            Move move = entry.bestMove;
             moveLine.add(i, move); // Add at the beginning to reverse the order
             engine.performMove(move);
             currentBoardHash = engine.getBoardStateHash();
@@ -72,6 +73,7 @@ public class AI {
             if (moveAndScore != null && (color == Color.WHITE ? moveAndScore.score > bestScore : moveAndScore.score < bestScore)) {
                 bestScore = moveAndScore.score;
                 bestMove = moveAndScore.move;
+                transpositionTable.put(engine.getBoardStateHash(), new TranspositionTableEntry(bestScore, currentDepth, NodeType.EXACT, bestMove));
             }
 
             if (System.currentTimeMillis() - startTime > timeLimit) {
@@ -114,7 +116,7 @@ public class AI {
                 return new MoveAndScore(move, color.equals(Color.WHITE) ? Engine.CHECKMATE : -Engine.CHECKMATE);
             }
 
-            double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor, startTime, timeLimit, move);
+            double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor, startTime, timeLimit);
 
             engine.undoMove(move, false);
 
@@ -128,11 +130,12 @@ public class AI {
             }
 
             if (Color.WHITE == color ? score > bestScore : score < bestScore) {
-                transpositionTable.put(engine.getBoardStateHash(), new TranspositionTableEntry(score, levelOfDepth, NodeType.EXACT, move));
                 bestScore = score;
                 bestMove = move;
             }
         }
+
+
 
         return bestMove != null ? new MoveAndScore(bestMove, bestScore) : null;
     }
@@ -143,7 +146,7 @@ public class AI {
      * 5rkr/pp2Rp2/1b1p1Pb1/3P2Q1/2n3P1/2p5/P4P2/4R1K1 w - - 1 0
      * *
      */
-    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color, long startTime, long timeLimit, Move currentMove) {
+    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color, long startTime, long timeLimit) {
 
         // Check for time limit exceeded
         if (System.currentTimeMillis() - startTime > timeLimit) {
@@ -176,18 +179,20 @@ public class AI {
             }
         }
 
+        double alphaOriginal = alpha; // Store the original alpha value
+        double betaOriginal = beta;   // Store the original beta value
 
-        double alphaOriginal = alpha;
         List<Move> moves = engine.getAllLegalMoves();
 
         if (maximizingPlayer) {
-            return maximizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves, startTime, timeLimit, currentMove);
+            return maximizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, betaOriginal, moves, startTime, timeLimit);
         } else {
-            return minimizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves, startTime, timeLimit, currentMove);
+            return minimizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, betaOriginal, moves, startTime, timeLimit);
         }
     }
 
-    private double maximizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit, Move currentMove) {
+
+    private double maximizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, double betaOriginal, List<Move> moves, long startTime, long timeLimit) {
         double maxEval = Double.NEGATIVE_INFINITY;
         Move bestMoveAtThisNode = null; // Variable to track the best move at this node
 
@@ -201,7 +206,7 @@ public class AI {
             if (entry != null && entry.depth >= depth) {
                 eval = entry.score; // Use the score from the transposition table
             } else {
-                eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color), startTime, timeLimit, move);
+                eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color), startTime, timeLimit);
 
                 if (eval == TIME_LIMIT_EXCEEDED_FLAG) {
                     // If time limit exceeded, exit the loop
@@ -224,7 +229,11 @@ public class AI {
         }
 
         // After the for loop, update the transposition table with the best move
-        if (maxEval != Double.NEGATIVE_INFINITY) {
+        if (maxEval <= alphaOriginal) {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND, bestMoveAtThisNode));
+        } else if (maxEval >= beta) {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.LOWERBOUND, bestMoveAtThisNode));
+        } else {
             transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT, bestMoveAtThisNode));
         }
 
@@ -232,7 +241,10 @@ public class AI {
     }
 
 
-    private double minimizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit, Move currentMove) {
+    private double minimizer(Engine engine, int depth, double alpha, double beta,
+                             Color color, long boardHash, double alphaOriginal,
+                             double betaOriginal, List<Move> moves, long startTime,
+                             long timeLimit) {
         double minEval = Double.POSITIVE_INFINITY;
         Move bestMoveAtThisNode = null; // Track the best move at this node
 
@@ -246,7 +258,7 @@ public class AI {
             if (entry != null && entry.depth >= depth) {
                 eval = entry.score;
             } else {
-                eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color), startTime, timeLimit, move);
+                eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color), startTime, timeLimit);
 
                 if (eval == TIME_LIMIT_EXCEEDED_FLAG) {
                     engine.undoMove(move, false);
@@ -267,7 +279,11 @@ public class AI {
             }
         }
 
-        if (minEval != Double.POSITIVE_INFINITY) {
+        if (minEval <= alpha) {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.LOWERBOUND, bestMoveAtThisNode));
+        } else if (minEval >= betaOriginal) {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.UPPERBOUND, bestMoveAtThisNode));
+        } else {
             transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.EXACT, bestMoveAtThisNode));
         }
 
@@ -275,16 +291,6 @@ public class AI {
     }
 
 
-
-    private void updateTanspositionTable(int depth, double beta, long boardHash, double alphaOriginal, double maxEval, Move move) {
-        if (maxEval <= alphaOriginal) {
-            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND, move));
-        } else if (maxEval >= beta) {
-            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.LOWERBOUND, move));
-        } else {
-            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT, move));
-        }
-    }
 
 
     private ArrayList<Move> sortMovesByEfficiency(List<Move> moves, Engine engine, Color color) {
