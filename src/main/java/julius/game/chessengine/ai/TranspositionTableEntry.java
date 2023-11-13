@@ -14,6 +14,16 @@ class TranspositionTableEntry {
         this.nodeType = nodeType;
         this.bestMove = bestMove;
     }
+
+    @Override
+    public String toString() {
+        return "TranspositionTableEntry{" +
+                "score=" + score +
+                ", depth=" + depth +
+                ", nodeType=" + nodeType +
+                ", bestMove=" + bestMove +
+                '}';
+    }
 }
 
 enum NodeType {

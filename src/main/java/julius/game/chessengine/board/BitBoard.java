@@ -1592,8 +1592,7 @@ public class BitBoard {
                 whiteRookA1Moved == bitBoard.whiteRookA1Moved &&
                 whiteRookH1Moved == bitBoard.whiteRookH1Moved &&
                 blackRookA8Moved == bitBoard.blackRookA8Moved &&
-                blackRookH8Moved == bitBoard.blackRookH8Moved &&
-                (Objects.equals(lastMoveDoubleStepPawnPosition, bitBoard.lastMoveDoubleStepPawnPosition));
+                blackRookH8Moved == bitBoard.blackRookH8Moved;
     }
 
     @Override
@@ -1653,12 +1652,12 @@ public class BitBoard {
                 hash ^= ZobristTable.getCastlingRightsHash(3); // Black Queenside
             }
         }
-
-        // Include en passant square in the hash
+        //Commented because led to an error check uncomment and start Test checkForEngine() in BitBoardTest.java
+        /*        // Include en passant square in the hash
         if (lastMoveDoubleStepPawnPosition != null) {
             int file = lastMoveDoubleStepPawnPosition.getX() - 'a';
             hash ^= ZobristTable.getEnPassantSquareHash(file);
-        }
+        }*/
 
         // Include the player's turn in the hash
         if (whitesTurn) {

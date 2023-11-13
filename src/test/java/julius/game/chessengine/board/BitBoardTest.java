@@ -329,17 +329,35 @@ public class BitBoardTest {
         Engine engine = new Engine(); // The chess engine
 
         engine.moveFigure(convertStringToPosition("e2"), convertStringToPosition("e4"));
-        engine.moveFigure(convertStringToPosition("e7"), convertStringToPosition("e5"));
-        engine.moveFigure(convertStringToPosition("g1"), convertStringToPosition("f3"));
-        engine.moveFigure(convertStringToPosition("g8"), convertStringToPosition("f6"));
-        engine.moveFigure(convertStringToPosition("b1"), convertStringToPosition("c3"));
-        engine.moveFigure(convertStringToPosition("b8"), convertStringToPosition("c6"));
-        engine.moveFigure(convertStringToPosition("f1"), convertStringToPosition("c4"));
-        engine.moveFigure(convertStringToPosition("f6"), convertStringToPosition("d5"));
 
-        List<Move> moves = engine.getAllLegalMoves();
+        Engine simulation = engine.createSimulation();
+
+        simulation.moveFigure(convertStringToPosition("e7"), convertStringToPosition("e5"));
+        simulation.moveFigure(convertStringToPosition("g1"), convertStringToPosition("f3"));
+        simulation.moveFigure(convertStringToPosition("g8"), convertStringToPosition("f6"));
+        simulation.moveFigure(convertStringToPosition("b1"), convertStringToPosition("c3"));
+        simulation.moveFigure(convertStringToPosition("b8"), convertStringToPosition("c6"));
+        simulation.moveFigure(convertStringToPosition("f1"), convertStringToPosition("c4"));
+        simulation.moveFigure(convertStringToPosition("f6"), convertStringToPosition("d5"));
+
+        List<Move> moves = simulation.getAllLegalMoves();
 
         assertEquals(moves.size(), 35);
+
+        simulation.undoLastMove();
+        simulation.undoLastMove();
+        simulation.undoLastMove();
+        simulation.undoLastMove();
+        simulation.undoLastMove();
+        simulation.undoLastMove();
+        simulation.undoLastMove();
+
+        engine.logBoard();
+        simulation.logBoard();
+
+        assertEquals(engine.getBoardStateHash(), simulation.getBoardStateHash());
+
+
     }
 
     @Test

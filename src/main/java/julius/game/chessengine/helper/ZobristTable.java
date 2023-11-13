@@ -14,7 +14,8 @@ public class ZobristTable {
     private static final long blackTurnHash;
 
     static {
-        Random rand = new Random();
+        long seed = 313L; // Example seed, you can choose any long value
+        Random rand = new Random(seed);
 
         // Initialize piece-square table
         for (int pieceType = 0; pieceType < PIECE_TYPES; pieceType++) {

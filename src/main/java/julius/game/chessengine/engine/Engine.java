@@ -34,7 +34,7 @@ public class Engine {
     }
 
     public Engine(BitBoard b, LinkedList<Move> m, List<Move> l) {
-        bitBoard = b;
+        bitBoard = new BitBoard(b);
         gameState = new GameState();
         line = m;
         legalMoves = l;
@@ -59,6 +59,7 @@ public class Engine {
         this.bitBoard.undoMove(move, scoreNeedsUpdate);
         updateGameState();
         legalMovesNeedUpdate = true; // Set flag
+        line.removeLast();
     }
 
     public void importBoardFromFen(String fen) {
@@ -69,7 +70,16 @@ public class Engine {
     }
 
     public Engine createSimulation() {
-        return new Engine(new BitBoard(bitBoard), line, legalMoves);
+        // Deep copy the legalMoves list
+        List<Move> copiedLegalMoves = new ArrayList<>(legalMoves.size());
+        for (Move move : legalMoves) {
+            // Assuming Move class is properly cloneable. If not, you need to create a new Move instance
+            // with the same properties as the original move.
+            copiedLegalMoves.add(new Move(move));
+        }
+
+        // Now use the deep copied list in the new Engine instance
+        return new Engine(bitBoard, new LinkedList<>(line), copiedLegalMoves);
     }
 
     public void startNewGame() {
@@ -242,7 +252,7 @@ public class Engine {
             gameState.setState("DRAW");
         }
     }
-    public long getBoardStateHash() {
+    public synchronized long getBoardStateHash() {
         return bitBoard.getBoardStateHash();
     }
 
