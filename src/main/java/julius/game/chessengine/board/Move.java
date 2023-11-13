@@ -100,23 +100,46 @@ public class Move {
     // You may want to override toString() for easy move printing.
     @Override
     public String toString() {
-        StringBuilder moveString = new StringBuilder(color.toString() + " " + pieceType + " from " + from + " to " + to);
+        StringBuilder sb = new StringBuilder();
+
+        // For all pieces except pawns, include the piece type
+        if (pieceType != PieceType.PAWN) {
+            sb.append(pieceType.getNotation()); // Assuming getNotation() returns a single character like 'R' for Rook, etc.
+        }
+
+        // Include the origin square if needed to disambiguate
+        // This part can be complex as you need to check whether other pieces of the same type could move to the same square.
+        // It's often omitted in simpler implementations.
+
+        // For captures, include 'x', and for pawns include the file of departure
         if (isCapture) {
-            moveString.append(", capture");
+            if (pieceType == PieceType.PAWN) {
+                sb.append(from.getX()); // getFile() should return the file ('a' through 'h') of the position
+            }
+            sb.append("x");
         }
+
+        // Add the destination square
+        sb.append(to);
+
+        // If it's a pawn promotion, include the promotion piece type
+        if (isPromotionMove()) {
+            sb.append("=").append(promotionPieceType.getNotation());
+        }
+
+        // For castling, use the special notation
         if (isCastlingMove) {
-            moveString.append(", castling");
+            if (to.getX() == 'g') { // Assuming kingside castling results in the king on the 'g' file
+                sb.setLength(0); // Clear the StringBuilder
+                sb.append("O-O");
+            } else if (to.getX() == 'c') { // Assuming queenside castling results in the king on the 'c' file
+                sb.setLength(0); // Clear the StringBuilder
+                sb.append("O-O-O");
+            }
         }
-        if (isEnPassantMove) {
-            moveString.append(", en passant");
-        }
-        if (promotionPieceType != null) {
-            moveString.append(", promoting to ").append(promotionPieceType);
-        }
-        return moveString.toString();
+
+        // Optionally, you can add check/checkmate indicators, but that requires more game state information.
+
+        return sb.toString();
     }
-
-
-
-    // Additional methods as needed...
 }

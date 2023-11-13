@@ -4,23 +4,25 @@ import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.Position;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
-import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Log4j2
 @Component
 public class AI {
+
+    Map<Long, Move> moveHistory = new HashMap<>();
 
     private static final Map<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
     private static final double TIME_LIMIT_EXCEEDED_FLAG = Double.MAX_VALUE;
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 20000; // 10 seconds in milliseconds
+    long timeLimit = 20000; //milliseconds
     private final Engine engine;
 
     public AI(Engine engine) {
@@ -29,30 +31,50 @@ public class AI {
 
     public void startAutoPlay() {
         while (engine.getGameState().getState().equals("PLAY")) {
-            engine.logBoard();
             executeCalculatedMove();
         }
     }
+    public void logMoveLine(Engine engine) {
+        long currentBoardHash = engine.getBoardStateHash();
+        List<Move> moveLine = new ArrayList<>();
+        int i = 0;
+        while (transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove != null) {
+            Move move = transpositionTable.get(currentBoardHash).bestMove;
+            moveLine.add(i, move); // Add at the beginning to reverse the order
+            engine.performMove(move);
+            currentBoardHash = engine.getBoardStateHash();
+            i++;
+        }
+
+        // Log the move line
+        log.info("Move Line: {}", moveLine.stream().map(Move::toString).collect(Collectors.joining(", ")));
+
+        // Redo the moves to restore the original board state
+        for (Move move : moveLine) {
+            engine.undoMove(move, true); // Undo the move to get the previous board hash
+        }
+    }
+
 
     public GameState executeCalculatedMove() {
+        log.info(" --- TranspositionTable[{}] --- ", transpositionTable.size());
         // Convert the string color to the Color enum
         Color color = engine.whitesTurn() ? Color.WHITE : Color.BLACK;
+        Engine simulation = engine.createSimulation();
 
         Move bestMove = null;
         double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
         long startTime = System.currentTimeMillis(); // Record start time
 
         for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
-            MoveAndScore moveAndScore = getBestMove(engine.createSimulation(), engine.getAllLegalMoves(), color, currentDepth, startTime, timeLimit);
-
+            MoveAndScore moveAndScore = getBestMove(simulation, color, currentDepth, startTime, timeLimit);
+            log.info(" --- DEPTH<{}> --- ", currentDepth);
             if (moveAndScore != null && (color == Color.WHITE ? moveAndScore.score > bestScore : moveAndScore.score < bestScore)) {
                 bestScore = moveAndScore.score;
                 bestMove = moveAndScore.move;
-                log.info("New best move found: {}, depth: {}", bestMove, currentDepth);
             }
 
             if (System.currentTimeMillis() - startTime > timeLimit) {
-                // Time limit exceeded, break out of the loop
                 break;
             }
         }
@@ -64,17 +86,20 @@ public class AI {
         // Execute the best move found within the time frame
         Position fromPosition = bestMove.getFrom();
         Position toPosition = bestMove.getTo();
+
+        logMoveLine(simulation);
+
         return engine.moveFigure(fromPosition, toPosition);
     }
 
-    private MoveAndScore getBestMove(Engine engine, List<Move> moves, Color color, int levelOfDepth, long startTime, long timeLimit) {
+    private MoveAndScore getBestMove(Engine engine, Color color, int levelOfDepth, long startTime, long timeLimit) {
         double alpha = Double.NEGATIVE_INFINITY;
         double beta = Double.POSITIVE_INFINITY;
         Move bestMove = null;
         double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 
         Color opponentColor = Color.getOpponentColor(color);
-        ArrayList<Move> sortedMoves = sortMovesByEfficiency(moves, engine, color);
+        ArrayList<Move> sortedMoves = sortMovesByEfficiency(engine.getAllLegalMoves(), engine, color);
 
         for (Move move : sortedMoves) {
             // Check if time limit exceeded
@@ -89,7 +114,8 @@ public class AI {
                 return new MoveAndScore(move, color.equals(Color.WHITE) ? Engine.CHECKMATE : -Engine.CHECKMATE);
             }
 
-            double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor, startTime, timeLimit);
+            double score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor, startTime, timeLimit, move);
+
             engine.undoMove(move, false);
 
             // Check for time limit exceeded
@@ -102,6 +128,7 @@ public class AI {
             }
 
             if (Color.WHITE == color ? score > bestScore : score < bestScore) {
+                transpositionTable.put(engine.getBoardStateHash(), new TranspositionTableEntry(score, levelOfDepth, NodeType.EXACT, move));
                 bestScore = score;
                 bestMove = move;
             }
@@ -116,7 +143,8 @@ public class AI {
      * 5rkr/pp2Rp2/1b1p1Pb1/3P2Q1/2n3P1/2p5/P4P2/4R1K1 w - - 1 0
      * *
      */
-    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color, long startTime, long timeLimit) {
+    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color, long startTime, long timeLimit, Move currentMove) {
+
         // Check for time limit exceeded
         if (System.currentTimeMillis() - startTime > timeLimit) {
             return TIME_LIMIT_EXCEEDED_FLAG;
@@ -127,14 +155,14 @@ public class AI {
         if (depth == 0 || engine.isGameOver()) {
             double eval = engine.evaluateBoard(color, maximizingPlayer);
             // Store the evaluation in the transposition table
-            transpositionTable.put(boardHash, new TranspositionTableEntry(eval, depth, NodeType.EXACT));
+            transpositionTable.put(boardHash, new TranspositionTableEntry(eval, depth, NodeType.EXACT, null));
 
             return eval;
         }
 
         TranspositionTableEntry entry = transpositionTable.get(boardHash);
 
-        if (entry != null && entry.depth >= depth) {
+        if (entry != null && entry.depth > depth) {
             if (entry.nodeType == NodeType.EXACT) {
                 return entry.score;
             }
@@ -153,63 +181,108 @@ public class AI {
         List<Move> moves = engine.getAllLegalMoves();
 
         if (maximizingPlayer) {
-            return maximizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves, startTime, timeLimit);
+            return maximizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves, startTime, timeLimit, currentMove);
         } else {
-            return minimizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves, startTime, timeLimit);
+            return minimizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, moves, startTime, timeLimit, currentMove);
         }
     }
 
-    private double maximizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit) {
+    private double maximizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit, Move currentMove) {
         double maxEval = Double.NEGATIVE_INFINITY;
+        Move bestMoveAtThisNode = null; // Variable to track the best move at this node
+
         for (Move move : sortMovesByEfficiency(moves, engine, color)) {
             engine.performMove(move);
-            double eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color), startTime, timeLimit);
+            long newBoardHash = engine.getBoardStateHash();
+
+            double eval;
+            TranspositionTableEntry entry = transpositionTable.get(newBoardHash);
+
+            if (entry != null && entry.depth >= depth) {
+                eval = entry.score; // Use the score from the transposition table
+            } else {
+                eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color), startTime, timeLimit, move);
+
+                if (eval == TIME_LIMIT_EXCEEDED_FLAG) {
+                    // If time limit exceeded, exit the loop
+                    engine.undoMove(move, false);
+                    return TIME_LIMIT_EXCEEDED_FLAG;
+                }
+            }
+
             engine.undoMove(move, false);
 
-            if (eval == TIME_LIMIT_EXCEEDED_FLAG) { // Time limit exceeded
-                return TIME_LIMIT_EXCEEDED_FLAG;
+            if (eval > maxEval) { // Found a better evaluation
+                maxEval = eval;
+                bestMoveAtThisNode = move; // Update the best move
             }
 
-            maxEval = Math.max(maxEval, eval);
             alpha = Math.max(alpha, eval);
             if (beta <= alpha) {
-                break;
+                break; // Alpha-beta pruning
             }
         }
-        updateTanspositionTable(depth, beta, boardHash, alphaOriginal, maxEval);
+
+        // After the for loop, update the transposition table with the best move
+        if (maxEval != Double.NEGATIVE_INFINITY) {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT, bestMoveAtThisNode));
+        }
+
         return maxEval;
     }
 
 
-    private double minimizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit) {
+    private double minimizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit, Move currentMove) {
         double minEval = Double.POSITIVE_INFINITY;
+        Move bestMoveAtThisNode = null; // Track the best move at this node
+
         for (Move move : sortMovesByEfficiency(moves, engine, color)) {
             engine.performMove(move);
-            double eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color), startTime, timeLimit);
-            engine.undoMove(move, false);
+            long newBoardHash = engine.getBoardStateHash();
 
-            if (eval == TIME_LIMIT_EXCEEDED_FLAG) { // Time limit exceeded
-                return TIME_LIMIT_EXCEEDED_FLAG;
+            double eval;
+            TranspositionTableEntry entry = transpositionTable.get(newBoardHash);
+
+            if (entry != null && entry.depth >= depth) {
+                eval = entry.score;
+            } else {
+                eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color), startTime, timeLimit, move);
+
+                if (eval == TIME_LIMIT_EXCEEDED_FLAG) {
+                    engine.undoMove(move, false);
+                    return TIME_LIMIT_EXCEEDED_FLAG;
+                }
             }
 
-            minEval = Math.min(minEval, eval);
+            engine.undoMove(move, false);
+
+            if (eval < minEval) {
+                minEval = eval;
+                bestMoveAtThisNode = move; // Update the best move at this node
+            }
+
             beta = Math.min(beta, eval);
             if (alpha >= beta) {
                 break;
             }
         }
-        updateTanspositionTable(depth, beta, boardHash, alphaOriginal, minEval);
+
+        if (minEval != Double.POSITIVE_INFINITY) {
+            transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.EXACT, bestMoveAtThisNode));
+        }
+
         return minEval;
     }
 
 
-    private void updateTanspositionTable(int depth, double beta, long boardHash, double alphaOriginal, double maxEval) {
+
+    private void updateTanspositionTable(int depth, double beta, long boardHash, double alphaOriginal, double maxEval, Move move) {
         if (maxEval <= alphaOriginal) {
-            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND));
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.UPPERBOUND, move));
         } else if (maxEval >= beta) {
-            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.LOWERBOUND));
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.LOWERBOUND, move));
         } else {
-            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT));
+            transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT, move));
         }
     }
 
@@ -220,10 +293,10 @@ public class AI {
 
         for (Move move : moves) {
             // Clone the board or create a new dummy board with the same state
-            engine.performMove(move); // Perform the move on the dummy board
+            engine.performMove(move);
 
             // Start with a base score for sorting
-            double score = 0;
+            double score;
 
 
             if (transpositionTable.containsKey(engine.getBoardStateHash())) {
@@ -242,7 +315,7 @@ public class AI {
         // Sort the moves by their efficiency in descending order
         List<Map.Entry<Move, Double>> sortedEntries = new ArrayList<>(moveEfficiencyMap.entrySet());
 
-        if(color == Color.WHITE) {
+        if (color == Color.WHITE) {
             sortedEntries.sort(Map.Entry.<Move, Double>comparingByValue().reversed());
 
         } else {

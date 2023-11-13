@@ -8,8 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static julius.game.chessengine.board.Position.convertStringToPosition;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 @Log4j2
 public class BitBoardTest {
@@ -35,6 +34,20 @@ public class BitBoardTest {
             0x4040404040404040L, // File G
             0x8080808080808080L  // File H
     };
+
+    @Test
+    public void HashTest() {
+        Engine a = new Engine();
+        Engine b = a.createSimulation();
+
+        a.moveRandomFigure(Color.WHITE);
+        a.undoLastMove();
+
+        a.logBoard();
+        b.logBoard();
+
+        assertEquals(a.getBoardStateHash(), b.getBoardStateHash());
+    }
 
     @Test
     public void PERFT() {

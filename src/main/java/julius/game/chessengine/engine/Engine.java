@@ -52,6 +52,7 @@ public class Engine {
         this.bitBoard.performMove(move, true);
         updateGameState();
         legalMovesNeedUpdate = true; // Set flag
+        line.add(move);
     }
 
     public void undoMove(Move move, boolean scoreNeedsUpdate) {
@@ -147,7 +148,6 @@ public class Engine {
         // Perform the move on the bitboard
         performMove(move);
 
-        line.add(move);
         // Update the game state
         updateGameState();
 
