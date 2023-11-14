@@ -1451,73 +1451,30 @@ public class BitBoard {
         int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
 
         // 1. Handle Captured Piece Restoration
-        if (move.isCapture()) {
-            boolean isEnPassantWhite = move.isEnPassantMove() && move.getColor() == Color.WHITE;
-            boolean isEnPassantBlack = move.isEnPassantMove() && move.getColor() == Color.BLACK;
-
-            int enPassantModifier = 0;
-
-            if (isEnPassantWhite) {
-                enPassantModifier = -8;
-                lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
-            }
-            if (isEnPassantBlack) {
-                enPassantModifier = 8;
-                lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
-            }
-
-            PieceType capturedPieceType = move.getCapturedPieceType();
-            Color opponentColor = getOpponentColor(move.getColor());
-            long capturedPieceBitboard = getBitboardForPiece(capturedPieceType, opponentColor);
-            // Restore the captured piece on its bitboard
-            capturedPieceBitboard |= (1L << toIndex + enPassantModifier);
-            setBitboardForPiece(capturedPieceType, opponentColor, capturedPieceBitboard);
-        }
-
+        undoCapture(move, toIndex);
 
         // 2. Handle Pawn Promotion
-        if (move.isPromotionMove()) {
-            // Demote the promoted piece back to a pawn
-            PieceType promotedTo = move.getPromotionPieceType();
-            long promotedPieceBitboard = getBitboardForPiece(promotedTo, move.getColor());
-            // Remove promoted piece
-            promotedPieceBitboard &= ~(1L << toIndex);
-            setBitboardForPiece(promotedTo, move.getColor(), promotedPieceBitboard);
-
-            // Re-add the pawn
-            long pawnBitboard = getBitboardForPiece(PieceType.PAWN, move.getColor());
-            pawnBitboard |= 1L << fromIndex;
-            setBitboardForPiece(PieceType.PAWN, move.getColor(), pawnBitboard);
-        }
+        undoPromotion(move, fromIndex, toIndex);
 
         // Moving the piece back...
         // Ensure that if the piece is a king, it's handled correctly
-        PieceType movedPieceType = move.getPieceType();
-        long pieceBitboard = getBitboardForPiece(movedPieceType, move.getColor());
-        pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
-        setBitboardForPiece(movedPieceType, move.getColor(), pieceBitboard);
+        undoPieceMove(move, fromIndex, toIndex);
 
         // If the move was a castling move, move the rook back
-        if (move.isCastlingMove()) {
-            // Determine if this is kingside or queenside castling
-            boolean kingside = move.getTo().getX() > move.getFrom().getX();
-            Position rookFromPosition, rookToPosition;
-            if (kingside) {
-                rookToPosition = new Position('h', move.getFrom().getY());
-                rookFromPosition = new Position((char) (move.getTo().getX() - 1), move.getTo().getY());
-            } else {
-                rookToPosition = new Position('a', move.getFrom().getY());
-                rookFromPosition = new Position((char) (move.getTo().getX() + 1), move.getTo().getY());
-            }
-            // Move the rook back
-            int rookFromIndex = bitIndex(rookFromPosition.getX(), rookFromPosition.getY());
-            int rookToIndex = bitIndex(rookToPosition.getX(), rookToPosition.getY());
-            long rookBitboard = getBitboardForPiece(PieceType.ROOK, move.getColor());
-            rookBitboard = moveBit(rookBitboard, rookFromIndex, rookToIndex);
-            setBitboardForPiece(PieceType.ROOK, move.getColor(), rookBitboard);
-        }
+        undoCastling(move);
 
         // If the move was a double pawn push, remove the last move double step pawn position
+        undoGameState(move);
+
+        // Update the aggregated bitboards
+        updateAggregatedBitboards();
+        if (scoreNeedsUpdate) {
+            updateScore();
+        }
+        whitesTurn = !whitesTurn;
+    }
+
+    private void undoGameState(Move move) {
         if (move.getPieceType() == PieceType.PAWN && Math.abs(move.getFrom().getY() - move.getTo().getY()) == 2) {
             lastMoveDoubleStepPawnPosition = null;
         }
@@ -1558,13 +1515,75 @@ public class BitBoard {
                 blackRookH8Moved = false;
             }
         }
+    }
 
-        // Update the aggregated bitboards
-        updateAggregatedBitboards();
-        if (scoreNeedsUpdate) {
-            updateScore();
+    private void undoCastling(Move move) {
+        if (move.isCastlingMove()) {
+            // Determine if this is kingside or queenside castling
+            boolean kingside = move.getTo().getX() > move.getFrom().getX();
+            Position rookFromPosition, rookToPosition;
+            if (kingside) {
+                rookToPosition = new Position('h', move.getFrom().getY());
+                rookFromPosition = new Position((char) (move.getTo().getX() - 1), move.getTo().getY());
+            } else {
+                rookToPosition = new Position('a', move.getFrom().getY());
+                rookFromPosition = new Position((char) (move.getTo().getX() + 1), move.getTo().getY());
+            }
+            // Move the rook back
+            int rookFromIndex = bitIndex(rookFromPosition.getX(), rookFromPosition.getY());
+            int rookToIndex = bitIndex(rookToPosition.getX(), rookToPosition.getY());
+            long rookBitboard = getBitboardForPiece(PieceType.ROOK, move.getColor());
+            rookBitboard = moveBit(rookBitboard, rookFromIndex, rookToIndex);
+            setBitboardForPiece(PieceType.ROOK, move.getColor(), rookBitboard);
         }
-        whitesTurn = !whitesTurn;
+    }
+
+    private void undoPieceMove(Move move, int fromIndex, int toIndex) {
+        PieceType movedPieceType = move.getPieceType();
+        long pieceBitboard = getBitboardForPiece(movedPieceType, move.getColor());
+        pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
+        setBitboardForPiece(movedPieceType, move.getColor(), pieceBitboard);
+    }
+
+    private void undoPromotion(Move move, int fromIndex, int toIndex) {
+        if (move.isPromotionMove()) {
+            // Demote the promoted piece back to a pawn
+            PieceType promotedTo = move.getPromotionPieceType();
+            long promotedPieceBitboard = getBitboardForPiece(promotedTo, move.getColor());
+            // Remove promoted piece
+            promotedPieceBitboard &= ~(1L << toIndex);
+            setBitboardForPiece(promotedTo, move.getColor(), promotedPieceBitboard);
+
+            // Re-add the pawn
+            long pawnBitboard = getBitboardForPiece(PieceType.PAWN, move.getColor());
+            pawnBitboard |= 1L << fromIndex;
+            setBitboardForPiece(PieceType.PAWN, move.getColor(), pawnBitboard);
+        }
+    }
+
+    private void undoCapture(Move move, int toIndex) {
+        if (move.isCapture()) {
+            boolean isEnPassantWhite = move.isEnPassantMove() && move.getColor() == Color.WHITE;
+            boolean isEnPassantBlack = move.isEnPassantMove() && move.getColor() == Color.BLACK;
+
+            int enPassantModifier = 0;
+
+            if (isEnPassantWhite) {
+                enPassantModifier = -8;
+                lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
+            }
+            if (isEnPassantBlack) {
+                enPassantModifier = 8;
+                lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
+            }
+
+            PieceType capturedPieceType = move.getCapturedPieceType();
+            Color opponentColor = getOpponentColor(move.getColor());
+            long capturedPieceBitboard = getBitboardForPiece(capturedPieceType, opponentColor);
+            // Restore the captured piece on its bitboard
+            capturedPieceBitboard |= (1L << toIndex + enPassantModifier);
+            setBitboardForPiece(capturedPieceType, opponentColor, capturedPieceBitboard);
+        }
     }
 
     @Override

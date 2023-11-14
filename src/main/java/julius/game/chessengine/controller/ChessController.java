@@ -46,7 +46,7 @@ public class ChessController {
     }
 
     @GetMapping(value = "/autoplay")
-    public ResponseEntity<?> autoplay() {
+    public ResponseEntity<?> autoplay() throws InterruptedException {
         ai.startAutoPlay();
         return ResponseEntity.ok().build();
     }

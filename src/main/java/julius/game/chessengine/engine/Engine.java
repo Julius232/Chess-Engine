@@ -323,4 +323,15 @@ public class Engine {
         // This should return a score based on material, position, and other chess strategies.
         return getScore().getScoreDifference() / 100.0;
     }
+
+    public Long getBoardStateHashAfterMove(Move move) {
+        // Step 1: Create a deep copy of the current board state
+        BitBoard boardCopy = new BitBoard(this.bitBoard);
+
+        // Step 2: Simulate the move on the copied board
+        boardCopy.performMove(move, false); // Assuming 'false' means no need to update the score
+
+        // Step 3: Return the computed hash
+        return boardCopy.getBoardStateHash();
+    }
 }

@@ -29,7 +29,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 3000; //milliseconds
+    long timeLimit = 20000; //milliseconds
     private final Engine engine;
 
 
@@ -55,21 +55,10 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         calculationThread.interrupt();
     }
 
-    public void startAutoPlay() {
-        GameState state = null;
+    public void startAutoPlay() throws InterruptedException {
         while (engine.getGameState().getState().equals("PLAY")) {
-
-            if (state == null) {
-                // Wait a bit before trying again, to give time for calculatedLine to be populated
-                try {
-                    Thread.sleep(timeLimit); // wait for 1 second, adjust as needed
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.error("AutoPlay interrupted", e);
-                    return;
-                }
-            }
-            state = performMove();
+            Thread.sleep(timeLimit);
+            performMove();
         }
     }
 
@@ -397,33 +386,22 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
 
     private ArrayList<Move> sortMovesByEfficiency(List<Move> moves, Engine engine, Color color, int currentDepth) {
-        // Map to store moves and their efficiency scores
-        Map<Move, Double> moveEfficiencyMap = new HashMap<>();
+        PriorityQueue<Move> sortedMoves = new PriorityQueue<>(
+                Comparator.comparingDouble((Move move) -> {
+                    TranspositionTableEntry entry = transpositionTable.get(engine.getBoardStateHashAfterMove(move));
+                    if (entry != null && entry.depth >= currentDepth) {
+                        return color == Color.WHITE ? entry.score : -entry.score;
+                    } else {
+                        engine.performMove(move);
+                        double score = engine.evaluateBoard(color, Color.WHITE.equals(color));
+                        engine.undoLastMove();
+                        return score;
+                    }
+                }).reversed()
+        );
 
-        for (Move move : moves) {
-            engine.performMove(move);
-            double score;
-
-            TranspositionTableEntry entry = transpositionTable.get(engine.getBoardStateHash());
-            if (entry != null && entry.depth >= currentDepth) {
-                score = (color == Color.WHITE) ? entry.score : -entry.score;
-            } else {
-                score = engine.evaluateBoard(color, Color.WHITE.equals(color));
-            }
-
-            moveEfficiencyMap.put(move, score);
-            engine.undoLastMove();
-        }
-
-        // Sorting moves based on their calculated efficiency
-        Comparator<Map.Entry<Move, Double>> comparator = (color == Color.WHITE)
-                ? Map.Entry.<Move, Double>comparingByValue().reversed()
-                : Map.Entry.comparingByValue();
-
-        return moveEfficiencyMap.entrySet().stream()
-                .sorted(comparator)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toCollection(ArrayList::new));
+        sortedMoves.addAll(moves);
+        return new ArrayList<>(sortedMoves);
     }
 
 
