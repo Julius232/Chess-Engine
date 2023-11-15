@@ -35,7 +35,7 @@ public class RookHelper {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         ConcurrentHashMap<Integer, Long> magicNumbers = new ConcurrentHashMap<>();
 
-        for (int square = 0; square < 64; square++) {
+        for (int square = 32; square < 64; square++) {
             final int finalSquare = square;
             executor.submit(() -> findMagicNumberForSquare(finalSquare, magicNumbers));
         }
@@ -54,25 +54,24 @@ public class RookHelper {
     }
 
     private void findMagicNumberForSquare(int square, ConcurrentHashMap<Integer, Long> magicNumbers) {
-        log.info("Searching magic number for square: " + square);
         if (squareMagicFound[square]) {
             return; // Early return if magic number already found
         }
+        log.info("Searching magic number for square: " + square);
 
-        long magicCandidate = randomMagicNumber();
-        boolean isMagicFound = false;
+        long mask = rookMasks[square];
+        List<Long> occupancies = generateAllOccupancies(mask);
 
-        while (!isMagicFound) {
-            long mask = rookMasks[square];
-            List<Long> occupancies = generateAllOccupancies(mask);
+        while (true) {
+            long magicCandidate = randomMagicNumber();
             Map<Integer, Long> indexToOccupancy = new HashMap<>();
             boolean isMagic = true;
 
             for (long occupancy : occupancies) {
                 int index = transform(occupancy, magicCandidate, mask);
+                Long existingOccupancy = indexToOccupancy.get(index);
 
-                if (indexToOccupancy.containsKey(index) &&
-                        indexToOccupancy.get(index) != occupancy) {
+                if (existingOccupancy != null && existingOccupancy != occupancy) {
                     isMagic = false;
                     break;
                 }
@@ -81,13 +80,11 @@ public class RookHelper {
             }
 
             if (isMagic) {
-                isMagicFound = true;
                 squareMagicFound[square] = true;
                 rookMagics[square] = magicCandidate;
                 log.info("Magic number found for square " + square + ": " + magicCandidate);
-                magicNumbers.put(square, magicCandidate); // Store the found magic number in the map
-            } else {
-                magicCandidate = randomMagicNumber(); // Generate a new magic number candidate
+                magicNumbers.put(square, magicCandidate);
+                break;
             }
         }
     }
@@ -247,7 +244,7 @@ public class RookHelper {
         return mask;
     }
     private long randomMagicNumber() {
-        return ThreadLocalRandom.current().nextLong() & ThreadLocalRandom.current().nextLong() & ThreadLocalRandom.current().nextLong();
+        return ThreadLocalRandom.current().nextLong();
     }
 
     public int transform(long occupancy, long magicNumber, long mask) {

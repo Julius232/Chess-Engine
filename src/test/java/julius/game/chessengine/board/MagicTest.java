@@ -18,6 +18,14 @@ public class MagicTest {
         // Initialize and find magic numbers
         log.info("Finding magic numbers...");
         bishopHelper.findMagicNumbersParallel();
+
+        for(int i = 0; i<64; i++) {
+            if(bishopHelper.bishopMagics[i] != 0) {
+                testBishopMovesForSquare(bishopHelper, i);
+            }
+        }
+
+
         rookHelper.findMagicNumbersParallel();
 
         // Test a few squares to validate rook moves
@@ -27,11 +35,7 @@ public class MagicTest {
                 testRookMovesForSquare(rookHelper, i);
             }
         }// Example: test bottom-right corner of the board
-        for(int i = 0; i<64; i++) {
-            if(bishopHelper.bishopMagics[i] != 0) {
-                testBishopMovesForSquare(bishopHelper, i);
-            }
-        }
+
         // Add more tests for different squares as needed
     }
 
