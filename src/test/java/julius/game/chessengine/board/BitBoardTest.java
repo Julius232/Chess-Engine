@@ -40,7 +40,7 @@ public class BitBoardTest {
         Engine a = new Engine();
         Engine b = a.createSimulation();
 
-        a.moveRandomFigure(Color.WHITE);
+        a.moveRandomFigure(true);
         a.undoLastMove();
 
         a.logBoard();
@@ -295,10 +295,10 @@ public class BitBoardTest {
                 if (lastMove.isPromotionMove()) {
                     node.addPromotion(1);
                 }
-                if (engine.isInStateCheck(Color.getOpponentColor(lastMove.getColor()))) {
+                if (engine.isInStateCheck(!lastMove.isColorWhite())) {
                     node.addCheck(1);
                 }
-                if (engine.isInStateCheckMate(Color.getOpponentColor(lastMove.getColor()))) {
+                if (engine.isInStateCheckMate(!lastMove.isColorWhite())) {
                     node.addCheckmate(1);
                 }
             }

@@ -91,7 +91,7 @@ public class ChessController {
     @PatchMapping(value = "/figure/move/random/{color}")
     public ResponseEntity<GameState> moveRandomFigure(@PathVariable("color") String color) {
         if (color != null) {
-            return ResponseEntity.ok(engine.moveRandomFigure(Color.fromString(color)));
+            return ResponseEntity.ok(engine.moveRandomFigure(color.equals("WHITE")));
         } else return ResponseEntity.status(406).build();
     }
 

@@ -3,7 +3,7 @@ package julius.game.chessengine.ai;
 import julius.game.chessengine.board.Move;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
-import julius.game.chessengine.utils.Color;
+import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 @Component
 public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
+    @Getter
     private List<Move> calculatedLine = Collections.synchronizedList(new ArrayList<>());
 
     private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
@@ -79,29 +80,6 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         return engine.getGameState();
     }
 
-    public void logMoveLine(Engine engine) {
-        long currentBoardHash = engine.getBoardStateHash();
-        List<Move> moveLine = new ArrayList<>();
-        int i = 0;
-        while (transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove != null) {
-            TranspositionTableEntry entry = transpositionTable.get(currentBoardHash);
-            Move move = entry.bestMove;
-            moveLine.add(i, move); // Add at the beginning to reverse the order
-            engine.performMove(move);
-            currentBoardHash = engine.getBoardStateHash();
-            i++;
-        }
-
-        // Log the move line
-        log.info("Move Line: {}", moveLine.stream().map(Move::toString).collect(Collectors.joining(", ")));
-
-        // Redo the moves to restore the original board state
-        for (Move move : moveLine) {
-            engine.undoLastMove(); // Undo the move to get the previous board hash
-        }
-    }
-
-
     private void calculateLine() {
         while (keepCalculating) {
             if (positionChanged()) {
@@ -110,20 +88,20 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                 Engine simulation = engine.createSimulation();
                 long boardStateHash = simulation.getBoardStateHash();
                 lastCalculatedHash = boardStateHash;
-                Color color = simulation.whitesTurn() ? Color.WHITE : Color.BLACK;
+                boolean isWhite = simulation.whitesTurn();
 
                 Move bestMove;
-                double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+                double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
                 long startTime = System.currentTimeMillis(); // Record start time
 
                 for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
                     if (!keepCalculating) break; // Check if we should stop calculating
-                    MoveAndScore moveAndScore = getBestMove(simulation, color, currentDepth, startTime, timeLimit);
+                    MoveAndScore moveAndScore = getBestMove(simulation, isWhite, currentDepth, startTime, timeLimit);
                     log.info(" --- DEPTH<{}> --- ", currentDepth);
                     if (moveAndScore != null) {
                         double score = moveAndScore.score;
                         Move move = moveAndScore.move;
-                        if (move != null && (color == Color.WHITE ? score > bestScore : score < bestScore)) {
+                        if (move != null && (isWhite ? score > bestScore : score < bestScore)) {
                             bestScore = moveAndScore.score;
                             bestMove = move;
                             transpositionTable.put(boardStateHash, new TranspositionTableEntry(moveAndScore.score, currentDepth, NodeType.EXACT, bestMove));
@@ -191,13 +169,12 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         return engine.getBoardStateHash() != lastCalculatedHash;
     }
 
-    private MoveAndScore getBestMove(Engine engine, Color color, int levelOfDepth, long startTime, long timeLimit) {
+    private MoveAndScore getBestMove(Engine engine, boolean isWhite, int levelOfDepth, long startTime, long timeLimit) {
         double alpha = Double.NEGATIVE_INFINITY;
         double beta = Double.POSITIVE_INFINITY;
         Move bestMove = null;
-        double bestScore = color == Color.WHITE ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-        Color opponentColor = Color.getOpponentColor(color);
-        List<Move> sortedMoves = sortMovesByEfficiency(engine.getAllLegalMoves(), engine, color, levelOfDepth);
+        double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+        List<Move> sortedMoves = sortMovesByEfficiency(engine.getAllLegalMoves(), engine, isWhite, levelOfDepth);
 
         for (Move move : sortedMoves) {
             // Time check at the beginning of each loop iteration
@@ -208,10 +185,10 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             engine.performMove(move);
             double score;
 
-            if (engine.isInStateCheckMate(opponentColor)) {
-                score = color.equals(Color.WHITE) ? Engine.CHECKMATE : -Engine.CHECKMATE;
+            if (engine.isInStateCheckMate(!isWhite)) {
+                score = isWhite ? Engine.CHECKMATE : -Engine.CHECKMATE;
             } else {
-                score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, Color.WHITE == opponentColor, opponentColor, startTime, timeLimit);
+                score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, !isWhite, startTime, timeLimit);
                 // Check for time limit exceeded after alphaBeta call
                 if (score == EXIT_FLAG || positionChanged()) {
                     engine.undoLastMove();
@@ -222,7 +199,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             engine.undoLastMove();
 
             // Check if the current move leads to a better score
-            if (isBetterScore(color, score, bestScore)) {
+            if (isBetterScore(isWhite, score, bestScore)) {
                 bestScore = score;
                 bestMove = move;
             }
@@ -234,8 +211,8 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
     /**
      * Checks if the current score is better than the best score based on the player's color.
      */
-    private boolean isBetterScore(Color color, double score, double bestScore) {
-        return (color == Color.WHITE) ? score > bestScore : score < bestScore;
+    private boolean isBetterScore(boolean isWhite, double score, double bestScore) {
+        return isWhite ? score > bestScore : score < bestScore;
     }
 
 
@@ -244,7 +221,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
      * 5rkr/pp2Rp2/1b1p1Pb1/3P2Q1/2n3P1/2p5/P4P2/4R1K1 w - - 1 0
      * *
      */
-    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean maximizingPlayer, Color color, long startTime, long timeLimit) {
+    private double alphaBeta(Engine engine, int depth, double alpha, double beta, boolean isWhite, long startTime, long timeLimit) {
 
         // Check for time limit exceeded
         if (System.currentTimeMillis() - startTime > timeLimit) {
@@ -254,7 +231,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         long boardHash = engine.getBoardStateHash();
 
         if (depth == 0 || engine.isGameOver()) {
-            return engine.evaluateBoard(color, maximizingPlayer);
+            return engine.evaluateBoard(isWhite);
         }
 
         TranspositionTableEntry entry = transpositionTable.get(boardHash);
@@ -278,19 +255,19 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
         List<Move> moves = engine.getAllLegalMoves();
 
-        if (maximizingPlayer) {
-            return maximizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, betaOriginal, moves, startTime, timeLimit);
+        if (isWhite) {
+            return maximizer(engine, depth, alpha, beta, isWhite, boardHash, alphaOriginal, moves, startTime, timeLimit);
         } else {
-            return minimizer(engine, depth, alpha, beta, color, boardHash, alphaOriginal, betaOriginal, moves, startTime, timeLimit);
+            return minimizer(engine, depth, alpha, beta, isWhite, boardHash, betaOriginal, moves, startTime, timeLimit);
         }
     }
 
 
-    private double maximizer(Engine engine, int depth, double alpha, double beta, Color color, long boardHash, double alphaOriginal, double betaOriginal, List<Move> moves, long startTime, long timeLimit) {
+    private double maximizer(Engine engine, int depth, double alpha, double beta, boolean isWhite, long boardHash, double alphaOriginal, List<Move> moves, long startTime, long timeLimit) {
         double maxEval = Double.NEGATIVE_INFINITY;
         Move bestMoveAtThisNode = null; // Variable to track the best move at this node
 
-        for (Move move : sortMovesByEfficiency(moves, engine, color, depth)) {
+        for (Move move : sortMovesByEfficiency(moves, engine, isWhite, depth)) {
             engine.performMove(move);
             long newBoardHash = engine.getBoardStateHash();
 
@@ -300,7 +277,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             if (entry != null && entry.depth >= depth) {
                 eval = entry.score; // Use the score from the transposition table
             } else {
-                eval = alphaBeta(engine, depth - 1, alpha, beta, false, Color.getOpponentColor(color), startTime, timeLimit);
+                eval = alphaBeta(engine, depth - 1, alpha, beta, !isWhite, startTime, timeLimit);
 
                 if (eval == EXIT_FLAG || positionChanged()) {
                     // If time limit exceeded, exit the loop
@@ -336,13 +313,13 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
 
     private double minimizer(Engine engine, int depth, double alpha, double beta,
-                             Color color, long boardHash, double alphaOriginal,
+                             boolean isWhite, long boardHash,
                              double betaOriginal, List<Move> moves, long startTime,
                              long timeLimit) {
         double minEval = Double.POSITIVE_INFINITY;
         Move bestMoveAtThisNode = null; // Track the best move at this node
 
-        for (Move move : sortMovesByEfficiency(moves, engine, color, depth)) {
+        for (Move move : sortMovesByEfficiency(moves, engine, isWhite, depth)) {
             engine.performMove(move);
             long newBoardHash = engine.getBoardStateHash();
 
@@ -352,7 +329,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             if (entry != null && entry.depth >= depth) {
                 eval = entry.score;
             } else {
-                eval = alphaBeta(engine, depth - 1, alpha, beta, true, Color.getOpponentColor(color), startTime, timeLimit);
+                eval = alphaBeta(engine, depth - 1, alpha, beta, !isWhite, startTime, timeLimit);
 
                 if (eval == EXIT_FLAG || positionChanged()) {
                     engine.undoLastMove();
@@ -385,15 +362,15 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
     }
 
 
-    private ArrayList<Move> sortMovesByEfficiency(List<Move> moves, Engine engine, Color color, int currentDepth) {
+    private ArrayList<Move> sortMovesByEfficiency(List<Move> moves, Engine engine, boolean isWhite, int currentDepth) {
         PriorityQueue<Move> sortedMoves = new PriorityQueue<>(
                 Comparator.comparingDouble((Move move) -> {
                     TranspositionTableEntry entry = transpositionTable.get(engine.getBoardStateHashAfterMove(move));
                     if (entry != null && entry.depth >= currentDepth) {
-                        return color == Color.WHITE ? entry.score : -entry.score;
+                        return isWhite ? entry.score : -entry.score;
                     } else {
                         engine.performMove(move);
-                        double score = engine.evaluateBoard(color, Color.WHITE.equals(color));
+                        double score = engine.evaluateBoard(isWhite);
                         engine.undoLastMove();
                         return score;
                     }
@@ -404,9 +381,5 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         return new ArrayList<>(sortedMoves);
     }
 
-
-    public List<Move> getCalculatedLine() {
-        return this.calculatedLine;
-    }
 
 }
