@@ -264,7 +264,7 @@ public class BishopHelper {
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(":");
-                if (parts.length == 3) {
+                if (parts.length == 2) {
                     int square = Integer.parseInt(parts[0]);
                     squareMagicFound[square] = true;
 
