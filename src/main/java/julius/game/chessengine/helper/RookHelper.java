@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.*;
 
 @Log4j2
 public class RookHelper {
@@ -28,6 +28,95 @@ public class RookHelper {
         }
         initializeRookAttacks();
     }
+
+
+
+    public void findMagicNumbersParallel() {
+        ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        ConcurrentHashMap<Integer, Long> magicNumbers = new ConcurrentHashMap<>();
+
+        for (int square = 0; square < 64; square++) {
+            final int finalSquare = square;
+            executor.submit(() -> findMagicNumberForSquare(finalSquare, magicNumbers));
+        }
+
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(60, TimeUnit.MINUTES)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            executor.shutdownNow();
+        }
+
+        writeMagicNumbersToFile(magicNumbers);
+    }
+
+    private void findMagicNumberForSquare(int square, ConcurrentHashMap<Integer, Long> magicNumbers) {
+        log.info("Searching magic number for square: " + square);
+        if (squareMagicFound[square]) {
+            return; // Early return if magic number already found
+        }
+
+        long magicCandidate = randomMagicNumber();
+        boolean isMagicFound = false;
+
+        while (!isMagicFound) {
+            long mask = rookMasks[square];
+            List<Long> occupancies = generateAllOccupancies(mask);
+            Map<Integer, Long> indexToOccupancy = new HashMap<>();
+            boolean isMagic = true;
+
+            for (long occupancy : occupancies) {
+                int index = transform(occupancy, magicCandidate, mask);
+
+                if (indexToOccupancy.containsKey(index) &&
+                        indexToOccupancy.get(index) != occupancy) {
+                    isMagic = false;
+                    break;
+                }
+
+                indexToOccupancy.put(index, occupancy);
+            }
+
+            if (isMagic) {
+                isMagicFound = true;
+                squareMagicFound[square] = true;
+                rookMagics[square] = magicCandidate;
+                log.info("Magic number found for square " + square + ": " + magicCandidate);
+                magicNumbers.put(square, magicCandidate); // Store the found magic number in the map
+            } else {
+                magicCandidate = randomMagicNumber(); // Generate a new magic number candidate
+            }
+        }
+    }
+
+
+    private void writeMagicNumbersToFile(ConcurrentHashMap<Integer, Long> magicNumbers) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("src/main/resources/magic/rook_magic_numbers.txt", true))) {
+            for (Map.Entry<Integer, Long> entry : magicNumbers.entrySet()) {
+                writer.write(entry.getKey() + ":" + entry.getValue() + "\n");
+            }
+        } catch (IOException e) {
+            log.error("Error writing magic numbers to file", e);
+        }
+    }
+
+
+    // ... [Rest of the class remains the same]
+
+
+
+
+
+
+
+
+
+
+
+
 
     public void findMagicNumbers() {
         // Then, find magic numbers
