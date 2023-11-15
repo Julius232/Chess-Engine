@@ -74,11 +74,11 @@ public class MagicTest {
             long moves = bishopHelper.calculateBishopMoves(square, occupancy);
             long magicMoves = calculateMovesUsingBishopMagic(bishopHelper, square, occupancy);
 
-            // Log the results for comparison
+/*            // Log the results for comparison
             log.info("Testing square: {}", square);
-            log.info("Occupancy: {}", Long.toBinaryString(occupancy));
-            log.info("Expected Moves: {}", Long.toBinaryString(moves));
-            log.info("Magic Moves: {}", Long.toBinaryString(magicMoves));
+            log.info("Occupancy: {}", occupancy);
+            log.info("Expected Moves: {}", moves);
+            log.info("Magic Moves: {}", magicMoves);*/
 
             // Assert that the moves match
         assert moves == magicMoves : "Move generation mismatch for square " + square;

@@ -100,10 +100,9 @@ public class BishopHelper {
             List<Long> occupancies = generateAllOccupancies(mask);
             bishopAttacks[square] = new long[occupancies.size()];
 
-            for (int i = 0; i < occupancies.size(); i++) {
-                long occupancy = occupancies.get(i);
+            for (long occupancy : occupancies) {
                 int index = transform(occupancy, bishopMagics[square], mask);
-                bishopAttacks[square][i] = calculateBishopMoves(square, occupancy);
+                bishopAttacks[square][index] = calculateBishopMoves(square, occupancy);
             }
         }
     }
