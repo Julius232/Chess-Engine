@@ -17,8 +17,8 @@ public class MagicTest {
 
         // Initialize and find magic numbers
         log.info("Finding magic numbers...");
-        rookHelper.findMagicNumbers();
-        bishopHelper.findMagicNumbers();
+        bishopHelper.findMagicNumbersParallel();
+        rookHelper.findMagicNumbersParallel();
 
         // Test a few squares to validate rook moves
         //testRookMovesForSquare(rookHelper, 0); // Example: test top-left corner of the board
@@ -40,6 +40,7 @@ public class MagicTest {
     private void testRookMovesForSquare(RookHelper rookHelper, int square) {
         long mask = rookHelper.generateOccupancyMask(square);
         List<Long> occupancies = rookHelper.generateAllOccupancies(mask);
+        log.info("Testing square: {}", square);
 
         for (long occupancy : occupancies) {
             long moves = rookHelper.calculateRookMoves(square, occupancy);
@@ -47,7 +48,7 @@ public class MagicTest {
 
             // Log the results for comparison
 
-            //log.info("Testing square: {}", square);
+
             //log.info("Occupancy: {}", occupancy);
             //log.info("Expected Moves: {}", moves);
             //log.info("Magic Moves: {}", magicMoves);
@@ -69,7 +70,7 @@ public class MagicTest {
     private void testBishopMovesForSquare(BishopHelper bishopHelper, int square) {
         long mask = bishopHelper.generateOccupancyMask(square);
         List<Long> occupancies = bishopHelper.generateAllOccupancies(mask);
-
+        log.info("Testing square: {}", square);
         for (long occupancy : occupancies) {
             long moves = bishopHelper.calculateBishopMoves(square, occupancy);
             long magicMoves = calculateMovesUsingBishopMagic(bishopHelper, square, occupancy);

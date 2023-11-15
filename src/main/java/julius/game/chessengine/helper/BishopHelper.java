@@ -66,10 +66,11 @@ public class BishopHelper {
     }
 
     private void findMagicNumberForSquare(int square, ConcurrentHashMap<Integer, Long> magicNumbers) {
-        log.info("Searching magic number for square: " + square);
         if (squareMagicFound[square]) {
             return; // Early return if magic number already found
         }
+
+        log.info("Searching magic number for square: " + square);
 
         long magicCandidate = randomMagicNumber();
         boolean isMagicFound = false;
