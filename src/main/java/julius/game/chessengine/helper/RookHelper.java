@@ -35,7 +35,7 @@ public class RookHelper {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         ConcurrentHashMap<Integer, Long> magicNumbers = new ConcurrentHashMap<>();
 
-        for (int square = 32; square < 64; square++) {
+        for (int square = 0; square < 64; square++) {
             final int finalSquare = square;
             executor.submit(() -> findMagicNumberForSquare(finalSquare, magicNumbers));
         }
