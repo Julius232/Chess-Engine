@@ -13,7 +13,7 @@ public class MagicTest {
     @Test
     public void testMagicMoves() {
         RookHelper rookHelper = new RookHelper();
-        BishopHelper bishopHelper = new BishopHelper();
+        BishopHelper bishopHelper = BishopHelper.getInstance();
 
         // Initialize and find magic numbers
         log.info("Finding magic numbers...");

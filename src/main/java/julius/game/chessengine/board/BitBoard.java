@@ -2,6 +2,7 @@ package julius.game.chessengine.board;
 
 import julius.game.chessengine.figures.Figure;
 import julius.game.chessengine.figures.PieceType;
+import julius.game.chessengine.helper.BishopHelper;
 import julius.game.chessengine.helper.PawnHelper;
 import julius.game.chessengine.helper.ZobristTable;
 import julius.game.chessengine.utils.Color;
@@ -21,6 +22,8 @@ import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES
 
 @Log4j2
 public class BitBoard {
+
+    BishopHelper bishopHelper = BishopHelper.getInstance();
 
     // Constants for the initial positions of each piece type
     private static final long INITIAL_WHITE_PAWN_POSITION = 0x000000000000FF00L; // Pawns on the second rank (a2-h2)
@@ -334,7 +337,7 @@ public class BitBoard {
         // Generate moves for each piece type
         moves.addAll(generatePawnMoves(color));
         moves.addAll(generateKnightMoves(color));
-        moves.addAll(generateBishopMoves(color));
+        moves.addAll(generateBishopMoves(color == Color.WHITE));
         moves.addAll(generateRookMoves(color));
         moves.addAll(generateQueenMoves(color));
         moves.addAll(generateKingMoves(color));
@@ -518,54 +521,25 @@ public class BitBoard {
     }
 
 
-    private List<Move> generateBishopMoves(Color color) {
+    private List<Move> generateBishopMoves(boolean isWhite) {
         List<Move> moves = new ArrayList<>();
-        long bishops = (color == Color.WHITE) ? whiteBishops : blackBishops;
-        long ownPieces = (color == Color.WHITE) ? whitePieces : blackPieces;
-        long opponentPieces = (color == Color.WHITE) ? blackPieces : whitePieces;
+        long bishops = isWhite ? whiteBishops : blackBishops;
+        long ownPieces = isWhite ? whitePieces : blackPieces;
+        long opponentPieces = isWhite ? blackPieces : whitePieces;
 
-        // Directions a bishop can move: top-left, top-right, bottom-left, bottom-right
-        int[][] directions = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
+        while (bishops != 0) {
+            int bishopSquare = Long.numberOfTrailingZeros(bishops);
+            bishops &= bishops - 1; // Remove the least significant bit representing a bishop
 
-        // Iterate over all bits where bishops exist
-        for (int i = Long.numberOfTrailingZeros(bishops); i < 64 - Long.numberOfLeadingZeros(bishops); i++) {
-            if (((1L << i) & bishops) != 0) {
-                Position fromPosition = indexToPosition(i);
+            long occupancy = allPieces & bishopHelper.bishopMasks[bishopSquare];
+            long attacks = bishopHelper.calculateMovesUsingBishopMagic(bishopSquare, occupancy) & ~ownPieces;
 
-                // Iterate through each direction a bishop can move
-                for (int[] direction : directions) {
-                    int toFile = fromPosition.getX() - 'a';
-                    int toRank = fromPosition.getY() - 1;
+            while (attacks != 0) {
+                int targetSquare = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1; // Remove the least significant bit representing an attack
 
-                    // Keep moving in the direction until you hit the edge of the board or another piece
-                    while (true) {
-                        toFile += direction[0];
-                        toRank += direction[1];
-
-                        if (toFile >= 0 && toFile < 8 && toRank >= 0 && toRank < 8) {
-                            int toIndex = toRank * 8 + toFile;
-                            Position toPosition = indexToPosition(toIndex);
-
-                            // If the position is occupied by own piece, break the loop, can't jump over
-                            if ((ownPieces & (1L << toIndex)) != 0) {
-                                break;
-                            }
-
-                            // If it's an opponent's piece, it's a capture move
-                            boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
-                            PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
-                            moves.add(new Move(fromPosition, toPosition, PieceType.BISHOP, color, isCapture, false, false, null, capturedPieceType, false, false));
-
-                            // If you capture a piece, you must stop.
-                            if (isCapture) {
-                                break;
-                            }
-                        } else {
-                            // If the position is off the board, stop checking this direction
-                            break;
-                        }
-                    }
-                }
+                boolean isCapture = (opponentPieces & (1L << targetSquare)) != 0;
+                moves.add(new Move(indexToPosition(bishopSquare), indexToPosition(targetSquare), PieceType.BISHOP, isWhite, isCapture, false, false, null, isCapture ? getPieceTypeAtPosition(indexToPosition(targetSquare)) : null, false, false));
             }
         }
 

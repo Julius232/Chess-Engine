@@ -33,6 +33,22 @@ public class Move {
         this.isRookFirstMove = isRookFirstMove;
     }
 
+    public Move(Position from, Position to, PieceType pieceType, boolean isWhite,
+                boolean isCapture, boolean isCastlingMove, boolean isEnPassantMove, PieceType promotionPieceType, PieceType capturedPieceType,
+                boolean isKingFirstMove, boolean isRookFirstMove) {
+        this.from = from;
+        this.to = to;
+        this.pieceType = pieceType;
+        this.color = isWhite ? Color.WHITE : Color.BLACK;
+        this.isCapture = isCapture || isEnPassantMove; // Capture is true if it's a regular capture or an en passant capture
+        this.isCastlingMove = isCastlingMove;
+        this.isEnPassantMove = isEnPassantMove;
+        this.promotionPieceType = promotionPieceType;
+        this.capturedPieceType = isCapture ? capturedPieceType : null;
+        this.isKingFirstMove = isKingFirstMove;
+        this.isRookFirstMove = isRookFirstMove;
+    }
+
     public Move(Move originalMove) {
         this.from = new Position(originalMove.getFrom()); // Assuming Position also has a copy constructor
         this.to = new Position(originalMove.getTo()); // Assuming Position also has a copy constructor
