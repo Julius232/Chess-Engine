@@ -30,14 +30,23 @@ public class BishopHelper {
 
     boolean[] squareMagicFound = new boolean[64];
 
+    private static BishopHelper instance = null;
 
-    public BishopHelper() {
+
+    private BishopHelper() {
         loadMagicNumbers();
         // First, generate and store occupancy masks
         for (int square = 0; square < 64; square++) {
             bishopMasks[square] = generateOccupancyMask(square);
         }
         initializeBishopAttacks();
+    }
+
+    public static BishopHelper getInstance() {
+        if (instance == null) {
+            instance = new BishopHelper();
+        }
+        return instance;
     }
 
 
@@ -49,7 +58,7 @@ public class BishopHelper {
 
         for (int square = 0; square < 64; square++) {
             final int finalSquare = square;
-            executor.submit(() -> findMagicNumberForSquare(36, magicNumbers));
+            executor.submit(() -> findMagicNumberForSquare(finalSquare, magicNumbers));
         }
 
         executor.shutdown();
@@ -272,6 +281,13 @@ public class BishopHelper {
         } catch (IOException e) {
             log.error("Error reading magic numbers from file", e);
         }
+    }
+
+    public long calculateMovesUsingBishopMagic(int square, long occupancy) {
+        // Calculate the index using the magic number
+        int index = this.transform(occupancy, this.bishopMagics[square], this.bishopMasks[square]);
+        // Retrieve the moves from the rookAttacks table
+        return this.bishopAttacks[square][index];
     }
 
 }

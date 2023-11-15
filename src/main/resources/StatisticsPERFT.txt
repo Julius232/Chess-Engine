@@ -1,5 +1,15 @@
-Starting POS
-Time taken for move calculation: 7032.143599 m
+Starting POS --> PERFT
+12.11.23 Time taken for move calculation: 7032.143599 m
+15.11.23 Time taken for move calculation: 3771.4069 ms
+-- after Bishops with Bitboard
+15.11.23 Time taken for move calculation: 3568.6194 ms
+-- after using boolean isWhite instead of Color.White == color
+15.11.23 Time taken for move calculation: 3289.5339 ms
 
-POS_2
-Time taken for move calculation: 275747.8732 ms
+POS_2 --> PERFTPos_2
+12.11.23 Time taken for move calculation: 275747.8732 ms
+15.11.23 Time taken for move calculation: 136994.5455 ms
+-- after Bishops with Bitboard
+15.11.23 Time taken for move calculation: 133066.9204 ms
+-- after using boolean isWhite instead of Color.White == color
+15.11.23 Time taken for move calculation: 127014.3807 ms

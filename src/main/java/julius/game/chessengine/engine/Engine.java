@@ -7,6 +7,7 @@ import julius.game.chessengine.board.Position;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.utils.Score;
+import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
@@ -25,8 +26,10 @@ public class Engine {
     public static final double CHECKMATE = 1000000;
     private boolean legalMovesNeedUpdate = true;
     private List<Move> legalMoves = new ArrayList<>();
+    @Getter
     private LinkedList<Move> line = new LinkedList<>();
     private BitBoard bitBoard = new BitBoard();
+    @Getter
     private GameState gameState = new GameState();
 
     public Engine() {
@@ -105,12 +108,12 @@ public class Engine {
                 .collect(Collectors.toList());
     }
 
-    public GameState moveRandomFigure(Color color) {
+    public GameState moveRandomFigure(boolean isWhite) {
         // Now, the color parameter is used to determine which moves to generate
         List<Move> moves = getAllLegalMoves();
 
         if (moves.isEmpty()) {
-            throw new RuntimeException("No moves possible for " + color);
+            throw new RuntimeException("No moves possible for " + (isWhite ? "White" : "Black"));
         }
 
         Random rand = new Random();
@@ -118,7 +121,7 @@ public class Engine {
 
         if (randomMove.isEnPassantMove()) {
             // Clear the captured pawn from its position for en passant
-            bitBoard.clearSquare(bitIndex(randomMove.getTo().getX(), randomMove.getFrom().getY()), Color.getOpponentColor(color));
+            bitBoard.clearSquare(bitIndex(randomMove.getTo().getX(), randomMove.getFrom().getY()), !isWhite);
         }
 
         // Execute the move on the bitboard
@@ -173,7 +176,7 @@ public class Engine {
         }
 
         BitBoard testBoard = simulateMove(bitBoard, move);
-        return !testBoard.isInCheck(move.getColor());
+        return !testBoard.isInCheck(move.isColorWhite());
     }
 
     private BitBoard simulateMove(BitBoard bitBoard, Move move) {
@@ -209,26 +212,26 @@ public class Engine {
 
     private boolean isNotInCheckAfterMove(BitBoard board, Move move) {
         BitBoard testBoard = simulateMove(board, move);
-        return !testBoard.isInCheck(move.getColor());
+        return !testBoard.isInCheck(move.isColorWhite());
     }
 
-    public boolean isInStateCheck(Color color) {
+    public boolean isInStateCheck(boolean isWhite) {
         // The BitBoard class already has a method to check if a king is in check
-        return isInStateCheck(this.bitBoard, color);
+        return isInStateCheck(this.bitBoard, isWhite);
     }
 
-    private boolean isInStateCheck(BitBoard board, Color color) {
+    private boolean isInStateCheck(BitBoard board, boolean isWhite) {
         // The BitBoard class already has a method to check if a king is in check
-        return board.isInCheck(color);
+        return board.isInCheck(isWhite);
     }
 
-    public boolean isInStateCheckMate(Color color) {
-        return isInStateCheckMate(bitBoard, color);
+    public boolean isInStateCheckMate(boolean isWhite) {
+        return isInStateCheckMate(bitBoard, isWhite);
     }
 
-    public boolean isInStateCheckMate(BitBoard board, Color color) {
+    public boolean isInStateCheckMate(BitBoard board, boolean isWhite) {
         // First, check if the king is in check.
-        boolean isInCheck = board.isInCheck(color);
+        boolean isInCheck = board.isInCheck(isWhite);
 
         // Then, generate all possible moves for the player.
         List<Move> possibleMoves = board.getAllCurrentPossibleMoves();
@@ -244,11 +247,11 @@ public class Engine {
     }
 
     private void updateGameState() {
-        if (getAllLegalMoves().size() == 0 && isInStateCheck(bitBoard, Color.WHITE) && bitBoard.whitesTurn) {
+        if (getAllLegalMoves().isEmpty() && isInStateCheckMate(bitBoard, true)) {
             gameState.setState("BLACK WON");
-        } else if (getAllLegalMoves().size() == 0 && isInStateCheck(bitBoard, Color.BLACK) && !bitBoard.whitesTurn) {
+        } else if (getAllLegalMoves().isEmpty() && isInStateCheckMate(bitBoard, false)) {
             gameState.setState("WHITE WON");
-        } else if (getAllLegalMoves().size() == 0) {
+        } else if (getAllLegalMoves().isEmpty()) {
             gameState.setState("DRAW");
         }
     }
@@ -266,19 +269,11 @@ public class Engine {
     }
 
     public void undoLastMove() {
-        if (line.size() > 0) {
+        if (!line.isEmpty()) {
             bitBoard.undoMove(line.getLast(), true);
             line.removeLast();
         }
         generateLegalMoves();
-    }
-
-    public LinkedList<Move> getLine() {
-        return line;
-    }
-
-    public GameState getGameState() {
-        return gameState;
     }
 
     public Score getScore() {
@@ -290,9 +285,8 @@ public class Engine {
     }
 
     public boolean isGameOver() {
-        Color currentPlayer = bitBoard.whitesTurn ? Color.WHITE : Color.BLACK;
         boolean noLegalMoves = getAllLegalMoves().isEmpty();
-        boolean isInCheck = isInStateCheck(bitBoard, currentPlayer);
+        boolean isInCheck = isInStateCheck(bitBoard, bitBoard.whitesTurn);
 
         // Checkmate condition
         if (noLegalMoves && isInCheck) {
@@ -315,9 +309,9 @@ public class Engine {
         return false; // Placeholder
     }
 
-    public double evaluateBoard(Color color, boolean maximizer) {
-        if (isInStateCheckMate(color)) {
-            return maximizer ? -CHECKMATE : CHECKMATE;
+    public double evaluateBoard(boolean isWhite) {
+        if (isInStateCheckMate(isWhite)) {
+            return isWhite ? -CHECKMATE : CHECKMATE;
         }
         // Implement your board evaluation logic here.
         // This should return a score based on material, position, and other chess strategies.

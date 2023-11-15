@@ -58,7 +58,7 @@ def orderMagicNumbers(data):
 
 # Example usage with a hexadecimal input that represents pawns on file H
 # This should print pawns on file H
-print_chessboard_from_number("72057740071044097")
+print_chessboard_from_number("2560")
 
 bishopData = """
     62:2342056532843430052
@@ -126,4 +126,4 @@ bishopData = """
     27:2341889400582965249
     36:2305930978734120965
     """
-orderMagicNumbers(bishopData)
+#orderMagicNumbers(bishopData)
