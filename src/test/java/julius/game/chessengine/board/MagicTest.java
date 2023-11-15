@@ -33,15 +33,12 @@ public class MagicTest {
             }
         }
         // Add more tests for different squares as needed
-
-        log.info(rookHelper.rookMagics);
     }
 
     private void testRookMovesForSquare(RookHelper rookHelper, int square) {
         long mask = rookHelper.generateOccupancyMask(square);
         List<Long> occupancies = rookHelper.generateAllOccupancies(mask);
-        log.info("Testing square: {}", square);
-
+        log.info("Rook Testing square: {}", square);
         for (long occupancy : occupancies) {
             long moves = rookHelper.calculateRookMoves(square, occupancy);
             long magicMoves = calculateMovesUsingRookMagic(rookHelper, square, occupancy);
@@ -70,7 +67,7 @@ public class MagicTest {
     private void testBishopMovesForSquare(BishopHelper bishopHelper, int square) {
         long mask = bishopHelper.generateOccupancyMask(square);
         List<Long> occupancies = bishopHelper.generateAllOccupancies(mask);
-        log.info("Testing square: {}", square);
+        log.info("Bishop Testing square: {}", square);
         for (long occupancy : occupancies) {
             long moves = bishopHelper.calculateBishopMoves(square, occupancy);
             long magicMoves = calculateMovesUsingBishopMagic(bishopHelper, square, occupancy);
