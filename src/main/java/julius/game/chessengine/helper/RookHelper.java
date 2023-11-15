@@ -42,7 +42,7 @@ public class RookHelper {
 
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(60, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(300, TimeUnit.MINUTES)) {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {
@@ -174,8 +174,7 @@ public class RookHelper {
             List<Long> occupancies = generateAllOccupancies(mask);
             rookAttacks[square] = new long[occupancies.size()];
 
-            for (int i = 0; i < occupancies.size(); i++) {
-                long occupancy = occupancies.get(i);
+            for (long occupancy : occupancies) {
                 int index = transform(occupancy, rookMagics[square], mask);
                 rookAttacks[square][index] = calculateRookMoves(square, occupancy);
             }
@@ -244,7 +243,7 @@ public class RookHelper {
         return mask;
     }
     private long randomMagicNumber() {
-        return ThreadLocalRandom.current().nextLong();
+        return ThreadLocalRandom.current().nextLong() & ThreadLocalRandom.current().nextLong() & ThreadLocalRandom.current().nextLong();
     }
 
     public int transform(long occupancy, long magicNumber, long mask) {
