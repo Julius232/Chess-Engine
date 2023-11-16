@@ -28,13 +28,11 @@ public class MagicTest {
 
         rookHelper.findMagicNumbersParallel();
 
-        // Test a few squares to validate rook moves
-        //testRookMovesForSquare(rookHelper, 0); // Example: test top-left corner of the board
         for(int i = 0; i<64; i++) {
             if(rookHelper.rookMagics[i] != 0) {
                 testRookMovesForSquare(rookHelper, i);
             }
-        }// Example: test bottom-right corner of the board
+        }
 
         // Add more tests for different squares as needed
     }
