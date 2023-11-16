@@ -5,6 +5,8 @@ Starting POS --> PERFT
 15.11.23 Time taken for move calculation: 3568.6194 ms
 -- after using boolean isWhite instead of Color.White == color
 15.11.23 Time taken for move calculation: 3289.5339 ms
+-- after removing Move objects and using integer moves
+16.11.23 Time taken for move calculation: 1909.3527 ms
 
 POS_2 --> PERFTPos_2
 12.11.23 Time taken for move calculation: 275747.8732 ms
@@ -13,3 +15,5 @@ POS_2 --> PERFTPos_2
 15.11.23 Time taken for move calculation: 133066.9204 ms
 -- after using boolean isWhite instead of Color.White == color
 15.11.23 Time taken for move calculation: 127014.3807 ms
+-- after removing Move objects and using integer moves
+16.11.23 Time taken for move calculation: 76797.8816 ms

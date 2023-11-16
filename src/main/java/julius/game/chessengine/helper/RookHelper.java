@@ -42,7 +42,7 @@ public class RookHelper {
 
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(60, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(20, TimeUnit.MINUTES)) {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {

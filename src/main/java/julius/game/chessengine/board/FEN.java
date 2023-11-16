@@ -14,10 +14,10 @@ public class FEN {
         StringBuilder fenBuilder = new StringBuilder();
         for (int rank = 8; rank >= 1; rank--) {
             int emptyCount = 0;
-            for (char file = 'a'; file <= 'h'; file++) {
-                Position position = new Position(file, rank);
-                PieceType pieceType = board.getPieceTypeAtPosition(position);
-                Color color = board.getPieceColorAtPosition(position);
+            for (int file = 0; file < 8; file++) {
+                int index = (rank - 1) * 8 + file;
+                PieceType pieceType = board.getPieceTypeAtIndex(index);
+                Color color = board.getPieceColorAtIndex(index);
 
                 if (pieceType != null) {
                     if (emptyCount > 0) {
@@ -65,8 +65,8 @@ public class FEN {
                     file += Character.getNumericValue(c);
                 } else {
                     int rank = 8 - i;
-                    Position position = new Position((char) ('a' + file), rank);
-                    long bit = 1L << positionToBitIndex(position);
+                    int index = (rank - 1) * 8 + file;
+                    long bit = 1L << index;
 
                     switch (Character.toLowerCase(c)) {
                         case 'p': if (c == 'p') blackPawns |= bit; else whitePawns |= bit; break;
@@ -97,19 +97,16 @@ public class FEN {
         boolean blackRookA8Moved = !parts[2].contains("q");
         boolean blackRookH8Moved = !parts[2].contains("k");
 
-        Position lastMoveDoubleStepPawnPosition = null;
+        int lastMoveDoubleStepPawnIndex = -1;
         if (!parts[3].equals("-")) {
-            lastMoveDoubleStepPawnPosition = new Position(parts[3].charAt(0), Character.getNumericValue(parts[3].charAt(1)));
+            char fileChar = parts[3].charAt(0);
+            int file = fileChar - 'a'; // Convert file to 0-7 range
+            int rank = Character.getNumericValue(parts[3].charAt(1)) - 1; // Convert rank to 0-based index
+
+            lastMoveDoubleStepPawnIndex = rank * 8 + file;
         }
 
-        return new BitBoard(whitesTurn, whitePawns, blackPawns, whiteKnights, blackKnights, whiteBishops, blackBishops, whiteRooks, blackRooks, whiteQueens, blackQueens, whiteKing, blackKing, whitePieces, blackPieces, allPieces, lastMoveDoubleStepPawnPosition, whiteKingMoved, blackKingMoved, whiteRookA1Moved, whiteRookH1Moved, blackRookA8Moved, blackRookH8Moved);
-    }
-
-    private static int positionToBitIndex(Position position) {
-        // Assuming position file 'a' to 'h' and rank 1 to 8
-        int file = position.getX() - 'a';
-        int rank = position.getY() - 1;
-        return 8 * rank + file;
+        return new BitBoard(whitesTurn, whitePawns, blackPawns, whiteKnights, blackKnights, whiteBishops, blackBishops, whiteRooks, blackRooks, whiteQueens, blackQueens, whiteKing, blackKing, whitePieces, blackPieces, allPieces, lastMoveDoubleStepPawnIndex, whiteKingMoved, blackKingMoved, whiteRookA1Moved, whiteRookH1Moved, blackRookA8Moved, blackRookH8Moved);
     }
 
 }

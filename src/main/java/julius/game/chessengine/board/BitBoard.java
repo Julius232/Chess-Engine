@@ -9,8 +9,6 @@ import julius.game.chessengine.utils.Score;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
@@ -61,8 +59,9 @@ public class BitBoard {
     private long allPieces = 0L;
 
     // This variable needs to be set whenever a move is made
+    //TODO only write to it if en passant is possible then you can also hash it
     @Getter
-    private Position lastMoveDoubleStepPawnPosition;
+    private int lastMoveDoubleStepPawnIndex;
 
     // Flags to track if the king and rooks have moved
     private boolean whiteKingMoved = false;
@@ -72,7 +71,7 @@ public class BitBoard {
     private boolean blackRookA8Moved = false;
     private boolean blackRookH8Moved = false;
 
-    public BitBoard(boolean whitesTurn, long whitePawns, long blackPawns, long whiteKnights, long blackKnights, long whiteBishops, long blackBishops, long whiteRooks, long blackRooks, long whiteQueens, long blackQueens, long whiteKing, long blackKing, long whitePieces, long blackPieces, long allPieces, Position lastMoveDoubleStepPawnPosition, boolean whiteKingMoved, boolean blackKingMoved, boolean whiteRookA1Moved, boolean whiteRookH1Moved, boolean blackRookA8Moved, boolean blackRookH8Moved) {
+    public BitBoard(boolean whitesTurn, long whitePawns, long blackPawns, long whiteKnights, long blackKnights, long whiteBishops, long blackBishops, long whiteRooks, long blackRooks, long whiteQueens, long blackQueens, long whiteKing, long blackKing, long whitePieces, long blackPieces, long allPieces, int lastMoveDoubleStepPawnIndex, boolean whiteKingMoved, boolean blackKingMoved, boolean whiteRookA1Moved, boolean whiteRookH1Moved, boolean blackRookA8Moved, boolean blackRookH8Moved) {
         this.whitesTurn = whitesTurn;
         this.whitePawns = whitePawns;
         this.blackPawns = blackPawns;
@@ -89,7 +88,7 @@ public class BitBoard {
         this.whitePieces = whitePieces;
         this.blackPieces = blackPieces;
         this.allPieces = allPieces;
-        this.lastMoveDoubleStepPawnPosition = lastMoveDoubleStepPawnPosition;
+        this.lastMoveDoubleStepPawnIndex = lastMoveDoubleStepPawnIndex;
         this.whiteKingMoved = whiteKingMoved;
         this.blackKingMoved = blackKingMoved;
         this.whiteRookA1Moved = whiteRookA1Moved;
@@ -135,7 +134,7 @@ public class BitBoard {
 
         this.whitesTurn = other.whitesTurn;
 
-        this.lastMoveDoubleStepPawnPosition = other.lastMoveDoubleStepPawnPosition != null ? new Position(other.lastMoveDoubleStepPawnPosition) : null;
+        this.lastMoveDoubleStepPawnIndex = other.lastMoveDoubleStepPawnIndex;
     }
 
     public void updateScore() {
@@ -235,7 +234,7 @@ public class BitBoard {
         }
     }
 
-    public List<Move> getAllCurrentPossibleMoves() {
+    public MoveList getAllCurrentPossibleMoves() {
         return generateAllPossibleMoves(whitesTurn);
     }
 
@@ -288,32 +287,64 @@ public class BitBoard {
 
         // Setting all pieces on the board
         allPieces = whitePieces | blackPieces;
+
+        lastMoveDoubleStepPawnIndex = -1;
     }
 
     // Method to get the bitboard for a specific piece type and color
-    public long getBitboardForPiece(PieceType piece, boolean isWhite) {
+    public long intToPiecesBitboard(int pieceTypeBits, boolean isWhite) {
         if (isWhite) {
-            return switch (piece) {
-                case PAWN -> whitePawns;
-                case KNIGHT -> whiteKnights;
-                case BISHOP -> whiteBishops;
-                case ROOK -> whiteRooks;
-                case QUEEN -> whiteQueens;
-                case KING -> whiteKing;
+            return switch (pieceTypeBits) {
+                case 1 -> whitePawns;
+                case 2 -> whiteKnights;
+                case 3 -> whiteBishops;
+                case 4 -> whiteRooks;
+                case 5 -> whiteQueens;
+                case 6 -> whiteKing;
+                default -> 0;
             };
         } else {
-            return switch (piece) {
-                case PAWN -> blackPawns;
-                case KNIGHT -> blackKnights;
-                case BISHOP -> blackBishops;
-                case ROOK -> blackRooks;
-                case QUEEN -> blackQueens;
-                case KING -> blackKing;
+            return switch (pieceTypeBits) {
+                case 1 -> blackPawns;
+                case 2 -> blackKnights;
+                case 3 -> blackBishops;
+                case 4 -> blackRooks;
+                case 5 -> blackQueens;
+                case 6 -> blackKing;
+                default -> 0;
             };
         }
     }
 
+    private void setBitboardForPiece(int pieceTypeBits, boolean isWhite, long bitboard) {
+        if (isWhite) {
+            switch (pieceTypeBits) {
+                case 1 -> whitePawns = bitboard;
+                case 2 -> whiteKnights = bitboard;
+                case 3 -> whiteBishops = bitboard;
+                case 4 -> whiteRooks = bitboard;
+                case 5 -> whiteQueens = bitboard;
+                case 6 -> whiteKing = bitboard;
+                default -> throw new IllegalArgumentException("Unknown piece type: " + pieceTypeBits);
+            }
+
+        } else {
+            switch (pieceTypeBits) {
+                case 1 -> blackPawns = bitboard;
+                case 2 -> blackKnights = bitboard;
+                case 3 -> blackBishops = bitboard;
+                case 4 -> blackRooks = bitboard;
+                case 5 -> blackQueens = bitboard;
+                case 6 -> blackKing = bitboard;
+                default -> throw new IllegalArgumentException("Unknown piece type: " + pieceTypeBits);
+            }
+        }
+
+        // After setting the bitboard, update the aggregated bitboards
+        updateAggregatedBitboards();
+    }
     // Call these methods within the movePiece method when a king or rook moves
+
     private void markKingAsMoved(boolean isWhite) {
         if (isWhite) {
             whiteKingMoved = true;
@@ -322,69 +353,29 @@ public class BitBoard {
         }
     }
 
-    private void markRookAsMoved(Position rookPosition) {
-        if (rookPosition.equals(new Position('a', 1))) {
-            whiteRookA1Moved = true;
-        } else if (rookPosition.equals(new Position('h', 1))) {
-            whiteRookH1Moved = true;
-        } else if (rookPosition.equals(new Position('a', 8))) {
-            blackRookA8Moved = true;
-        } else if (rookPosition.equals(new Position('h', 8))) {
-            blackRookH8Moved = true;
-        }
-    }
-
-    public List<Move> generateAllPossibleMoves(boolean whitesTurn) {
-        List<Move> moves = new ArrayList<>();
+    public MoveList generateAllPossibleMoves(boolean whitesTurn) {
+        //on average there are about 30 possible moves in a chess position
+        MoveList moves = new MoveList();
 
         // Generate moves for each piece type
-        moves.addAll(generatePawnMoves(whitesTurn));
-        moves.addAll(generateKnightMoves(whitesTurn));
-        moves.addAll(generateBishopMoves(whitesTurn));
-        moves.addAll(generateRookMoves(whitesTurn));
-        moves.addAll(generateQueenMoves(whitesTurn));
-        moves.addAll(generateKingMoves(whitesTurn));
+        generatePawnMoves(whitesTurn, moves);
+        generateKnightMoves(whitesTurn, moves);
+        generateBishopMoves(whitesTurn, moves);
+        generateRookMoves(whitesTurn, moves);
+        generateQueenMoves(whitesTurn, moves);
+        generateKingMoves(whitesTurn, moves);
 
         return moves;
     }
 
     // Method to set the bitboard for a specific piece type and color
-    private void setBitboardForPiece(PieceType piece, boolean isWhite, long bitboard) {
-        if (isWhite) {
-            switch (piece) {
-                case PAWN -> whitePawns = bitboard;
-                case KNIGHT -> whiteKnights = bitboard;
-                case BISHOP -> whiteBishops = bitboard;
-                case ROOK -> whiteRooks = bitboard;
-                case QUEEN -> whiteQueens = bitboard;
-                case KING -> whiteKing = bitboard;
-                default -> throw new IllegalArgumentException("Unknown piece type: " + piece);
-            }
-
-        } else {
-            switch (piece) {
-                case PAWN -> blackPawns = bitboard;
-                case KNIGHT -> blackKnights = bitboard;
-                case BISHOP -> blackBishops = bitboard;
-                case ROOK -> blackRooks = bitboard;
-                case QUEEN -> blackQueens = bitboard;
-                case KING -> blackKing = bitboard;
-                default -> throw new IllegalArgumentException("Unknown piece type: " + piece);
-            }
-        }
-
-        // After setting the bitboard, update the aggregated bitboards
-        updateAggregatedBitboards();
-    }
-
     void updateAggregatedBitboards() {
         whitePieces = whitePawns | whiteKnights | whiteBishops | whiteRooks | whiteQueens | whiteKing;
         blackPieces = blackPawns | blackKnights | blackBishops | blackRooks | blackQueens | blackKing;
         allPieces = whitePieces | blackPieces;
     }
 
-    private List<Move> generatePawnMoves(boolean whitesTurn) {
-        List<Move> moves = new ArrayList<>();
+    private void generatePawnMoves(boolean whitesTurn, MoveList moves) {
         long pawns = whitesTurn ? whitePawns : blackPawns;
         long opponentPieces = whitesTurn ? blackPieces : whitePieces;
         long emptySquares = ~(whitePieces | blackPieces);
@@ -409,16 +400,15 @@ public class BitBoard {
         addPawnMoves(moves, attacksLeft, whitesTurn ? 7 : 9, true, whitesTurn);
         addPawnMoves(moves, attacksRight, whitesTurn ? 9 : 7, true, whitesTurn);
 
-        if (lastMoveDoubleStepPawnPosition != null) {
+        if (lastMoveDoubleStepPawnIndex != -1) {
             generateEnPassantMoves(moves, pawns, whitesTurn);
         }
 
-        return moves;
     }
 
-    private void generateEnPassantMoves(List<Move> moves, long pawns, boolean whitesTurn) {
+    private void generateEnPassantMoves(MoveList moves, long pawns, boolean whitesTurn) {
         int enPassantRank = whitesTurn ? 5 : 2;
-        int fileIndexOfDoubleSteppedPawn = lastMoveDoubleStepPawnPosition.getX() - 'a';
+        int fileIndexOfDoubleSteppedPawn = lastMoveDoubleStepPawnIndex % 8;
         int enPassantTargetIndex = (enPassantRank * 8) + fileIndexOfDoubleSteppedPawn;
         long enPassantTargetSquare = 1L << enPassantTargetIndex;
         long potentialEnPassantAttackers = pawns & RankMasks[whitesTurn ? 4 : 3];
@@ -443,35 +433,31 @@ public class BitBoard {
     }
 
 
-    private void addEnPassantMove(List<Move> moves, int fromIndex, int toIndex, boolean whitesTurn) {
-        Position fromPosition = indexToPosition(fromIndex);
-        Position toPosition = indexToPosition(toIndex);
-        moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, whitesTurn, true, false, true, null, PieceType.PAWN, false, false));
+    private void addEnPassantMove(MoveList moves, int fromIndex, int toIndex, boolean whitesTurn) {
+        moves.add(
+                createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, true, false, true, null, PieceType.PAWN, false, false));
     }
 
-    private void addPawnMoves(List<Move> moves, long bitboard, int shift, boolean isCapture, boolean whitesTurn) {
+    private void addPawnMoves(MoveList moves, long bitboard, int shift, boolean isCapture, boolean whitesTurn) {
         int direction = whitesTurn ? 1 : -1;
-
         while (bitboard != 0) {
             int toIndex = Long.numberOfTrailingZeros(bitboard);
             int fromIndex = whitesTurn ? toIndex - shift : toIndex + shift;
-            Position fromPosition = indexToPosition(fromIndex);
-            Position toPosition = indexToPosition(toIndex);
-            boolean isPromotion = whitesTurn ? toPosition.getY() == 8 : toPosition.getY() == 1;
 
-            PieceType capturedType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
+            // Calculate if the move is a promotion
+            boolean isPromotion = (whitesTurn && toIndex / 8 == 7) || (!whitesTurn && toIndex / 8 == 0);
 
-            // Calculate the differences in the x and y coordinates
-            int yDiff = (toPosition.getY() - fromPosition.getY()) * direction; // Multiplied by direction for forward movement
+            PieceType capturedType = isCapture ? getPieceTypeAtIndex(toIndex) : null;
 
-            if (checkForInitialDoubleSquareMove(direction, fromPosition, toPosition, yDiff)) {
+            // Check for initial double square move
+            if (checkForInitialDoubleSquareMove(fromIndex, toIndex, direction)) {
                 if (isPromotion) {
-                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.QUEEN, capturedType, false, false));
-                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.ROOK, capturedType, false, false));
-                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.BISHOP, capturedType, false, false));
-                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.KNIGHT, capturedType, false, false));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.QUEEN, capturedType, false, false));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.ROOK, capturedType, false, false));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.BISHOP, capturedType, false, false));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.KNIGHT, capturedType, false, false));
                 } else {
-                    moves.add(new Move(fromPosition, toPosition, PieceType.PAWN, whitesTurn, isCapture, false, false, null, capturedType, false, false));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, null, capturedType, false, false));
                 }
             }
 
@@ -479,12 +465,34 @@ public class BitBoard {
         }
     }
 
-    private boolean checkForInitialDoubleSquareMove(int direction, Position fromPosition, Position toPosition, int yDiff) {
-        return !(yDiff == 2 && (isOccupied(toPosition) | isOccupied(new Position(fromPosition.getX(), fromPosition.getY() + direction))));
+    private boolean checkForInitialDoubleSquareMove(int fromIndex, int toIndex, int direction) {
+        int fromRow = fromIndex / 8;
+        int toRow = toIndex / 8;
+        int yDiff = Math.abs(toRow - fromRow);
+
+        //capture
+        if (yDiff == 1 && ((fromIndex + toIndex) % 2 != 0)) {
+            return isOccupiedByOpponent(toIndex, whitesTurn);
+        }
+
+        //single move
+        if (yDiff == 1) {
+            return !(isOccupied(toIndex));
+        }
+
+        //double move
+        if (yDiff == 2) {
+            // Calculate the index of the square directly in front of the starting position
+            int inBetweenIndex = fromIndex + 8 * direction;
+
+            // Return true if both the destination square and the square in between are not occupied
+            return !(isOccupied(toIndex) || isOccupied(inBetweenIndex));
+        }
+
+        return false;
     }
 
-    private List<Move> generateKnightMoves(boolean whitesTurn) {
-        List<Move> moves = new ArrayList<>();
+    private void generateKnightMoves(boolean whitesTurn, MoveList moves) {
         long knights = whitesTurn ? whiteKnights : blackKnights;
         long ownPieces = whitesTurn ? whitePieces : blackPieces;
 
@@ -493,7 +501,6 @@ public class BitBoard {
             if (((1L << i) & knights) != 0) {
                 int fromRank = i / 8;
                 int fromFile = i % 8;
-                Position fromPosition = indexToPosition(i);
 
                 // Iterate through all possible L moves
                 for (int[] offset : knightMoves) {
@@ -503,26 +510,23 @@ public class BitBoard {
                     // Check if the target position is within the board limits
                     if (toFile >= 0 && toFile < 8 && toRank >= 0 && toRank < 8) {
                         int toIndex = toRank * 8 + toFile;
-                        Position toPosition = indexToPosition(toIndex);
 
                         // Check if the target position is occupied by own piece
                         if ((ownPieces & (1L << toIndex)) == 0) {
                             // Determine if the target position is a capture
                             boolean isCapture = (allPieces & (1L << toIndex)) != 0;
-                            PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
-                            moves.add(new Move(fromPosition, toPosition, PieceType.KNIGHT, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false));
+                            PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(toIndex) : null;
+                            moves.add(createMoveInt(i, toIndex, PieceType.KNIGHT, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false));
                         }
                     }
                 }
             }
         }
 
-        return moves;
     }
 
 
-    private List<Move> generateBishopMoves(boolean isWhite) {
-        List<Move> moves = new ArrayList<>();
+    private void generateBishopMoves(boolean isWhite, MoveList moves) {
         long bishops = isWhite ? whiteBishops : blackBishops;
         long ownPieces = isWhite ? whitePieces : blackPieces;
         long opponentPieces = isWhite ? blackPieces : whitePieces;
@@ -539,16 +543,13 @@ public class BitBoard {
                 attacks &= attacks - 1; // Remove the least significant bit representing an attack
 
                 boolean isCapture = (opponentPieces & (1L << targetSquare)) != 0;
-                moves.add(new Move(indexToPosition(bishopSquare), indexToPosition(targetSquare), PieceType.BISHOP, isWhite, isCapture, false, false, null, isCapture ? getPieceTypeAtPosition(indexToPosition(targetSquare)) : null, false, false));
+                moves.add(createMoveInt(bishopSquare, targetSquare, PieceType.BISHOP, isWhite, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, false));
             }
         }
-
-        return moves;
     }
 
 
-    private List<Move> generateRookMoves(boolean whitesTurn) {
-        List<Move> moves = new ArrayList<>();
+    private void generateRookMoves(boolean whitesTurn, MoveList moves) {
         long rooks = whitesTurn ? whiteRooks : blackRooks;
         long ownPieces = whitesTurn ? whitePieces : blackPieces;
         long opponentPieces = whitesTurn ? blackPieces : whitePieces;
@@ -573,7 +574,6 @@ public class BitBoard {
 
                         if (toFile >= 0 && toFile < 8 && toRank >= 0 && toRank < 8) {
                             int toIndex = toRank * 8 + toFile;
-                            Position toPosition = indexToPosition(toIndex);
 
                             // If the position is occupied by own piece, break the loop, can't jump over
                             if ((ownPieces & (1L << toIndex)) != 0) {
@@ -582,11 +582,11 @@ public class BitBoard {
 
                             // If it's an opponent's piece, it's a capture move
                             boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
-                            PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
+                            PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(toIndex) : null;
 
-                            boolean isFirstRookMove = !hasRookMoved(fromPosition);
+                            boolean isFirstRookMove = !hasRookMoved(i);
 
-                            moves.add(new Move(fromPosition, toPosition, PieceType.ROOK, whitesTurn, isCapture, false, false, null, capturedPieceType, false, isFirstRookMove));
+                            moves.add(createMoveInt(i, toIndex, PieceType.ROOK, whitesTurn, isCapture, false, false, null, capturedPieceType, false, isFirstRookMove));
 
                             // If you capture a piece, you must stop.
                             if (isCapture) {
@@ -600,13 +600,10 @@ public class BitBoard {
                 }
             }
         }
-
-        return moves;
     }
 
 
-    private List<Move> generateQueenMoves(boolean whitesTurn) {
-        List<Move> moves = new ArrayList<>();
+    private void generateQueenMoves(boolean whitesTurn, MoveList moves) {
         long queens = whitesTurn ? whiteQueens : blackQueens;
         long ownPieces = whitesTurn ? whitePieces : blackPieces;
         long opponentPieces = whitesTurn ? blackPieces : whitePieces;
@@ -634,7 +631,6 @@ public class BitBoard {
 
                         if (toFile >= 0 && toFile < 8 && toRank >= 0 && toRank < 8) {
                             int toIndex = toRank * 8 + toFile;
-                            Position toPosition = indexToPosition(toIndex);
 
                             // If the position is occupied by own piece, break the loop, can't jump over
                             if ((ownPieces & (1L << toIndex)) != 0) {
@@ -643,8 +639,8 @@ public class BitBoard {
 
                             // If it's an opponent's piece, it's a capture move
                             boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
-                            PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
-                            moves.add(new Move(fromPosition, toPosition, PieceType.QUEEN, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false));
+                            PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(toIndex) : null;
+                            moves.add(createMoveInt(i, toIndex, PieceType.QUEEN, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false));
 
                             // If you capture a piece, you must stop.
                             if (isCapture) {
@@ -658,15 +654,11 @@ public class BitBoard {
                 }
             }
         }
-
-        return moves;
     }
 
-    private List<Move> generateKingMoves(boolean whitesTurn) {
-        List<Move> moves = new ArrayList<>();
+    private void generateKingMoves(boolean whitesTurn, MoveList moves) {
         long kingBitboard = whitesTurn ? whiteKing : blackKing;
         int kingPositionIndex = Long.numberOfTrailingZeros(kingBitboard);
-        Position kingPosition = indexToPosition(kingPositionIndex);
 
         // Offsets for a king's normal moves
         int[] offsets = {-9, -8, -7, -1, 1, 7, 8, 9};
@@ -677,11 +669,10 @@ public class BitBoard {
             int targetIndex = kingPositionIndex + offset;
             // Check if the move is within board bounds and does not wrap around
             if (targetIndex >= 0 && targetIndex < 64 && !doesMoveWrapAround(kingPositionIndex, targetIndex)) {
-                Position toPosition = indexToPosition(targetIndex);
-                if (!isOccupiedByColor(toPosition, whitesTurn)) {
-                    boolean isCapture = isOccupiedByOpponent(toPosition, whitesTurn);
-                    PieceType capturedPieceType = isCapture ? getPieceTypeAtPosition(toPosition) : null;
-                    moves.add(new Move(kingPosition, toPosition, PieceType.KING, whitesTurn, isCapture, false, false, null, capturedPieceType, isFirstKingMove, false));
+                if (!isOccupiedByColor(targetIndex, whitesTurn)) {
+                    boolean isCapture = isOccupiedByOpponent(targetIndex, whitesTurn);
+                    PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(targetIndex) : null;
+                    moves.add(createMoveInt(kingPositionIndex, targetIndex, PieceType.KING, whitesTurn, isCapture, false, false, null, capturedPieceType, isFirstKingMove, false));
                 }
             }
         }
@@ -691,15 +682,13 @@ public class BitBoard {
         if (canKingCastle(whitesTurn)) {
             // Kingside castling
             if (canCastleKingside(whitesTurn, kingPositionIndex)) {
-                moves.add(new Move(kingPosition, indexToPosition(kingPositionIndex + 2), PieceType.KING, whitesTurn, false, true, false, null, null, true, true));
+                moves.add(createMoveInt(kingPositionIndex, kingPositionIndex + 2, PieceType.KING, whitesTurn, false, true, false, null, null, true, true));
             }
             // Queenside castling
             if (canCastleQueenside(whitesTurn, kingPositionIndex)) {
-                moves.add(new Move(kingPosition, indexToPosition(kingPositionIndex - 2), PieceType.KING, whitesTurn, false, true, false, null, null, true, true));
+                moves.add(createMoveInt(kingPositionIndex, kingPositionIndex - 2, PieceType.KING, whitesTurn, false, true, false, null, null, true, true));
             }
         }
-
-        return moves;
     }
 
     private boolean canKingCastle(boolean whitesTurn) {
@@ -711,168 +700,183 @@ public class BitBoard {
         // Ensure the squares between the king and the rook are unoccupied and not under attack
         int[] kingsideSquares = {kingPositionIndex + 1, kingPositionIndex + 2};
         for (int square : kingsideSquares) {
-            if (isOccupied(indexToPosition(square)) || isSquareUnderAttack(indexToPosition(square), colorWhite)) {
+            if (isOccupied(square) || isSquareUnderAttack(square, colorWhite)) {
                 return false;
             }
         }
 
+        int rookIndex = colorWhite ? 7 : 63;
+
         // Check if the rook has moved
-        if (hasRookMoved(new Position('h', colorWhite ? 1 : 8))) {
+        if (hasRookMoved(rookIndex)) {
             return false;
         }
 
         // Check if the rook still exists
-        Position rookPosition = new Position('h', colorWhite ? 1 : 8);
-        return isRookAtPosition(rookPosition);
+
+        return isRookAtIndex(rookIndex);
     }
 
     private boolean canCastleQueenside(boolean colorWhite, int kingPositionIndex) {
         // Ensure the squares between the king and the rook are unoccupied and not under attack
         int[] queensideSquares = {kingPositionIndex - 1, kingPositionIndex - 2, kingPositionIndex - 3};
         for (int square : queensideSquares) {
-            if (isOccupied(indexToPosition(square)) || (square != kingPositionIndex - 3 && isSquareUnderAttack(indexToPosition(square), colorWhite))) {
+            if (isOccupied(square) || (square != kingPositionIndex - 3 && isSquareUnderAttack(square, colorWhite))) {
                 return false;
             }
         }
-        if (hasRookMoved(new Position('a', colorWhite ? 1 : 8))) {
+
+        int rookIndex = colorWhite ? 0 : 56;
+
+        if (hasRookMoved(rookIndex)) {
             return false;
         }
-        Position rookPosition = new Position('a', colorWhite ? 1 : 8);
-        return isRookAtPosition(rookPosition);
+        return isRookAtIndex(rookIndex);
     }
 
-    private boolean isRookAtPosition(Position position) {
-        PieceType pieceAtPosition = getPieceTypeAtPosition(position);
+    private boolean isRookAtIndex(int index) {
+        PieceType pieceAtPosition = getPieceTypeAtIndex(index);
         return pieceAtPosition == PieceType.ROOK;
     }
 
-    private boolean isSquareUnderAttack(Position position, boolean color) {
-        boolean opponentColor = !color;
-        return canPawnAttackPosition(position, opponentColor) ||
-                canKnightAttackPosition(position, opponentColor) ||
-                canBishopAttackPosition(position, opponentColor) ||
-                canRookAttackPosition(position, opponentColor) ||
-                canQueenAttackPosition(position, opponentColor) ||
-                canKingAttackPosition(position, opponentColor);
+    private boolean isSquareUnderAttack(int index, boolean colorWhite) {
+        boolean opponentColorWhite = !colorWhite;
+        return canPawnAttackIndex(index, opponentColorWhite) ||
+                canKnightAttackIndex(index, opponentColorWhite) ||
+                canBishopAttackIndex(index, opponentColorWhite) ||
+                canRookAttackIndex(index, opponentColorWhite) ||
+                canQueenAttackIndex(index, opponentColorWhite) ||
+                canKingAttackIndex(index, opponentColorWhite);
     }
 
-    private boolean canPawnAttackPosition(Position position, boolean colorWhite) {
-        // Pawns attack diagonally, so check the two squares from which an opponent pawn could attack
+    private boolean canPawnAttackIndex(int index, boolean colorWhite) {
         int direction = colorWhite ? -1 : 1; // Pawns move up if white, down if black
-        Position attackFromLeft = new Position((char) (position.getX() - 1), position.getY() + direction);
-        Position attackFromRight = new Position((char) (position.getX() + 1), position.getY() + direction);
-        return (isValidBoardPosition(attackFromLeft) && isOccupiedByPawn(attackFromLeft, colorWhite)) ||
-                (isValidBoardPosition(attackFromRight) && isOccupiedByPawn(attackFromRight, colorWhite));
+        int rank = index / 8;
+        int file = index % 8;
+
+        // Calculate indices of squares from which an opponent pawn could attack
+        int attackFromLeftIndex = (rank + direction) * 8 + (file - 1);
+        int attackFromRightIndex = (rank + direction) * 8 + (file + 1);
+
+        return (isValidBoardIndex(attackFromLeftIndex) && isOccupiedByPawn(attackFromLeftIndex, colorWhite)) ||
+                (isValidBoardIndex(attackFromRightIndex) && isOccupiedByPawn(attackFromRightIndex, colorWhite));
     }
 
-// Similar methods would be implemented for knights, bishops, rooks, queens, and kings.
-// These methods would use the attack patterns for each piece type to determine if they
-// could possibly attack the given square. For example, a knight's attack pattern is an L-shape,
-// a bishop attacks along diagonals, etc.
+    private boolean isValidBoardIndex(int index) {
+        return index >= 0 && index < 64;
+    }
 
-    // Example for knights:
-    private boolean canKnightAttackPosition(Position position, boolean color) {
-        long knightsBitboard = color ? whiteKnights : blackKnights;
-        long knightAttacks = knightAttackBitmask(bitIndex(position.getX(), position.getY()));
+    private boolean canKnightAttackIndex(int index, boolean colorWhite) {
+        long knightsBitboard = colorWhite ? whiteKnights : blackKnights;
+        long knightAttacks = knightAttackBitmask(index);
         return (knightAttacks & knightsBitboard) != 0;
     }
 
-// The knightAttackBitmask method would generate all the potential squares a knight can attack from a given position.
-// It would look similar to the previously provided knightAttackBitmask method but would center around the target position instead.
-
-    private boolean canBishopAttackPosition(Position position, boolean colorWhite) {
+    private boolean canBishopAttackIndex(int index, boolean colorWhite) {
         long bishopsBitboard = colorWhite ? whiteBishops : blackBishops;
-        long bishopAttacks = bishopAttackBitmask(bitIndex(position.getX(), position.getY()));
+        long bishopAttacks = bishopAttackBitmask(index);
         return (bishopAttacks & bishopsBitboard) != 0;
     }
 
-    private boolean canRookAttackPosition(Position position, boolean colorWhite) {
+    private boolean canRookAttackIndex(int index, boolean colorWhite) {
         long rooksBitboard = colorWhite ? whiteRooks : blackRooks;
-        long rookAttacks = rookAttackBitmask(bitIndex(position.getX(), position.getY()));
+        long rookAttacks = rookAttackBitmask(index);
         return (rookAttacks & rooksBitboard) != 0;
     }
 
-    private boolean canQueenAttackPosition(Position position, boolean colorWhite) {
+    private boolean canQueenAttackIndex(int index, boolean colorWhite) {
         long queensBitboard = colorWhite ? whiteQueens : blackQueens;
-        long queenAttacks = queenAttackBitmask(bitIndex(position.getX(), position.getY()));
+        long queenAttacks = queenAttackBitmask(index);
         return (queenAttacks & queensBitboard) != 0;
     }
 
-    private boolean canKingAttackPosition(Position position, boolean colorWhite) {
+    private boolean canKingAttackIndex(int index, boolean colorWhite) {
         long kingsBitboard = colorWhite ? whiteKing : blackKing;
-        long kingAttacks = kingAttackBitmask(bitIndex(position.getX(), position.getY()));
+        long kingAttacks = kingAttackBitmask(index);
         return (kingAttacks & kingsBitboard) != 0;
     }
 
-// The above-mentioned bishopAttackBitmask, rookAttackBitmask, queenAttackBitmask, and kingAttackBitmask methods
+
+    // The above-mentioned bishopAttackBitmask, rookAttackBitmask, queenAttackBitmask, and kingAttackBitmask methods
 // would generate all potential squares each piece can attack from a given position and compare it to the current
 // bitboard of that piece type to see if there's an overlap.
+    public void performMove(int moveInt, boolean scoreNeedsUpdate) {
+        int fromIndex = moveInt & 0x3F; // Extract the first 6 bits
+        int toIndex = (moveInt >> 6) & 0x3F; // Extract the next 6 bits
+        int pieceTypeBits = (moveInt >> 12) & 0x07; // Extract the next 3 bits
+        boolean isWhite = (moveInt & (1 << 15)) != 0; // Extract the color bit
+        int specialProperty = (moveInt >> 16) & 0x03; // Extract the next 2 bits
+        boolean isCapture = (specialProperty & 0x01) != 0;
+        boolean isEnPassantMove = specialProperty == 3;
+        boolean isCastlingMove = specialProperty == 2;
+        int promotionPieceTypeBits = (moveInt >> 18) & 0x07; // Extract the next 3 bits
+        int capturedPieceTypeBits = (moveInt >> 21) & 0x07; // Extract the next 3 bits
 
-    public void performMove(Move move, boolean scoreNeedsUpdate) {
-        int fromIndex = bitIndex(move.getFrom().getX(), move.getFrom().getY());
-        int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
+        if (isEnPassantMove && isCastlingMove && isCapture) {
+            throw new IllegalStateException("Move cannot be En passant and Castling...");
+        }
 
-        long pieceBitboard = getBitboardForPiece(move.getPieceType(), move.isColorWhite());
+        long pieceBitboard = intToPiecesBitboard(pieceTypeBits, isWhite);
 
-        if (move.isCapture()) {
-            clearSquare(toIndex, !move.isColorWhite());
+        if (isCapture) {
+            clearSquare(toIndex, !isWhite);
         }
 
         // If the move is a castling move, move both the king and the rook
-        if (move.isCastlingMove()) {
+        if (isCastlingMove) {
             // Determine if this is kingside or queenside castling
-            boolean kingside = move.getTo().getX() > move.getFrom().getX();
-            Position rookFromPosition, rookToPosition;
+            boolean kingside = toIndex > fromIndex;
+            int rookFromIndex, rookToIndex;
             if (kingside) {
-                rookFromPosition = new Position('h', move.getFrom().getY());
-                rookToPosition = new Position((char) (move.getTo().getX() - 1), move.getTo().getY());
+                rookFromIndex = isWhite ? 7 : 63;
+                rookToIndex = rookFromIndex - 2;
             } else {
-                rookFromPosition = new Position('a', move.getFrom().getY());
-                rookToPosition = new Position((char) (move.getTo().getX() + 1), move.getTo().getY());
+                rookFromIndex = isWhite ? 0 : 56;
+                rookToIndex = rookFromIndex + 3;
             }
-            // Move the rook
-            int rookFromIndex = bitIndex(rookFromPosition.getX(), rookFromPosition.getY());
-            int rookToIndex = bitIndex(rookToPosition.getX(), rookToPosition.getY());
-            long rookBitboard = getBitboardForPiece(PieceType.ROOK, move.isColorWhite());
+            long rookBitboard = intToPiecesBitboard(4, isWhite);
             rookBitboard = moveBit(rookBitboard, rookFromIndex, rookToIndex);
-            setBitboardForPiece(PieceType.ROOK, move.isColorWhite(), rookBitboard);
+            setBitboardForPiece(4, isWhite, rookBitboard);
 
             // Mark the rook as moved
-            markRookAsMoved(rookFromPosition);
+            markRookAsMoved(rookFromIndex);
         }
 
         // Move the piece
         pieceBitboard = moveBit(pieceBitboard, fromIndex, toIndex);
-        setBitboardForPiece(move.getPieceType(), move.isColorWhite(), pieceBitboard);
+        setBitboardForPiece(pieceTypeBits, isWhite, pieceBitboard);
 
-        if (move.isPromotionMove()) {
+        if (promotionPieceTypeBits != 0) {
             // Clear the pawn from the promotion square
-            clearSquare(toIndex, move.isColorWhite());
+            clearSquare(toIndex, isWhite);
 
             // Set the bitboard for the promotion piece
-            long promotionPieceBitboard = getBitboardForPiece(move.getPromotionPieceType(), move.isColorWhite());
+            long promotionPieceBitboard = intToPiecesBitboard(promotionPieceTypeBits, isWhite);
             promotionPieceBitboard |= (1L << toIndex); // Place the promotion piece on the promotion square
-            setBitboardForPiece(move.getPromotionPieceType(), move.isColorWhite(), promotionPieceBitboard);
+            setBitboardForPiece(promotionPieceTypeBits, isWhite, promotionPieceBitboard);
         }
 
         // Mark the king as moved if it was a king move
-        if (move.getPieceType() == PieceType.KING) {
-            markKingAsMoved(move.isColorWhite());
+        if (pieceTypeBits == 6) {
+            markKingAsMoved(isWhite);
         }
 
-        if (move.getPieceType() == PieceType.ROOK) {
-            markRookAsMoved(indexToPosition(fromIndex));
+        //Mark rook as moved
+        if (pieceTypeBits == 4) {
+            markRookAsMoved(fromIndex);
         }
 
-        if (move.getPieceType() == PieceType.PAWN && Math.abs(move.getFrom().getY() - move.getTo().getY()) == 2) {
-            lastMoveDoubleStepPawnPosition = move.getTo();
+        if (pieceTypeBits == 1 && Math.abs(fromIndex / 8 - toIndex / 8) == 2) {
+            lastMoveDoubleStepPawnIndex = toIndex;
         } else {
-            lastMoveDoubleStepPawnPosition = null;
+            lastMoveDoubleStepPawnIndex = -1;
         }
 
-        if (move.isEnPassantMove()) {
-            // Clear the captured pawn from its position for en passant
-            clearSquare(bitIndex(move.getTo().getX(), move.getFrom().getY()), !move.isColorWhite());
+        // Handle en passant capture
+        if (isEnPassantMove) {
+            // Clear the captured pawn for en passant
+            int capturedPawnIndex = isWhite ? toIndex - 8 : toIndex + 8;
+            clearSquare(capturedPawnIndex, !isWhite);
         }
 
         updateAggregatedBitboards();
@@ -905,8 +909,7 @@ public class BitBoard {
     }
 
 
-    public PieceType getPieceTypeAtPosition(Position position) {
-        int index = bitIndex(position.getX(), position.getY());
+    public PieceType getPieceTypeAtIndex(int index) {
         long positionMask = 1L << index;
 
         if ((whitePawns & positionMask) != 0) return PieceType.PAWN;
@@ -926,8 +929,7 @@ public class BitBoard {
         return null;
     }
 
-    public Color getPieceColorAtPosition(Position position) {
-        int index = bitIndex(position.getX(), position.getY());
+    public Color getPieceColorAtIndex(int index) {
         long positionMask = 1L << index;
 
         // Check if the position is occupied by a white piece
@@ -943,14 +945,12 @@ public class BitBoard {
         return null;
     }
 
-    public boolean isOccupied(Position position) {
-        int index = bitIndex(position.getX(), position.getY());
+    public boolean isOccupied(int index) {
         long positionMask = 1L << index;
         return (allPieces & positionMask) != 0;
     }
 
-    public boolean isOccupiedByOpponent(Position position, boolean colorWhite) {
-        int index = bitIndex(position.getX(), position.getY());
+    public boolean isOccupiedByOpponent(int index, boolean colorWhite) {
         long positionMask = 1L << index;
 
         if (colorWhite) {
@@ -966,23 +966,33 @@ public class BitBoard {
         return whitesTurn ? !whiteKingMoved : !blackKingMoved;
     }
 
-    public boolean hasRookMoved(Position rookPosition) {
-        if (rookPosition.equals(new Position('a', 1))) {
-            return whiteRookA1Moved;
-        } else if (rookPosition.equals(new Position('h', 1))) {
-            return whiteRookH1Moved;
-        } else if (rookPosition.equals(new Position('a', 8))) {
-            return blackRookA8Moved;
-        } else if (rookPosition.equals(new Position('h', 8))) {
-            return blackRookH8Moved;
+    private void markRookAsMoved(int rookIndex) {
+        if (rookIndex == 0) {
+            whiteRookA1Moved = true;
+        } else if (rookIndex == 7) {
+            whiteRookH1Moved = true;
+        } else if (rookIndex == 56) {
+            blackRookA8Moved = true;
+        } else if (rookIndex == 63) {
+            blackRookH8Moved = true;
         }
-        return true; // If the position doesn't match any rook starting position, assume it has moved
     }
 
-    public boolean isOccupiedByPawn(Position position, boolean whiteColor) {
-        // Convert the position to the bit index
-        int index = bitIndex(position.getX(), position.getY());
+    public boolean hasRookMoved(int rookIndex) {
+        return switch (rookIndex) {
+            case 0 ->  // 'a1'
+                    whiteRookA1Moved;
+            case 7 ->  // 'h1'
+                    whiteRookH1Moved;
+            case 56 -> // 'a8'
+                    blackRookA8Moved;
+            case 63 -> // 'h8'
+                    blackRookH8Moved;
+            default -> true; // Assume the rook has moved if it's not in one of the starting positions
+        };
+    }
 
+    public boolean isOccupiedByPawn(int index, boolean whiteColor) {
         // Create a bitmask for the position
         long positionMask = 1L << index;
 
@@ -994,9 +1004,8 @@ public class BitBoard {
         }
     }
 
-    public boolean isOccupiedByColor(Position position, boolean colorWhite) {
+    public boolean isOccupiedByColor(int index, boolean colorWhite) {
         // Convert the position to a bit index
-        int index = bitIndex(position.getX(), position.getY());
         long positionMask = 1L << index;
 
         // Check if the position is occupied by a piece of the given color
@@ -1016,7 +1025,7 @@ public class BitBoard {
     }
 
     public boolean isInCheck(boolean whitesTurn) {
-        Position kingPosition = findKingPosition(whitesTurn);
+        int kingPosition = findKingIndex(whitesTurn);
 
         if (canQueenAttackKing(kingPosition, whitesTurn)) {
             return true;
@@ -1036,38 +1045,44 @@ public class BitBoard {
         return canKingAttackKing(kingPosition, whitesTurn);
     }
 
-    private Position findKingPosition(boolean whitesTurn) {
+    private int findKingIndex(boolean whitesTurn) {
         // Use bit operations to find the king's position on the board
         // Assuming there's only one king per color on the board.
         long kingBitboard = whitesTurn ? whiteKing : blackKing;
-        int index = Long.numberOfTrailingZeros(kingBitboard);
-        return indexToPosition(index);
+        return Long.numberOfTrailingZeros(kingBitboard);
     }
 
     // Example for one attack check - similar methods needed for other piece types
-    private boolean canPawnAttackKing(Position kingPosition, boolean kingColorWhite) {
+    private boolean canPawnAttackKing(int kingIndex, boolean kingColorWhite) {
         int pawnAttackDirection = kingColorWhite ? 1 : -1;
-        int attackRank = kingPosition.getY() + pawnAttackDirection;
-        char kingFile = kingPosition.getX();
-        boolean black = !kingColorWhite;
+        int kingRank = kingIndex / 8;
+        int kingFile = kingIndex % 8;
+        boolean pawnColorBlack = !kingColorWhite; // Pawns that can attack must be of opposite color
 
-        // Check left attack
-        if (kingFile > 'a') {
-            if (isOccupiedByPawn(new Position((char) (kingFile - 1), attackRank), black)) {
+        int attackRank = kingRank + pawnAttackDirection;
+
+        if (attackRank < 0 || attackRank > 7) {
+            return false;
+        }
+
+        // Check for pawn attack from the left diagonal
+        if (kingFile > 0) {
+            int leftAttackIndex = attackRank * 8 + kingFile - 1;
+            if (isOccupiedByPawn(leftAttackIndex, pawnColorBlack)) {
                 return true;
             }
         }
 
-        // Check right attack
-        if (kingFile < 'h') {
-            return isOccupiedByPawn(new Position((char) (kingFile + 1), attackRank), black);
+        // Check for pawn attack from the right diagonal
+        if (kingFile < 7) {
+            int rightAttackIndex = attackRank * 8 + kingFile + 1;
+            return isOccupiedByPawn(rightAttackIndex, pawnColorBlack);
         }
 
         return false;
     }
 
-    private boolean canKnightAttackKing(Position kingPosition, boolean kingColorWhite) {
-        int kingIndex = bitIndex(kingPosition.getX(), kingPosition.getY());
+    private boolean canKnightAttackKing(int kingIndex, boolean kingColorWhite) {
         long knightAttacks = knightAttackBitmask(kingIndex);
         long opponentKnights = !kingColorWhite ? whiteKnights : blackKnights;
         return (knightAttacks & opponentKnights) != 0;
@@ -1098,11 +1113,7 @@ public class BitBoard {
         return attacks;
     }
 
-    private boolean canBishopAttackKing(Position kingPosition, boolean kingColorWhite) {
-        // Calculate the bit index of the king's position
-        int kingIndex = bitIndex(kingPosition.getX(), kingPosition.getY());
-
-        // Generate the bishop attack bitmask from the king's position
+    private boolean canBishopAttackKing(int kingIndex, boolean kingColorWhite) {
         long bishopAttacks = bishopAttackBitmask(kingIndex);
 
         // Determine the opponent's bishops bitboard based on the king's color
@@ -1142,10 +1153,7 @@ public class BitBoard {
     }
 
 
-    private boolean canRookAttackKing(Position kingPosition, boolean kingColorWhite) {
-        // Calculate the bit index of the king's position
-        int kingIndex = bitIndex(kingPosition.getX(), kingPosition.getY());
-
+    private boolean canRookAttackKing(int kingIndex, boolean kingColorWhite) {
         // Generate the rook attack bitmask from the king's position
         long rookAttacks = rookAttackBitmask(kingIndex);
 
@@ -1185,11 +1193,7 @@ public class BitBoard {
     }
 
 
-    private boolean canQueenAttackKing(Position kingPosition, boolean kingColorWhite) {
-        // Calculate the bit index of the king's position
-        int kingIndex = bitIndex(kingPosition.getX(), kingPosition.getY());
-
-        // Generate the queen attack bitmask from the king's position
+    private boolean canQueenAttackKing(int kingIndex, boolean kingColorWhite) {
         long queenAttacks = queenAttackBitmask(kingIndex);
 
         // Determine the opponent's queens bitboard based on the king's color
@@ -1208,11 +1212,7 @@ public class BitBoard {
         return rookAttacks | bishopAttacks;
     }
 
-    private boolean canKingAttackKing(Position kingPosition, boolean kingColorWhite) {
-        // Calculate the bit index of the king's position
-        int kingIndex = bitIndex(kingPosition.getX(), kingPosition.getY());
-
-        // Generate the king attack bitmask from the king's position
+    private boolean canKingAttackKing(int kingIndex, boolean kingColorWhite) {
         long kingAttacks = kingAttackBitmask(kingIndex);
 
         // Determine the opponent's king bitboard based on the king's color
@@ -1352,25 +1352,37 @@ public class BitBoard {
         return Math.abs(fromFile - toFile) > 1 || toRank < 0 || toRank > 7;
     }
 
-    public void undoMove(Move move, boolean scoreNeedsUpdate) {
-        int fromIndex = bitIndex(move.getFrom().getX(), move.getFrom().getY());
-        int toIndex = bitIndex(move.getTo().getX(), move.getTo().getY());
+    public void undoMove(int moveInt, boolean scoreNeedsUpdate) {
+        int fromIndex = moveInt & 0x3F; // Extract the first 6 bits
+        int toIndex = (moveInt >> 6) & 0x3F; // Extract the next 6 bits
+        int pieceTypeBits = (moveInt >> 12) & 0x07;
+        ; // Extract the next 3 bits
+        boolean isWhite = (moveInt & (1 << 15)) != 0; // Extract the color bit
+        int specialProperty = (moveInt >> 16) & 0x03; // Extract the next 2 bits
+        boolean isCapture = (specialProperty & 0x01) != 0;
+        boolean isEnPassantMove = specialProperty == 3;
+        boolean isCastlingMove = specialProperty == 2;
+
+        int promotionPieceTypeBits = (moveInt >> 18) & 0x07; // Extract the next 3 bits
+        int capturedPieceTypeBits = (moveInt >> 21) & 0x07; // Extract the next 3 bits
+        boolean isKingFirstMove = (moveInt & (1 << 24)) != 0; // Extract the king's first move bit
+        boolean isRookFirstMove = (moveInt & (1 << 25)) != 0; // Extract the rook's first move bit
 
         // 1. Handle Captured Piece Restoration
-        undoCapture(move, toIndex);
+        undoCapture(toIndex, capturedPieceTypeBits, isCapture, isWhite, isEnPassantMove);
 
         // 2. Handle Pawn Promotion
-        undoPromotion(move, fromIndex, toIndex);
+        undoPromotion(promotionPieceTypeBits, fromIndex, toIndex, isWhite);
 
         // Moving the piece back...
         // Ensure that if the piece is a king, it's handled correctly
-        undoPieceMove(move, fromIndex, toIndex);
+        undoPieceMove(pieceTypeBits, fromIndex, toIndex, isWhite);
 
         // If the move was a castling move, move the rook back
-        undoCastling(move);
+        undoCastling(fromIndex, toIndex, isCastlingMove, isWhite);
 
         // If the move was a double pawn push, remove the last move double step pawn position
-        undoGameState(move);
+        undoGameState(fromIndex, toIndex, pieceTypeBits, isKingFirstMove, isRookFirstMove, isWhite);
 
         // Update the aggregated bitboards
         updateAggregatedBitboards();
@@ -1380,115 +1392,157 @@ public class BitBoard {
         whitesTurn = !whitesTurn;
     }
 
-    private void undoGameState(Move move) {
-        if (move.getPieceType() == PieceType.PAWN && Math.abs(move.getFrom().getY() - move.getTo().getY()) == 2) {
-            lastMoveDoubleStepPawnPosition = null;
+    private void undoGameState(int fromIndex, int toIndex, int pieceTypeBits, boolean isKingFirstMove, boolean isRookFirstMove, boolean isWhite) {
+
+        if (pieceTypeBits == 1 && Math.abs(fromIndex / 8 - toIndex / 8) == 2) {
+            lastMoveDoubleStepPawnIndex = -1;
         }
 
-        // Restore the state of the king and rook moved flags if necessary
-        if (move.getPieceType() == PieceType.KING && move.isKingFirstMove()) {
-            if (move.isColorWhite()) {
+        if (pieceTypeBits == 6 && isKingFirstMove) {
+            if (isWhite) {
                 whiteKingMoved = false;
-                if (move.isRookFirstMove()) {
-                    if (move.getTo().getX() == 'g') {
+                if (isRookFirstMove) {
+                    if (toIndex == 6) { // 'g1'
                         whiteRookH1Moved = false;
-                    } else {
+                    } else if (toIndex == 2) { // 'c1'
                         whiteRookA1Moved = false;
                     }
                 }
             } else {
                 blackKingMoved = false;
-                if (move.isRookFirstMove()) {
-                    if (move.getTo().getX() == 'g') {
+                if (isRookFirstMove) {
+                    if (toIndex == 62) { // 'g8'
                         blackRookH8Moved = false;
-                    } else {
+                    } else if (toIndex == 58) { // 'c8'
                         blackRookA8Moved = false;
                     }
                 }
             }
-
         }
 
-        // Assuming we also track the moves of the rooks for castling purposes, restore their moved state
-        if (move.getPieceType() == PieceType.ROOK && move.isRookFirstMove()) {
-            if (move.getFrom().equals(new Position('a', 1))) {
+        if (pieceTypeBits == 4 && isRookFirstMove) {
+            if (fromIndex == 0) { // 'a1'
                 whiteRookA1Moved = false;
-            } else if (move.getFrom().equals(new Position('h', 1))) {
+            } else if (fromIndex == 7) { // 'h1'
                 whiteRookH1Moved = false;
-            } else if (move.getFrom().equals(new Position('a', 8))) {
+            } else if (fromIndex == 56) { // 'a8'
                 blackRookA8Moved = false;
-            } else if (move.getFrom().equals(new Position('h', 8))) {
+            } else if (fromIndex == 63) { // 'h8'
                 blackRookH8Moved = false;
             }
         }
     }
 
-    private void undoCastling(Move move) {
-        if (move.isCastlingMove()) {
+    private void undoCastling(int fromIndex, int toIndex, boolean isCastling, boolean isWhite) {
+        if (isCastling) {
             // Determine if this is kingside or queenside castling
-            boolean kingside = move.getTo().getX() > move.getFrom().getX();
-            Position rookFromPosition, rookToPosition;
+            boolean kingside = toIndex > fromIndex;
+            int rookFromIndex, rookToIndex;
+
             if (kingside) {
-                rookToPosition = new Position('h', move.getFrom().getY());
-                rookFromPosition = new Position((char) (move.getTo().getX() - 1), move.getTo().getY());
+                rookToIndex = isWhite ? 7 : 63;
+                rookFromIndex = rookToIndex - 2;
             } else {
-                rookToPosition = new Position('a', move.getFrom().getY());
-                rookFromPosition = new Position((char) (move.getTo().getX() + 1), move.getTo().getY());
+                rookToIndex = isWhite ? 0 : 56;
+                rookFromIndex = rookToIndex + 3;
             }
             // Move the rook back
-            int rookFromIndex = bitIndex(rookFromPosition.getX(), rookFromPosition.getY());
-            int rookToIndex = bitIndex(rookToPosition.getX(), rookToPosition.getY());
-            long rookBitboard = getBitboardForPiece(PieceType.ROOK, move.isColorWhite());
+            long rookBitboard = intToPiecesBitboard(4, isWhite);
             rookBitboard = moveBit(rookBitboard, rookFromIndex, rookToIndex);
-            setBitboardForPiece(PieceType.ROOK, move.isColorWhite(), rookBitboard);
+            setBitboardForPiece(4, isWhite, rookBitboard);
         }
     }
 
-    private void undoPieceMove(Move move, int fromIndex, int toIndex) {
-        PieceType movedPieceType = move.getPieceType();
-        long pieceBitboard = getBitboardForPiece(movedPieceType, move.isColorWhite());
+    private void undoPieceMove(int pieceTypeBits, int fromIndex, int toIndex, boolean isWhite) {
+        long pieceBitboard = intToPiecesBitboard(pieceTypeBits, isWhite);
         pieceBitboard = moveBit(pieceBitboard, toIndex, fromIndex);
-        setBitboardForPiece(movedPieceType, move.isColorWhite(), pieceBitboard);
+        setBitboardForPiece(pieceTypeBits, isWhite, pieceBitboard);
     }
 
-    private void undoPromotion(Move move, int fromIndex, int toIndex) {
-        if (move.isPromotionMove()) {
-            // Demote the promoted piece back to a pawn
-            PieceType promotedTo = move.getPromotionPieceType();
-            long promotedPieceBitboard = getBitboardForPiece(promotedTo, move.isColorWhite());
+    private void undoPromotion(int promotionPieceTypeBits, int fromIndex, int toIndex, boolean isWhite) {
+        if (promotionPieceTypeBits != 0) {
+            long promotedPieceBitboard = intToPiecesBitboard(promotionPieceTypeBits, isWhite);
             // Remove promoted piece
             promotedPieceBitboard &= ~(1L << toIndex);
-            setBitboardForPiece(promotedTo, move.isColorWhite(), promotedPieceBitboard);
+            setBitboardForPiece(promotionPieceTypeBits, isWhite, promotedPieceBitboard);
 
             // Re-add the pawn
-            long pawnBitboard = getBitboardForPiece(PieceType.PAWN, move.isColorWhite());
+            long pawnBitboard = intToPiecesBitboard(1, isWhite);
             pawnBitboard |= 1L << fromIndex;
-            setBitboardForPiece(PieceType.PAWN, move.isColorWhite(), pawnBitboard);
+            setBitboardForPiece(1, isWhite, pawnBitboard);
         }
     }
 
-    private void undoCapture(Move move, int toIndex) {
-        if (move.isCapture()) {
-            boolean isEnPassantWhite = move.isEnPassantMove() && move.isColorWhite();
-            boolean isEnPassantBlack = move.isEnPassantMove() && !move.isColorWhite();
+    private void undoCapture(int toIndex, int capturedPieceTypeBits, boolean isCapture, boolean isWhite, boolean isEnPassant) {
+        if (isCapture) {
+            boolean isEnPassantWhite = isEnPassant && isWhite;
+            boolean isEnPassantBlack = isEnPassant && !isWhite;
 
             int enPassantModifier = 0;
 
             if (isEnPassantWhite) {
                 enPassantModifier = -8;
-                lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
+                lastMoveDoubleStepPawnIndex = toIndex + enPassantModifier;
             }
             if (isEnPassantBlack) {
                 enPassantModifier = 8;
-                lastMoveDoubleStepPawnPosition = new Position(move.getTo().getX(), move.getFrom().getY());
+                lastMoveDoubleStepPawnIndex = toIndex + enPassantModifier;
             }
 
-            PieceType capturedPieceType = move.getCapturedPieceType();
-            long capturedPieceBitboard = getBitboardForPiece(capturedPieceType, !move.isColorWhite());
+            long capturedPieceBitboard = intToPiecesBitboard(capturedPieceTypeBits, !isWhite);
             // Restore the captured piece on its bitboard
             capturedPieceBitboard |= (1L << toIndex + enPassantModifier);
-            setBitboardForPiece(capturedPieceType, !move.isColorWhite(), capturedPieceBitboard);
+            setBitboardForPiece(capturedPieceTypeBits, !isWhite, capturedPieceBitboard);
         }
+    }
+
+    private int createMoveInt(int fromIndex, int toIndex, PieceType pieceType, boolean isWhite, boolean isCapture, boolean isCastlingMove, boolean isEnPassantMove, PieceType promotionPieceType, PieceType capturedPieceType, boolean isKingFirstMove, boolean isRookFirstMove) {
+        int moveInt = 0;
+        moveInt |= fromIndex; // 6 bits for 'from' position
+        moveInt |= toIndex << 6; // 6 bits for 'to' position, shifted by 6 bits
+
+        int pieceTypeBits = pieceTypeToInt(pieceType); // 3 bits for piece type
+        moveInt |= pieceTypeBits << 12; // Shifted by 12 bits
+
+        if (isWhite) {
+            moveInt |= 1 << 15; // 1 bit for color, shifted by 15 bits
+        }
+
+        int specialProperty = (isCapture ? 1 : 0) | (isCastlingMove ? 2 : 0) | (isEnPassantMove ? 3 : 0);
+        moveInt |= specialProperty << 16; // Shifted by 16 bits
+
+        if (promotionPieceType != null) {
+            moveInt |= pieceTypeToInt(promotionPieceType) << 18; // 3 bits for promotion piece type, shifted by 18 bits
+        } else {
+            moveInt &= ~(0x07 << 18); // Ensure promotion bits are set to 000 if no promotion
+        }
+
+        if (capturedPieceType != null) {
+            moveInt |= pieceTypeToInt(capturedPieceType) << 21; // 3 bits for captured piece type, shifted by 21 bits
+        } else {
+            moveInt &= ~(0x07 << 21); // Ensure captured piece bits are set to 000 if no piece is captured
+        }
+
+        if (isKingFirstMove) {
+            moveInt |= 1 << 24; // 1 bit for king's first move, shifted by 24 bits
+        }
+
+        if (isRookFirstMove) {
+            moveInt |= 1 << 25; // 1 bit for rook's first move, shifted by 25 bits
+        }
+
+        return moveInt;
+    }
+
+    private int pieceTypeToInt(PieceType pieceType) {
+        return switch (pieceType) {
+            case PAWN -> 1;
+            case KNIGHT -> 2;
+            case BISHOP -> 3;
+            case ROOK -> 4;
+            case QUEEN -> 5;
+            case KING -> 6;
+        };
     }
 
     @Override
@@ -1525,17 +1579,16 @@ public class BitBoard {
                 whiteRooks, blackRooks, whiteQueens, blackQueens, whiteKing, blackKing,
                 whitePieces, blackPieces, allPieces, whiteKingMoved, blackKingMoved,
                 whiteRookA1Moved, whiteRookH1Moved, blackRookA8Moved, blackRookH8Moved,
-                lastMoveDoubleStepPawnPosition);
+                lastMoveDoubleStepPawnIndex);
     }
 
     private PieceType getPieceTypeAtSquare(int square) {
-        Position position = indexToPosition(square);
-        return getPieceTypeAtPosition(position);
+
+        return getPieceTypeAtIndex(square);
     }
 
     private Color getPieceColorAtSquare(int square) {
-        Position position = indexToPosition(square);
-        return getPieceColorAtPosition(position);
+        return getPieceColorAtIndex(square);
     }
 
     private int getPieceIndex(PieceType pieceType, Color pieceColor) {
@@ -1590,5 +1643,6 @@ public class BitBoard {
 
         return hash;
     }
+
 }
 

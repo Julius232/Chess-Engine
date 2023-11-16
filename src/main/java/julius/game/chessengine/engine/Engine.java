@@ -1,9 +1,6 @@
 package julius.game.chessengine.engine;
 
-import julius.game.chessengine.board.BitBoard;
-import julius.game.chessengine.board.FEN;
-import julius.game.chessengine.board.Move;
-import julius.game.chessengine.board.Position;
+import julius.game.chessengine.board.*;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.utils.Score;
@@ -17,17 +14,16 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import static julius.game.chessengine.helper.BitHelper.bitIndex;
-
 @Service
 @Log4j2
 public class Engine {
 
     public static final double CHECKMATE = 1000000;
     private boolean legalMovesNeedUpdate = true;
-    private List<Move> legalMoves = new ArrayList<>();
+    private MoveList legalMoves;
+
     @Getter
-    private LinkedList<Move> line = new LinkedList<>();
+    private LinkedList<Integer> line = new LinkedList<>();
     private BitBoard bitBoard = new BitBoard();
     @Getter
     private GameState gameState = new GameState();
@@ -36,14 +32,14 @@ public class Engine {
         startNewGame();
     }
 
-    public Engine(BitBoard b, LinkedList<Move> m, List<Move> l) {
+    public Engine(BitBoard b, LinkedList<Integer> m, MoveList l) {
         bitBoard = new BitBoard(b);
         gameState = new GameState();
         line = m;
         legalMoves = l;
     }
 
-    public List<Move> getAllLegalMoves() {
+    public MoveList getAllLegalMoves() {
         if (legalMovesNeedUpdate) {
             generateLegalMoves();
             legalMovesNeedUpdate = false; // Reset flag after generating
@@ -51,14 +47,14 @@ public class Engine {
         return this.legalMoves;
     }
 
-    public void performMove(Move move) {
+    public void performMove(int move) {
         this.bitBoard.performMove(move, true);
         updateGameState();
         legalMovesNeedUpdate = true; // Set flag
         line.add(move);
     }
 
-    public void undoMove(Move move, boolean scoreNeedsUpdate) {
+    public void undoMove(int move, boolean scoreNeedsUpdate) {
         this.bitBoard.undoMove(move, scoreNeedsUpdate);
         updateGameState();
         legalMovesNeedUpdate = true; // Set flag
@@ -73,16 +69,8 @@ public class Engine {
     }
 
     public Engine createSimulation() {
-        // Deep copy the legalMoves list
-        List<Move> copiedLegalMoves = new ArrayList<>(legalMoves.size());
-        for (Move move : legalMoves) {
-            // Assuming Move class is properly cloneable. If not, you need to create a new Move instance
-            // with the same properties as the original move.
-            copiedLegalMoves.add(new Move(move));
-        }
-
         // Now use the deep copied list in the new Engine instance
-        return new Engine(bitBoard, new LinkedList<>(line), copiedLegalMoves);
+        return new Engine(bitBoard, new LinkedList<>(line), legalMoves);
     }
 
     public void startNewGame() {
@@ -94,35 +82,47 @@ public class Engine {
     public int counter = 0;
 
     private void generateLegalMoves() {
-        this.legalMoves = bitBoard.getAllCurrentPossibleMoves()
-                .stream()
-                .filter(move -> isLegalMove(bitBoard, move))
-                .collect(Collectors.toList());
+        this.legalMoves = new MoveList();
+        MoveList moves = bitBoard.getAllCurrentPossibleMoves();
+
+        for (int i = 0; i < moves.size(); i++) {
+            int m = moves.getMove(i);
+            if (isLegalMove(m)) {
+                this.legalMoves.add(m);
+            }
+        }
+
         counter++;
     }
 
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
-    public List<Move> getMovesFromPosition(Position fromPosition) {
-        return getAllLegalMoves().stream()
-                .filter(move -> move.getFrom().equals(fromPosition))
-                .collect(Collectors.toList());
+    public List<Move> getMovesFromIndex(int fromIndex) {
+
+        MoveList legalMoves = getAllLegalMoves();
+
+        List<Move> movesFromIndex = new ArrayList<>();
+
+        for (int i = 0; i < legalMoves.size(); i++) {
+            int m = legalMoves.getMove(i);
+            int from = m & 0x3F; // Extract the first 6 bits
+            if (from == fromIndex) {
+                movesFromIndex.add(Move.convertIntToMove(m));
+            }
+        }
+
+        return movesFromIndex;
     }
 
     public GameState moveRandomFigure(boolean isWhite) {
         // Now, the color parameter is used to determine which moves to generate
-        List<Move> moves = getAllLegalMoves();
+        MoveList moves = getAllLegalMoves();
 
-        if (moves.isEmpty()) {
+        if (moves.size() == 0) {
             throw new RuntimeException("No moves possible for " + (isWhite ? "White" : "Black"));
         }
 
         Random rand = new Random();
-        Move randomMove = moves.get(rand.nextInt(moves.size()));
-
-        if (randomMove.isEnPassantMove()) {
-            // Clear the captured pawn from its position for en passant
-            bitBoard.clearSquare(bitIndex(randomMove.getTo().getX(), randomMove.getFrom().getY()), !isWhite);
-        }
+        int randomMove = moves.getMove(rand.nextInt(moves.size()));
 
         // Execute the move on the bitboard
         performMove(randomMove);
@@ -133,53 +133,67 @@ public class Engine {
         return gameState;
     }
 
-    public GameState moveFigure(Position fromPosition, Position toPosition) {
-        return moveFigure(bitBoard, fromPosition, toPosition);
+    public GameState moveFigure(int fromIndex, int toIndex) {
+        return moveFigure(bitBoard, fromIndex, toIndex);
     }
 
-    public GameState moveFigure(BitBoard bitBoard, Position fromPosition, Position toPosition) {
+    public GameState moveFigure(BitBoard bitBoard, int fromIndex, int toIndex) {
         // Determine the piece type and color from the bitboard based on the 'from' position
-        PieceType pieceType = bitBoard.getPieceTypeAtPosition(fromPosition);
-        Color color = bitBoard.getPieceColorAtPosition(fromPosition);
+        PieceType pieceType = bitBoard.getPieceTypeAtIndex(fromIndex);
+        Color color = bitBoard.getPieceColorAtIndex(fromIndex);
 
         if (pieceType == null || color == null) {
             throw new IllegalStateException("No piece at the starting position");
         }
 
         // Check if it's the correct player's turn
-        Color pieceColor = bitBoard.getPieceColorAtPosition(fromPosition);
+        Color pieceColor = bitBoard.getPieceColorAtIndex(fromIndex);
         if ((pieceColor == Color.WHITE && !bitBoard.whitesTurn) || (pieceColor == Color.BLACK && bitBoard.whitesTurn)) {
             bitBoard.logBoard();
             throw new IllegalStateException("It's not " + pieceColor + "'s turn");
         }
 
-        Move move = getAllLegalMoves().stream()
-                .filter(m -> m.getFrom().equals(fromPosition) && m.getTo().equals(toPosition))
-                .findAny().orElseThrow(() -> new IllegalStateException("Move not found"));
+        MoveList legalMoves = getAllLegalMoves();
 
+        int move = -1;
 
-        // Perform the move on the bitboard
-        performMove(move);
+        for (int i = 0; i < legalMoves.size(); i++) {
+            int m = legalMoves.getMove(i);
+            int from = m & 0x3F; // Extract the first 6 bits
+            int to = (m >> 6) & 0x3F; // Extract the next 6 bits
 
-        // Update the game state
-        updateGameState();
+            if (from == fromIndex && to == toIndex) {
+                move = m;
+            }
+        }
 
+        if (move == -1) {
+            log.warn("Move not legal!");
+        }
+        else {
+            // Perform the move on the bitboard
+            performMove(move);
+
+            // Update the game state
+            updateGameState();
+        }
 
         return gameState;
     }
 
 
-    private boolean isLegalMove(BitBoard bitBoard, Move move) {
+    private boolean isLegalMove(int move) {
         // Check if the move is within bounds of the board
         if (!isMoveOnBoard(move)) {
             return false;
         }
+        boolean isWhite = (move & (1 << 15)) != 0;
 
         BitBoard testBoard = simulateMove(bitBoard, move);
-        return !testBoard.isInCheck(move.isColorWhite());
+        return !testBoard.isInCheck(isWhite);
     }
 
-    private BitBoard simulateMove(BitBoard bitBoard, Move move) {
+    private BitBoard simulateMove(BitBoard bitBoard, int move) {
         // Create a deep copy of the BitBoard object to avoid mutating the original board.
         BitBoard boardCopy = new BitBoard(bitBoard);
 
@@ -190,29 +204,22 @@ public class Engine {
         return boardCopy;
     }
 
-    private boolean isMoveOnBoard(Move move) {
-        // Check if the 'from' position is on the board
-        if (move.getFrom().getX() < 'a' || move.getFrom().getX() > 'h' ||
-                move.getFrom().getY() < 1 || move.getFrom().getY() > 8) {
-            return false;
-        }
-
-        // Check if the 'to' position is on the board
-        return move.getTo().getX() >= 'a' && move.getTo().getX() <= 'h' &&
-                move.getTo().getY() >= 1 && move.getTo().getY() <= 8;
-
-        // If both positions are within the valid range, the move is on the board
+    private boolean isMoveOnBoard(int move) {
+        int fromIndex = move & 0x3F; // Extract the first 6 bits
+        int toIndex = (move >> 6) & 0x3F; // Extract the next 6 bits
+        return (fromIndex >= 0 && fromIndex <= 63) && (toIndex >= 0 && toIndex <= 63);
     }
 
-    public List<Position> getPossibleMovesForPosition(Position fromPosition) {
-        return getMovesFromPosition(fromPosition).stream()
+    public List<Position> getPossibleMovesForPosition(int fromIndex) {
+        return getMovesFromIndex(fromIndex).stream()
                 .map(Move::getTo)
                 .collect(Collectors.toList());
     }
 
-    private boolean isNotInCheckAfterMove(BitBoard board, Move move) {
+    private boolean isNotInCheckAfterMove(BitBoard board, int move) {
         BitBoard testBoard = simulateMove(board, move);
-        return !testBoard.isInCheck(move.isColorWhite());
+        boolean isWhite = (move & (1 << 15)) != 0;
+        return !testBoard.isInCheck(isWhite);
     }
 
     public boolean isInStateCheck(boolean isWhite) {
@@ -225,36 +232,28 @@ public class Engine {
         return board.isInCheck(isWhite);
     }
 
+
     public boolean isInStateCheckMate(boolean isWhite) {
-        return isInStateCheckMate(bitBoard, isWhite);
-    }
-
-    public boolean isInStateCheckMate(BitBoard board, boolean isWhite) {
-        // First, check if the king is in check.
-        boolean isInCheck = board.isInCheck(isWhite);
-
         // Then, generate all possible moves for the player.
-        List<Move> possibleMoves = board.getAllCurrentPossibleMoves();
+        MoveList possibleMoves = getAllLegalMoves();
 
         // Filter out the moves that would leave the king in check after they are made.
         // Note: You need to implement a method that checks if making a certain move would result in check.
-        long legalMovesCount = possibleMoves.stream()
-                .filter(move -> isNotInCheckAfterMove(board, move))
-                .count();
 
         // Checkmate occurs when the king is in check and there are no legal moves left.
-        return isInCheck && legalMovesCount == 0;
+        return isInStateCheck(isWhite) && possibleMoves.size() == 0;
     }
 
     private void updateGameState() {
-        if (getAllLegalMoves().isEmpty() && isInStateCheckMate(bitBoard, true)) {
+        if (getAllLegalMoves().size() == 0 && isInStateCheckMate(true)) {
             gameState.setState("BLACK WON");
-        } else if (getAllLegalMoves().isEmpty() && isInStateCheckMate(bitBoard, false)) {
+        } else if (getAllLegalMoves().size() == 0 && isInStateCheckMate(false)) {
             gameState.setState("WHITE WON");
-        } else if (getAllLegalMoves().isEmpty()) {
+        } else if (getAllLegalMoves().size() == 0) {
             gameState.setState("DRAW");
         }
     }
+
     public synchronized long getBoardStateHash() {
         return bitBoard.getBoardStateHash();
     }
@@ -285,7 +284,7 @@ public class Engine {
     }
 
     public boolean isGameOver() {
-        boolean noLegalMoves = getAllLegalMoves().isEmpty();
+        boolean noLegalMoves = getAllLegalMoves().size() == 0;
         boolean isInCheck = isInStateCheck(bitBoard, bitBoard.whitesTurn);
 
         // Checkmate condition
@@ -318,7 +317,7 @@ public class Engine {
         return getScore().getScoreDifference() / 100.0;
     }
 
-    public Long getBoardStateHashAfterMove(Move move) {
+    public Long getBoardStateHashAfterMove(int move) {
         // Step 1: Create a deep copy of the current board state
         BitBoard boardCopy = new BitBoard(this.bitBoard);
 

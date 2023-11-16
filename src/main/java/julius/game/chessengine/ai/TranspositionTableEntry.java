@@ -6,9 +6,9 @@ class TranspositionTableEntry {
     double score;
     int depth;
     NodeType nodeType;
-    Move bestMove; // Added to store the best move
+    int bestMove; // Added to store the best move
 
-    TranspositionTableEntry(double score, int depth, NodeType nodeType, Move bestMove) {
+    TranspositionTableEntry(double score, int depth, NodeType nodeType, int bestMove) {
         this.score = score;
         this.depth = depth;
         this.nodeType = nodeType;
