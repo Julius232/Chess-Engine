@@ -30,7 +30,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 20000; //milliseconds
+    long timeLimit = 5000; //milliseconds
     private final Engine engine;
 
 
