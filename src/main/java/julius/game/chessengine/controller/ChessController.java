@@ -118,10 +118,10 @@ public class ChessController {
     }
 
     @GetMapping(value = "/line")
-    public ResponseEntity<List<String>> getCalculatedLine() {
-        List<String> calculatedLine = ai.getCalculatedLine()
+    public ResponseEntity<List<ApiMoveAndScore>> getCalculatedLine() {
+        List<ApiMoveAndScore> calculatedLine = ai.getCalculatedLine()
                 .stream()
-                .map(i -> Move.convertIntToMove(i).toString())
+                .map(ms -> new ApiMoveAndScore(Move.convertIntToMove(ms.getMove()).toString(), ms.getScore()))
                 .collect(Collectors.toList()); // Assuming this returns List<String>
         return ResponseEntity.ok(calculatedLine);
     }

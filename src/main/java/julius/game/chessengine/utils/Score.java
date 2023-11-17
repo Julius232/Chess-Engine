@@ -14,6 +14,7 @@ public class Score {
         this.scoreBlack = scoreBlack;
     }
 
+    //Negative Score if Black is better and positive if White is better
     public int getScoreDifference() {
         return (getScoreWhite() - getScoreBlack());
     }

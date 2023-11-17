@@ -99,8 +99,8 @@ public class BitBoard {
     }
 
     public BitBoard() {
-        updateScore();
         setInitialPosition();
+        updateScore();
     }
 
     public BitBoard(BitBoard other) {
@@ -138,6 +138,9 @@ public class BitBoard {
     }
 
     public void updateScore() {
+        int agilityWhite = generateAllPossibleMoves(true).size();
+        int agilityBlack = generateAllPossibleMoves(false).size();
+
         // Initialize bonuses and penalties
         int whiteCenterBonus = 0;
         int blackCenterBonus = 0;
@@ -147,10 +150,10 @@ public class BitBoard {
         int blackIsolatedPenalty = 0;
 
         // Define the piece values
-        final int PAWN_VALUE = 100;   // Pawns are worth 1 point, scaled by 100
-        final int KNIGHT_VALUE = 300; // Knights are worth 3 points
-        final int BISHOP_VALUE = 300; // Bishops are worth 3 points
-        final int ROOK_VALUE = 500;   // Rooks are worth 5 points
+        final int PAWN_VALUE = 1000;   // Pawns are worth 1 point, scaled by 100
+        final int KNIGHT_VALUE = 3000; // Knights are worth 3 points
+        final int BISHOP_VALUE = 3130; // Bishops are worth 3 points
+        final int ROOK_VALUE = 5000;   // Rooks are worth 5 points
         final int QUEEN_VALUE = 9000;  // Queens are worth 9 points
 
         // Initialize scores
@@ -217,6 +220,9 @@ public class BitBoard {
         if (areAllPiecesOnStartingSquares(blackKnights, blackBishops, blackRooks, false)) {
             blackScore += START_POSITION_PENALTY;
         }
+
+        whiteScore += agilityWhite;
+        blackScore += agilityBlack;
 
         // Return the score encapsulated in a Score object
         this.currentScore = new Score(whiteScore, blackScore);

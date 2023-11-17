@@ -14,8 +14,10 @@ $(document).ready(function () {
 
     const updateCalculatedLine = () => {
         makeRequest('GET', 'http://localhost:8080/chess/line', (data) => {
-            const lineText = data.join(", "); // Join the array elements with a comma and space
+            const lineText = data.map(item => item.move).join(", "); // Join the array elements with a comma and space
+            const lastScore = data[data.length - 1].score; // Get the score from the last element
             document.getElementById('calculatedLine').innerText = `Calculated Line: ${lineText}`;
+            document.getElementById("score").textContent = `SCORE: ${lastScore}`;
         });
     };
     
@@ -42,13 +44,6 @@ $(document).ready(function () {
         }
     };
 
-    const updateScore = () => {
-        makeRequest('GET', 'http://localhost:8080/chess/score', (data) => {
-            let scoreDifference = data.scoreWhite - data.scoreBlack;
-            document.getElementById("score").textContent = `SCORE: ${scoreDifference}`;
-        });
-    };
-
     const makeMove = (type, color) => {
         makeRequest('PATCH', `http://localhost:8080/chess/figure/move/${type}/${color}`, (data) => {
             checkState(data.state);
@@ -63,7 +58,6 @@ $(document).ready(function () {
     const reloadBoard = () => {
         makeRequest('GET', 'http://localhost:8080/chess/figure/frontend', (data) => {
             board.position(data.renderBoard);
-            updateScore();
             updateCalculatedLine(); // Update the calculated line
         });
     };
@@ -109,7 +103,6 @@ $(document).ready(function () {
 
     const setBoardOrientation = (color) => {
         board.orientation(color); // Set board orientation to chosen color
-        updateScore(); // Update score display to match orientation
     };
 
     const chooseColor = (color) => {

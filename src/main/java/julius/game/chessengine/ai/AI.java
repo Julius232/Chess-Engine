@@ -19,9 +19,9 @@ import java.util.stream.Collectors;
 public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     @Getter
-    private List<Integer> calculatedLine = Collections.synchronizedList(new ArrayList<>());
+    private List<MoveAndScore> calculatedLine = Collections.synchronizedList(new ArrayList<>());
 
-    private static final HashMap<Long, TranspositionTableEntry> transpositionTable = new HashMap<>();
+    private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
     private static final double EXIT_FLAG = Double.MAX_VALUE;
 
     private Thread calculationThread;
@@ -31,7 +31,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 5000; //milliseconds
+    long timeLimit = 1000; //milliseconds
     private final Engine engine;
 
 
@@ -41,7 +41,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
-        log.info("startedUp");
+        log.debug("startedUp");
         // Start the thread when the application context is fully refreshed
         startCalculationThread();
     }
@@ -67,24 +67,24 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
     public GameState performMove() {
         if (calculatedLine.isEmpty()) {
             // calculatedLine is empty, either log an error or return null
-            log.info("Waiting for calculatedLine to be populated");
+            log.debug("Waiting for calculatedLine to be populated");
             return null; // or handle differently
         }
 
-        int aiMove = calculatedLine.remove(0); // Retrieve and remove the move from the list
-        if (aiMove == -1) {
+        MoveAndScore aiMove = calculatedLine.remove(0); // Retrieve and remove the move from the list
+        if (aiMove == null) {
             log.error("Calculated move is null");
             return null; // or handle differently
         }
 
-        engine.performMove(aiMove);
+        engine.performMove(aiMove.move);
         return engine.getGameState();
     }
 
     private void calculateLine() {
         while (keepCalculating) {
             if (positionChanged()) {
-                log.info(" --- TranspositionTable[{}] --- ", transpositionTable.size());
+                log.debug(" --- TranspositionTable[{}] --- ", transpositionTable.size());
                 // Convert the string color to the Color enum
                 Engine simulation = engine.createSimulation();
                 long boardStateHash = simulation.getBoardStateHash();
@@ -98,7 +98,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                 for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
                     if (!keepCalculating) break; // Check if we should stop calculating
                     MoveAndScore moveAndScore = getBestMove(simulation, isWhite, currentDepth, startTime, timeLimit);
-                    log.info(" --- DEPTH<{}> --- ", currentDepth);
+                    log.debug(" --- DEPTH<{}> --- ", currentDepth);
                     if (moveAndScore != null) {
                         double score = moveAndScore.score;
                         int move = moveAndScore.move;
@@ -111,7 +111,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                     }
 
                     if (System.currentTimeMillis() - startTime > timeLimit) {
-                        log.info("Time limit exceeded at depth {}", currentDepth);
+                        log.debug("Time limit exceeded at depth {}", currentDepth);
                         break;
                     }
                 }
@@ -131,22 +131,21 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     private void fillCalculatedLine(Engine simulation) {
         long currentBoardHash = simulation.getBoardStateHash();
-        List<Integer> newCalculatedLine = new LinkedList<>();
+        List<MoveAndScore> newCalculatedLine = new LinkedList<>();
 
         if(!transpositionTable.containsKey(currentBoardHash)) {
-            log.info("[{}] hash not exists", currentBoardHash);
+            log.debug("[{}] hash not exists", currentBoardHash);
         }
 
         if(transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove == -1) {
-            log.info("[{}] hash exists but move: " + transpositionTable.get(currentBoardHash), currentBoardHash);
+            log.debug("[{}] hash exists but move: " + transpositionTable.get(currentBoardHash), currentBoardHash);
         }
 
         while (transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove != -1) {
-            log.info("[{}] hash exists and move: {}", currentBoardHash, transpositionTable.get(currentBoardHash));
+            log.debug("[{}] hash exists and move: {}", currentBoardHash, transpositionTable.get(currentBoardHash));
             TranspositionTableEntry entry = transpositionTable.get(currentBoardHash);
-            int move = entry.bestMove;
-            newCalculatedLine.add(0, move); // Add at the beginning to maintain the order
-            simulation.performMove(move);
+            newCalculatedLine.add(0, new MoveAndScore(entry.bestMove, entry.score)); // Add at the beginning to maintain the order
+            simulation.performMove(entry.bestMove);
             currentBoardHash = simulation.getBoardStateHash();
         }
 
@@ -163,7 +162,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         this.calculatedLine = new ArrayList<>(newCalculatedLine);
 
         log.debug("Move Line: {}", newCalculatedLine.stream()
-                .map(i -> Move.convertIntToMove(i).toString())
+                .map(i -> Move.convertIntToMove(i.move).toString())
                 .collect(Collectors.joining(", ")));
     }
 
@@ -172,12 +171,12 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         return engine.getBoardStateHash() != lastCalculatedHash;
     }
 
-    private MoveAndScore getBestMove(Engine engine, boolean isWhite, int levelOfDepth, long startTime, long timeLimit) {
+    private MoveAndScore getBestMove(Engine engine, boolean isWhitesTurn, int levelOfDepth, long startTime, long timeLimit) {
         double alpha = Double.NEGATIVE_INFINITY;
         double beta = Double.POSITIVE_INFINITY;
         int bestMove = -1; // Use an integer to represent the best move
-        double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-        ArrayList<Integer> sortedMoves = sortMovesByEfficiency(engine.getAllLegalMoves(), engine, isWhite, levelOfDepth);
+        double bestScore = isWhitesTurn ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+        ArrayList<Integer> sortedMoves = sortMovesByEfficiency(engine.getAllLegalMoves(), engine, isWhitesTurn, levelOfDepth);
 
         for (int moveInt : sortedMoves) {
 
@@ -189,10 +188,10 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             engine.performMove(moveInt); // Perform move using its integer representation
             double score;
 
-            if (engine.isInStateCheckMate(!isWhite)) {
-                score = isWhite ? Engine.CHECKMATE : -Engine.CHECKMATE;
+            if (engine.isInStateCheckMate(!isWhitesTurn)) {
+                score = isWhitesTurn ? Engine.CHECKMATE : -Engine.CHECKMATE;
             } else {
-                score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, !isWhite, startTime, timeLimit);
+                score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, !isWhitesTurn, startTime, timeLimit);
                 // Check for time limit exceeded after alphaBeta call
                 if (score == EXIT_FLAG || positionChanged()) {
                     engine.undoLastMove(); // Undo move using its integer representation
@@ -203,7 +202,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             engine.undoLastMove(); // Undo move using its integer representation
 
             // Check if the current move leads to a better score
-            if (isBetterScore(isWhite, score, bestScore)) {
+            if (isBetterScore(isWhitesTurn, score, bestScore)) {
                 bestScore = score;
                 bestMove = moveInt; // Store the best move as an integer
             }
@@ -238,7 +237,11 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         long boardHash = engine.getBoardStateHash();
 
         if (depth == 0 || engine.isGameOver()) {
-            return engine.evaluateBoard(isWhite);
+            double eval = engine.evaluateBoard(isWhite);
+            if (!isWhite) {
+                eval = -eval;
+            }
+            return eval;
         }
 
         TranspositionTableEntry entry = transpositionTable.get(boardHash);
@@ -271,6 +274,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
 
     private double maximizer(Engine engine, int depth, double alpha, double beta, boolean isWhite, long boardHash, double alphaOriginal, MoveList moves, long startTime, long timeLimit) {
+        long start = System.nanoTime(); // Start timing
         double maxEval = Double.NEGATIVE_INFINITY;
         int bestMoveAtThisNode = -1; // Variable to track the best move at this node
 
@@ -292,6 +296,11 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                     return EXIT_FLAG;
                 }
             }
+
+            log.debug("DEPTH: " + depth + " --- " + Move.convertIntToMove(move));
+            long endTime = System.nanoTime();
+            log.debug("DEPTH: " + depth);
+            log.debug("--> [+] Time taken for maximizer: {} ms", (endTime - start) / 1e6);
 
             engine.undoLastMove();
 
@@ -315,6 +324,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             transpositionTable.put(boardHash, new TranspositionTableEntry(maxEval, depth, NodeType.EXACT, bestMoveAtThisNode));
         }
 
+
         return maxEval;
     }
 
@@ -323,13 +333,13 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                              boolean isWhite, long boardHash,
                              double betaOriginal, MoveList moves, long startTime,
                              long timeLimit) {
+        long start = System.nanoTime(); // Start timing
         double minEval = Double.POSITIVE_INFINITY;
         int bestMoveAtThisNode = -1; // Track the best move at this node
 
         for (int move : sortMovesByEfficiency(moves, engine, isWhite, depth)) {
             engine.performMove(move);
             long newBoardHash = engine.getBoardStateHash();
-
             double eval;
             TranspositionTableEntry entry = transpositionTable.get(newBoardHash);
 
@@ -343,6 +353,10 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                     return EXIT_FLAG;
                 }
             }
+
+            long endTime = System.nanoTime();
+            log.debug("DEPTH: " + depth + " --- " + Move.convertIntToMove(move));
+            log.debug("<-- [-] Time taken for minimizer: {} ms", (endTime - start) / 1e6);
 
             engine.undoLastMove();
 
@@ -365,11 +379,13 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
             transpositionTable.put(boardHash, new TranspositionTableEntry(minEval, depth, NodeType.EXACT, bestMoveAtThisNode));
         }
 
+
         return minEval;
     }
 
 
     private ArrayList<Integer> sortMovesByEfficiency(MoveList moves, Engine engine, boolean isWhite, int currentDepth) {
+        //long startTime = System.nanoTime(); // Start timing
         PriorityQueue<Integer> sortedMoves = new PriorityQueue<>(
                 Comparator.comparingDouble((Integer moveInt) -> {
                     Long boardStateHash = engine.getBoardStateHashAfterMove(moveInt);
@@ -393,8 +409,11 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         while (!sortedMoves.isEmpty()) {
             sortedMoveList.add(sortedMoves.poll());
         }
-
+        long endTime = System.nanoTime();
+        //log.debug("DEPTH: " + currentDepth);
+        //log.debug(moves + "Time taken for move sorting: {} ms", (endTime - startTime) / 1e6);
         return sortedMoveList;
+
     }
 
 

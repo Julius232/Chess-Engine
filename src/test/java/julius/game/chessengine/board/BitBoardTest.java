@@ -98,7 +98,6 @@ public class BitBoardTest {
 
         long endTime = System.nanoTime();
         log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
-        log.info("Counter LegalMovesGeneration: " + engine.counter);
     }
 
     @Test

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @Log4j2
 public class Engine {
 
-    public static final double CHECKMATE = 1000000;
+    public static final double CHECKMATE = 100000;
     private boolean legalMovesNeedUpdate = true;
     private MoveList legalMoves;
 
@@ -79,8 +79,6 @@ public class Engine {
         legalMovesNeedUpdate = true;
     }
 
-    public int counter = 0;
-
     private void generateLegalMoves() {
         this.legalMoves = new MoveList();
         MoveList moves = bitBoard.getAllCurrentPossibleMoves();
@@ -91,8 +89,6 @@ public class Engine {
                 this.legalMoves.add(m);
             }
         }
-
-        counter++;
     }
 
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
@@ -169,8 +165,7 @@ public class Engine {
 
         if (move == -1) {
             log.warn("Move not legal!");
-        }
-        else {
+        } else {
             // Perform the move on the bitboard
             performMove(move);
 
@@ -308,14 +303,78 @@ public class Engine {
         return false; // Placeholder
     }
 
-    public double evaluateBoard(boolean isWhite) {
-        if (isInStateCheckMate(isWhite)) {
-            return isWhite ? -CHECKMATE : CHECKMATE;
+    public double evaluateBoard(boolean isWhitesTurn) {
+        if (isInStateCheckMate(isWhitesTurn)) {
+            return CHECKMATE;
         }
-        // Implement your board evaluation logic here.
-        // This should return a score based on material, position, and other chess strategies.
-        return getScore().getScoreDifference() / 100.0;
+
+        double alpha = Double.NEGATIVE_INFINITY;
+        double beta = Double.POSITIVE_INFINITY;
+
+        return quiescenceSearch(isWhitesTurn, alpha, beta);
     }
+
+    private double quiescenceSearch(boolean isWhitesTurn, double alpha, double beta) {
+        MoveList moves = getPossibleCaptures();
+
+        // Evaluate the static position if no captures are available
+        if (moves.size() == 0) {
+            return evaluateStaticPosition(isWhitesTurn);
+        }
+
+        double standPat = evaluateStaticPosition(isWhitesTurn);
+
+        // Beta Cutoff
+        if (standPat >= beta) {
+            return beta;
+        }
+
+        // Update Alpha
+        if (alpha < standPat) {
+            alpha = standPat;
+        }
+
+        for (int i = 0; i < moves.size(); i++) {
+            performMove(moves.getMove(i));
+
+            double score = -quiescenceSearch(!isWhitesTurn, -beta, -alpha);
+
+            undoLastMove();
+
+            if (score >= beta) {
+                return beta; // Fail-hard beta cutoff
+            }
+            if (score > alpha) {
+                alpha = score; // Alpha acts like max in MiniMax
+            }
+        }
+        return alpha;
+    }
+
+    private double evaluateStaticPosition(boolean isWhitesTurn) {
+        //logBoard();
+        // Assuming getScore().getScoreDifference() returns a score from white's perspective
+        double scoreDifference = getScore().getScoreDifference() / 100.0;
+        return isWhitesTurn ? scoreDifference : -scoreDifference;
+    }
+
+    private MoveList getPossibleCaptures() {
+        MoveList captures = new MoveList();
+        MoveList moves = getAllLegalMoves();
+
+        for (int i = 0; i < moves.size(); i++) {
+            int m = moves.getMove(i);
+            if (isCapture(m)) {
+                captures.add(m);
+            }
+        }
+        return captures;
+    }
+
+    private boolean isCapture(int m) {
+        return (((m >> 16) & 0x03) & 0x01) != 0;
+    }
+
 
     public Long getBoardStateHashAfterMove(int move) {
         // Step 1: Create a deep copy of the current board state

@@ -1,7 +1,10 @@
 package julius.game.chessengine.ai;
 
+import lombok.Getter;
 
-class MoveAndScore {
+@Getter
+public class MoveAndScore {
+
     int move;
     double score;
 
@@ -9,4 +12,5 @@ class MoveAndScore {
         this.move = move;
         this.score = score;
     }
+
 }
