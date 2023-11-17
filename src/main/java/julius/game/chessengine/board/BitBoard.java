@@ -71,7 +71,12 @@ public class BitBoard {
     private boolean blackRookA8Moved = false;
     private boolean blackRookH8Moved = false;
 
-    public BitBoard(boolean whitesTurn, long whitePawns, long blackPawns, long whiteKnights, long blackKnights, long whiteBishops, long blackBishops, long whiteRooks, long blackRooks, long whiteQueens, long blackQueens, long whiteKing, long blackKing, long whitePieces, long blackPieces, long allPieces, int lastMoveDoubleStepPawnIndex, boolean whiteKingMoved, boolean blackKingMoved, boolean whiteRookA1Moved, boolean whiteRookH1Moved, boolean blackRookA8Moved, boolean blackRookH8Moved) {
+    //Warning those booleans do not fully work for FEN imported games, because its impossible to determine if a king castled
+    //I just need those values to give the Engine a better score if it castles
+    private boolean whiteKingHasCastled = false;
+    private boolean blackKingHasCastled = false;
+
+    public BitBoard(boolean whitesTurn, long whitePawns, long blackPawns, long whiteKnights, long blackKnights, long whiteBishops, long blackBishops, long whiteRooks, long blackRooks, long whiteQueens, long blackQueens, long whiteKing, long blackKing, long whitePieces, long blackPieces, long allPieces, int lastMoveDoubleStepPawnIndex, boolean whiteKingMoved, boolean blackKingMoved, boolean whiteRookA1Moved, boolean whiteRookH1Moved, boolean blackRookA8Moved, boolean blackRookH8Moved, boolean whiteKingHasCastled, boolean blackKingHasCastled) {
         this.whitesTurn = whitesTurn;
         this.whitePawns = whitePawns;
         this.blackPawns = blackPawns;
@@ -95,6 +100,8 @@ public class BitBoard {
         this.whiteRookH1Moved = whiteRookH1Moved;
         this.blackRookA8Moved = blackRookA8Moved;
         this.blackRookH8Moved = blackRookH8Moved;
+        this.whiteKingHasCastled = whiteKingHasCastled;
+        this.blackKingHasCastled = blackKingHasCastled;
         updateScore();
     }
 
@@ -135,6 +142,9 @@ public class BitBoard {
         this.whitesTurn = other.whitesTurn;
 
         this.lastMoveDoubleStepPawnIndex = other.lastMoveDoubleStepPawnIndex;
+
+        this.blackKingHasCastled = other.blackKingHasCastled;
+        this.whiteKingHasCastled = other.whiteKingHasCastled;
     }
 
     public void updateScore() {
@@ -165,6 +175,7 @@ public class BitBoard {
         final int ISOLATED_PAWN_PENALTY = -10; // Penalty points for isolated pawns
 
         final int START_POSITION_PENALTY = -50; // Define the penalty value for starting position
+        final int CASTLING_BONUS = 50;
 
         // Calculate scores based on bitboards
         whiteScore += Long.bitCount(whitePawns) * PAWN_VALUE;
@@ -211,6 +222,13 @@ public class BitBoard {
 
         whiteScore += applyPositionalValues(whiteQueens, QUEEN_POSITIONAL_VALUES);
         blackScore += applyPositionalValues(blackQueens, QUEEN_POSITIONAL_VALUES);
+
+        if(whiteKingHasCastled) {
+            whiteScore += CASTLING_BONUS;
+        }
+        if(blackKingHasCastled) {
+            blackScore += CASTLING_BONUS;
+        }
 
         // Check if white pieces are all on starting squares
         if (areAllPiecesOnStartingSquares(whiteKnights, whiteBishops, whiteRooks, true)) {
@@ -830,6 +848,11 @@ public class BitBoard {
 
         // If the move is a castling move, move both the king and the rook
         if (isCastlingMove) {
+            if (isWhite) {
+                whiteKingHasCastled = true;
+            } else {
+                blackKingHasCastled = true;
+            }
             // Determine if this is kingside or queenside castling
             boolean kingside = toIndex > fromIndex;
             int rookFromIndex, rookToIndex;
@@ -1444,7 +1467,11 @@ public class BitBoard {
             // Determine if this is kingside or queenside castling
             boolean kingside = toIndex > fromIndex;
             int rookFromIndex, rookToIndex;
-
+            if (isWhite) {
+                whiteKingHasCastled = false;
+            } else {
+                blackKingHasCastled = false;
+            }
             if (kingside) {
                 rookToIndex = isWhite ? 7 : 63;
                 rookFromIndex = rookToIndex - 2;

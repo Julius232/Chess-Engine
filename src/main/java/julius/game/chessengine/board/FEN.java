@@ -69,12 +69,30 @@ public class FEN {
                     long bit = 1L << index;
 
                     switch (Character.toLowerCase(c)) {
-                        case 'p': if (c == 'p') blackPawns |= bit; else whitePawns |= bit; break;
-                        case 'n': if (c == 'n') blackKnights |= bit; else whiteKnights |= bit; break;
-                        case 'b': if (c == 'b') blackBishops |= bit; else whiteBishops |= bit; break;
-                        case 'r': if (c == 'r') blackRooks |= bit; else whiteRooks |= bit; break;
-                        case 'q': if (c == 'q') blackQueens |= bit; else whiteQueens |= bit; break;
-                        case 'k': if (c == 'k') blackKing |= bit; else whiteKing |= bit; break;
+                        case 'p':
+                            if (c == 'p') blackPawns |= bit;
+                            else whitePawns |= bit;
+                            break;
+                        case 'n':
+                            if (c == 'n') blackKnights |= bit;
+                            else whiteKnights |= bit;
+                            break;
+                        case 'b':
+                            if (c == 'b') blackBishops |= bit;
+                            else whiteBishops |= bit;
+                            break;
+                        case 'r':
+                            if (c == 'r') blackRooks |= bit;
+                            else whiteRooks |= bit;
+                            break;
+                        case 'q':
+                            if (c == 'q') blackQueens |= bit;
+                            else whiteQueens |= bit;
+                            break;
+                        case 'k':
+                            if (c == 'k') blackKing |= bit;
+                            else whiteKing |= bit;
+                            break;
                     }
 
                     if (Character.isUpperCase(c)) whitePieces |= bit;
@@ -106,7 +124,21 @@ public class FEN {
             lastMoveDoubleStepPawnIndex = rank * 8 + file;
         }
 
-        return new BitBoard(whitesTurn, whitePawns, blackPawns, whiteKnights, blackKnights, whiteBishops, blackBishops, whiteRooks, blackRooks, whiteQueens, blackQueens, whiteKing, blackKing, whitePieces, blackPieces, allPieces, lastMoveDoubleStepPawnIndex, whiteKingMoved, blackKingMoved, whiteRookA1Moved, whiteRookH1Moved, blackRookA8Moved, blackRookH8Moved);
+        // Constants for starting positions (assuming 0-based indexing)
+        boolean whiteKingHasCastled = false;
+        boolean blackKingHasCastled = false;
+
+        if (whiteKingMoved) {
+            // If white king has moved, check if it's in a typical castled position
+            whiteKingHasCastled = ((whiteKing & (1L << 6)) != 0) || ((whiteKing & (1L << 2)) != 0);
+        }
+        if (blackKingMoved) {
+            // If black king has moved, check if it's in a typical castled position
+            blackKingHasCastled = ((blackKing & (1L << 62)) != 0) || ((blackKing & (1L << 58)) != 0);
+        }
+
+        // Pass these inferred values to the BitBoard constructor
+        return new BitBoard(whitesTurn, whitePawns, blackPawns, whiteKnights, blackKnights, whiteBishops, blackBishops, whiteRooks, blackRooks, whiteQueens, blackQueens, whiteKing, blackKing, whitePieces, blackPieces, allPieces, lastMoveDoubleStepPawnIndex, whiteKingMoved, blackKingMoved, whiteRookA1Moved, whiteRookH1Moved, blackRookA8Moved, blackRookH8Moved, whiteKingHasCastled, blackKingHasCastled);
     }
 
 }
