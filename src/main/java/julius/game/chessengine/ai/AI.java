@@ -31,7 +31,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
     // Adjust the level of depth according to your requirements
     int maxDepth = 18;
-    long timeLimit = 1000; //milliseconds
+    long timeLimit = 30000; //milliseconds
     private final Engine engine;
 
 
@@ -67,7 +67,7 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
     public GameState performMove() {
         if (calculatedLine.isEmpty()) {
             // calculatedLine is empty, either log an error or return null
-            log.debug("Waiting for calculatedLine to be populated");
+            log.info("Waiting for calculatedLine to be populated");
             return null; // or handle differently
         }
 
@@ -118,14 +118,6 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
 
             }
 
-            // Sleep logic to prevent over-utilization of CPU
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.error("Calculation thread was interrupted", e);
-                return;
-            }
         }
     }
 

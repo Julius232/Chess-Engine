@@ -18,6 +18,7 @@ $(document).ready(function () {
             const lastScore = data[data.length - 1].score; // Get the score from the last element
             document.getElementById('calculatedLine').innerText = `Calculated Line: ${lineText}`;
             document.getElementById("score").textContent = `SCORE: ${lastScore}`;
+            //updateKingGlow(lastScore);
         });
     };
     
@@ -28,6 +29,24 @@ $(document).ready(function () {
             reloadBoard();
         });
     }
+
+    function updateKingGlow(score) {
+        const whiteKingElement = document.querySelector('[data-piece="wK"]');
+        const blackKingElement = document.querySelector('[data-piece="bK"]');
+    
+        // Remove existing glow classes
+        whiteKingElement.classList.remove('glow-red', 'glow-blue');
+        blackKingElement.classList.remove('glow-red', 'glow-blue');
+    
+        // Apply new glow based on score
+        if (score > 0) {
+            whiteKingElement.classList.add('glow-blue');
+        } else if (score < 0) {
+            blackKingElement.classList.add('glow-red');
+        }
+    }
+    
+
 
     document.getElementById('importFEN').addEventListener('click', function () {
         var fenString = prompt("Please enter FEN:");

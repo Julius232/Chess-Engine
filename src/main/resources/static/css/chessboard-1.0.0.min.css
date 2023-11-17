@@ -45,7 +45,7 @@
     font-size: 14px;
     position: absolute;
     color: #00d9ff; /* Neon green */
-    text-shadow: 0px 0px 5px #00fff2; /* Glow effect */
+    text-shadow: 0px 0px 5px #8400ff; /* Glow effect */
 }
 
 .alpha-d2270, .numeric-fc462 {
@@ -53,3 +53,12 @@
     text-shadow: 0px 0px 5px #00ff00; /* Glow effect */
 }
 
+.glow-blue {
+    filter:  drop-shadow(0 0 20px rgb(0, 0, 255))
+             drop-shadow(0 0 20px rgb(0, 4, 255))
+}
+
+.glow-red {
+    filter: drop-shadow(0 0 15px rgba(255, 0, 0, 1))
+            drop-shadow(0 0 20px rgba(255, 0, 0, 1))
+}

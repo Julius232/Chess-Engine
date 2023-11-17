@@ -69,7 +69,6 @@ public class Engine {
     }
 
     public Engine createSimulation() {
-        // Now use the deep copied list in the new Engine instance
         return new Engine(bitBoard, new LinkedList<>(line), legalMoves);
     }
 
