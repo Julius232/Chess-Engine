@@ -1,5 +1,8 @@
 package julius.game.chessengine.engine;
 
+import julius.game.chessengine.ai.CaptureTranspositionTableEntry;
+import julius.game.chessengine.ai.NodeType;
+import julius.game.chessengine.ai.TranspositionTableEntry;
 import julius.game.chessengine.board.*;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
@@ -12,18 +15,22 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Service
 @Log4j2
 public class Engine {
 
+    private static final ConcurrentHashMap<Long, CaptureTranspositionTableEntry> captureTranspositionTable = new ConcurrentHashMap<>();
+
     public static final double CHECKMATE = 100000;
     private boolean legalMovesNeedUpdate = true;
     private MoveList legalMoves;
 
     @Getter
-    private LinkedList<Integer> line = new LinkedList<>();
+    private CopyOnWriteArrayList<Integer> line = new CopyOnWriteArrayList<>();
     private BitBoard bitBoard = new BitBoard();
     @Getter
     private GameState gameState = new GameState();
@@ -32,7 +39,7 @@ public class Engine {
         startNewGame();
     }
 
-    public Engine(BitBoard b, LinkedList<Integer> m, MoveList l) {
+    public Engine(BitBoard b, CopyOnWriteArrayList<Integer> m, MoveList l) {
         bitBoard = new BitBoard(b);
         gameState = new GameState();
         line = m;
@@ -69,13 +76,15 @@ public class Engine {
     }
 
     public Engine createSimulation() {
-        return new Engine(bitBoard, new LinkedList<>(line), legalMoves);
+        CopyOnWriteArrayList<Integer> newLine = new CopyOnWriteArrayList<>(line); // Safe copy
+        return new Engine(bitBoard, newLine, legalMoves);
     }
 
     public void startNewGame() {
         bitBoard = new BitBoard();
         gameState = new GameState();
         legalMovesNeedUpdate = true;
+        line = new CopyOnWriteArrayList<>();
     }
 
     private void generateLegalMoves() {
@@ -201,7 +210,7 @@ public class Engine {
     private boolean isMoveOnBoard(int move) {
         int fromIndex = move & 0x3F; // Extract the first 6 bits
         int toIndex = (move >> 6) & 0x3F; // Extract the next 6 bits
-        return (fromIndex >= 0 && fromIndex <= 63) && (toIndex >= 0 && toIndex <= 63);
+        return true;
     }
 
     public List<Position> getPossibleMovesForPosition(int fromIndex) {
@@ -310,50 +319,56 @@ public class Engine {
         double alpha = Double.NEGATIVE_INFINITY;
         double beta = Double.POSITIVE_INFINITY;
 
-        return quiescenceSearch(isWhitesTurn, alpha, beta);
+        long boardStateHash = getBoardStateHash();
+        CaptureTranspositionTableEntry entry = captureTranspositionTable.get(boardStateHash);
+
+        // Check if the entry exists and is relevant for the current search
+        if (entry != null && entry.isWhite() == isWhitesTurn) {
+            return entry.getScore();
+        }
+
+        double score = quiescenceSearch(isWhitesTurn, alpha, beta);
+
+        captureTranspositionTable.put(boardStateHash, new CaptureTranspositionTableEntry(score, isWhitesTurn));
+        return score;
     }
 
     private double quiescenceSearch(boolean isWhitesTurn, double alpha, double beta) {
         MoveList moves = getPossibleCaptures();
 
-        // Evaluate the static position if no captures are available
         if (moves.size() == 0) {
             return evaluateStaticPosition(isWhitesTurn);
         }
 
         double standPat = evaluateStaticPosition(isWhitesTurn);
-
-        // Beta Cutoff
         if (standPat >= beta) {
             return beta;
         }
-
-        // Update Alpha
         if (alpha < standPat) {
             alpha = standPat;
         }
 
         for (int i = 0; i < moves.size(); i++) {
             performMove(moves.getMove(i));
-
             double score = -quiescenceSearch(!isWhitesTurn, -beta, -alpha);
-
             undoLastMove();
 
             if (score >= beta) {
-                return beta; // Fail-hard beta cutoff
+                return beta;
             }
             if (score > alpha) {
-                alpha = score; // Alpha acts like max in MiniMax
+                alpha = score;
             }
         }
+
         return alpha;
     }
+
 
     private double evaluateStaticPosition(boolean isWhitesTurn) {
         //logBoard();
         // Assuming getScore().getScoreDifference() returns a score from white's perspective
-        double scoreDifference = getScore().getScoreDifference() / 100.0;
+        double scoreDifference = getScore().getScoreDifference() / 1000.0;
         return isWhitesTurn ? scoreDifference : -scoreDifference;
     }
 

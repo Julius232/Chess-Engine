@@ -6,44 +6,40 @@ import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Log4j2
 @Component
-public class AI implements ApplicationListener<ContextRefreshedEvent> {
+public class AI {
+
+    private final Engine engine;
+
+    private static final double EXIT_FLAG = Double.MAX_VALUE;
+    private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
+
+    private ScheduledExecutorService scheduler;
+    private Thread calculationThread;
+
+    private volatile boolean keepCalculating = true;
+    private volatile long lastCalculatedHash = -1;
 
     @Getter
     private List<MoveAndScore> calculatedLine = Collections.synchronizedList(new ArrayList<>());
 
-    private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
-    private static final double EXIT_FLAG = Double.MAX_VALUE;
-
-    private Thread calculationThread;
-    private volatile boolean keepCalculating = true;
-
-    private volatile long lastCalculatedHash = -1;
-
-    // Adjust the level of depth according to your requirements
-    int maxDepth = 18;
-    long timeLimit = 30000; //milliseconds
-    private final Engine engine;
+    // Game configuration parameters
+    private final int maxDepth = 18; // Adjust the level of depth according to your requirements
+    private final long timeLimit = 500; // milliseconds
 
 
     public AI(Engine engine) {
         this.engine = engine;
-    }
-
-    @Override
-    public void onApplicationEvent(ContextRefreshedEvent event) {
-        log.debug("startedUp");
-        // Start the thread when the application context is fully refreshed
-        startCalculationThread();
     }
 
     private void startCalculationThread() {
@@ -52,37 +48,62 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         calculationThread.start();
     }
 
-    public void stopCalculation() {
-        keepCalculating = false;
-        calculationThread.interrupt();
+    public void reset() {
+        engine.startNewGame();
+        stopCalculation();
     }
 
-    public void startAutoPlay() throws InterruptedException {
-        while (engine.getGameState().getState().equals("PLAY")) {
-            Thread.sleep(timeLimit);
-            performMove();
+    public void stopCalculation() {
+        keepCalculating = false;
+        if (calculationThread != null) {
+            calculationThread.interrupt();
+            try {
+                calculationThread.join(); // Wait for the thread to finish
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); // Preserve interrupt status
+                log.error("Thread interruption error", e);
+            }
         }
+        calculatedLine = Collections.synchronizedList(new ArrayList<>());
+    }
+
+    public void startAutoPlay() {
+        if (scheduler != null && !scheduler.isShutdown()) {
+            scheduler.shutdownNow(); // Ensure previous scheduler is stopped
+        }
+        scheduler = Executors.newSingleThreadScheduledExecutor();
+
+        startCalculationThread();
+        scheduler.scheduleAtFixedRate(() -> {
+            if (!engine.getGameState().getState().equals("PLAY") || !keepCalculating) {
+                stopCalculation();
+                scheduler.shutdown();
+                return;
+            }
+            performMove();
+        }, 0, timeLimit, TimeUnit.MILLISECONDS);
     }
 
     public GameState performMove() {
         if (calculatedLine.isEmpty()) {
-            // calculatedLine is empty, either log an error or return null
-            log.info("Waiting for calculatedLine to be populated");
-            return null; // or handle differently
+            // If the calculatedLine is empty, log an error and return the current game state without making a move.
+            log.error("Calculated line is empty. Unable to perform a move.");
+            return engine.getGameState(); // Return the current state without making a move
         }
 
         MoveAndScore aiMove = calculatedLine.remove(0); // Retrieve and remove the move from the list
-        if (aiMove == null) {
-            log.error("Calculated move is null");
-            return null; // or handle differently
+        if (aiMove == null || aiMove.getMove() == -1) {
+            // If the move is null or invalid, log an error and return the current game state without making a move.
+            log.error("Calculated move is null or invalid.");
+            return engine.getGameState(); // Return the current state without making a move
         }
 
-        engine.performMove(aiMove.move);
+        engine.performMove(aiMove.getMove());
         return engine.getGameState();
     }
 
     private void calculateLine() {
-        while (keepCalculating) {
+        while (keepCalculating && !Thread.currentThread().isInterrupted()) {
             if (positionChanged()) {
                 log.debug(" --- TranspositionTable[{}] --- ", transpositionTable.size());
                 // Convert the string color to the Color enum
@@ -114,10 +135,11 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
                         log.debug("Time limit exceeded at depth {}", currentDepth);
                         break;
                     }
+                    if (Thread.interrupted()) { // Clears the interrupted status and checks
+                        break;
+                    }
                 }
-
             }
-
         }
     }
 
@@ -401,7 +423,6 @@ public class AI implements ApplicationListener<ContextRefreshedEvent> {
         while (!sortedMoves.isEmpty()) {
             sortedMoveList.add(sortedMoves.poll());
         }
-        long endTime = System.nanoTime();
         //log.debug("DEPTH: " + currentDepth);
         //log.debug(moves + "Time taken for move sorting: {} ms", (endTime - startTime) / 1e6);
         return sortedMoveList;

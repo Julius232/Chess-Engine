@@ -36,7 +36,7 @@ public class ChessController {
 
     @PutMapping(value = "/reset")
     public ResponseEntity<?> resetBoard() {
-        engine.startNewGame();
+        ai.reset();
         return ResponseEntity.ok().build();
     }
 

@@ -1,14 +1,15 @@
 package julius.game.chessengine.ai;
 
-import julius.game.chessengine.board.Move;
+import lombok.Getter;
 
-class TranspositionTableEntry {
+@Getter
+public class TranspositionTableEntry {
     double score;
     int depth;
     NodeType nodeType;
     int bestMove; // Added to store the best move
 
-    TranspositionTableEntry(double score, int depth, NodeType nodeType, int bestMove) {
+    public TranspositionTableEntry(double score, int depth, NodeType nodeType, int bestMove) {
         this.score = score;
         this.depth = depth;
         this.nodeType = nodeType;
@@ -26,8 +27,3 @@ class TranspositionTableEntry {
     }
 }
 
-enum NodeType {
-    EXACT, // exact score
-    LOWERBOUND, // failed high, value is a lower bound
-    UPPERBOUND // failed low, value is an upper bound
-}
