@@ -11,6 +11,8 @@ Starting POS --> PERFT
 18.11.23 Time taken for move calculation: 5797.1654 ms :-(
 -- after implementing better GameState mechanism
 18.11.23 Time taken for move calculation: 2763.0737 ms
+-- after implementing better Score mechanism
+18.11.23 Time taken for move calculation: 2257.0605 ms
 
 POS_2 --> PERFTPos_2
 12.11.23 Time taken for move calculation: 275747.8732 ms
@@ -25,3 +27,5 @@ POS_2 --> PERFTPos_2
 18.11.23 Time taken for move calculation: 218854.1965 ms :-(
 -- after implementing better GameState mechanism
 18.11.23 Time taken for move calculation: 107199.0896 ms
+-- after implementing better Score mechanism
+18.11.23 Time taken for move calculation: 84176.7309 ms

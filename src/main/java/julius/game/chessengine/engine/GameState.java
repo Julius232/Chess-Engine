@@ -78,7 +78,7 @@ public class GameState {
             updateCapturedPieceValues(isWhite, capturedPieceTypeBits, bitBoard);
         }
 
-        log.info("Piecetype: {}, CapturedType: {}, ScoreWhite: {}, ScoreBlack: {}",
+        log.debug("Piecetype: {}, CapturedType: {}, ScoreWhite: {}, ScoreBlack: {}",
                 pieceTypeBits, capturedPieceTypeBits, score.calculateTotalWhiteScore(), score.calculateTotalBlackScore());
     }
 
@@ -209,5 +209,17 @@ public class GameState {
     public void undo(long hash) {
         decrementHashCount(hash);
         state = GameStateEnum.PLAY;
+    }
+
+    @Override
+    public String toString() {
+        String sb = "GameState {" +
+                "\n  State: " + state +
+                "\n  White Score: " + score.calculateTotalWhiteScore() +
+                "\n  Black Score: " + score.calculateTotalBlackScore() +
+                "\n  Score Difference: " + score.getScoreDifference() +
+                "\n  Repetition Count: " + repetitionCounter +
+                "\n}";
+        return sb;
     }
 }

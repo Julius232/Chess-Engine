@@ -75,7 +75,7 @@ public class AI {
 
         startCalculationThread();
         scheduler.scheduleAtFixedRate(() -> {
-            log.info("state: {}, keepCalculating: {}", engine.getGameState().getState(), keepCalculating);
+            log.debug("state: {}, keepCalculating: {}", engine.getGameState().getState(), keepCalculating);
             if (engine.getGameState().isGameOver() || !keepCalculating) {
                 stopCalculation();
                 scheduler.shutdown();
@@ -87,12 +87,12 @@ public class AI {
 
     public GameState performMove() {
         if (calculatedLine.isEmpty()) {
+            engine.logBoard();
             // If the calculatedLine is empty, log an error and return the current game state without making a move.
             log.error("Calculated line is empty. Unable to perform a move.");
             log.error("lastCalculatedHash {}, currentBoardHash {}", lastCalculatedHash, engine.getBoardStateHash());
             log.error("WhitesTurn = " + engine.whitesTurn());
             log.error("Gamestate = " + engine.getGameState());
-            engine.logBoard();
             return engine.getGameState(); // Return the current state without making a move
         }
 
@@ -109,10 +109,10 @@ public class AI {
     }
 
     private void calculateLine() {
-        log.info("keepCalculating: {}, interrupted: {}", keepCalculating, Thread.currentThread().isInterrupted());
+        log.debug("keepCalculating: {}, interrupted: {}", keepCalculating, Thread.currentThread().isInterrupted());
         while (keepCalculating && !Thread.currentThread().isInterrupted()) {
             if (positionChanged()) {
-                log.info(" --- TranspositionTable[{}] --- ", transpositionTable.size());
+                log.debug(" --- TranspositionTable[{}] --- ", transpositionTable.size());
                 // Convert the string color to the Color enum
                 Engine simulation = engine.createSimulation();
                 long boardStateHash = simulation.getBoardStateHash();
@@ -126,7 +126,7 @@ public class AI {
                 for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
                     if (!keepCalculating) break; // Check if we should stop calculating
                     MoveAndScore moveAndScore = getBestMove(simulation, isWhite, currentDepth, startTime, timeLimit);
-                    log.info(" --- DEPTH<{}> --- ", currentDepth);
+                    log.debug(" --- DEPTH<{}> --- ", currentDepth);
                     if (moveAndScore != null) {
                         double score = moveAndScore.score;
                         int move = moveAndScore.move;
@@ -139,7 +139,7 @@ public class AI {
                     }
 
                     if (System.currentTimeMillis() - startTime > timeLimit) {
-                        log.info("Time limit exceeded at depth {}", currentDepth);
+                        log.debug("Time limit exceeded at depth {}", currentDepth);
                         break;
                     }
                     if (Thread.interrupted()) { // Clears the interrupted status and checks
