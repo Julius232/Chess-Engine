@@ -29,7 +29,7 @@ public class Engine {
     private ArrayList<Integer> line = new ArrayList<>();
     private BitBoard bitBoard = new BitBoard();
     @Getter
-    private GameState gameState = new GameState();
+    private GameState gameState = new GameState(bitBoard);
 
     public Engine() {
         startNewGame();
@@ -52,18 +52,18 @@ public class Engine {
 
     public void performMove(int move) {
         if(!gameState.isGameOver()) {
-            bitBoard.performMove(move, true);
+            bitBoard.performMove(move);
             generateLegalMoves();
-            gameState.update(bitBoard, legalMoves);
+            gameState.update(bitBoard, legalMoves, move);
             line.add(move);
         }
     }
 
     public void importBoardFromFen(String fen) {
         this.bitBoard = FEN.translateFENtoBitBoard(fen);
-        this.gameState = new GameState();
+        this.gameState = new GameState(bitBoard);
         generateLegalMoves();
-        gameState.update(bitBoard, legalMoves);
+        gameState.updateState(bitBoard, legalMoves);
     }
 
     public synchronized Engine createSimulation() {
@@ -73,7 +73,7 @@ public class Engine {
 
     public void startNewGame() {
         bitBoard = new BitBoard();
-        gameState = new GameState();
+        gameState = new GameState(bitBoard);
         legalMovesNeedUpdate = true;
         line = new ArrayList<>();
     }
@@ -188,7 +188,7 @@ public class Engine {
         BitBoard boardCopy = new BitBoard(bitBoard);
 
         // Perform the move on the copied board.
-        boardCopy.performMove(move, false);
+        boardCopy.performMove(move);
 
         // Return the new board state.
         return boardCopy;
@@ -218,14 +218,11 @@ public class Engine {
     public synchronized void undoLastMove() {
         if (!line.isEmpty()) {
             gameState.undo(bitBoard.getBoardStateHash());
-            this.bitBoard.undoMove(line.getLast(), true);
+            this.bitBoard.undoMove(line.getLast());
+            gameState.updateScore(bitBoard, legalMoves, line.getLast());
             generateLegalMoves();
             line.removeLast();
         }
-    }
-
-    public Score getScore() {
-        return bitBoard.getScore();
     }
 
     public FEN translateBoardToFen() {
@@ -291,7 +288,7 @@ public class Engine {
     private double evaluateStaticPosition(boolean isWhitesTurn) {
         //logBoard();
         // Assuming getScore().getScoreDifference() returns a score from white's perspective
-        double scoreDifference = getScore().getScoreDifference() / 1000.0;
+        double scoreDifference = gameState.getScore().getScoreDifference() / 1000.0;
         return isWhitesTurn ? scoreDifference : -scoreDifference;
     }
 
@@ -318,7 +315,7 @@ public class Engine {
         BitBoard boardCopy = new BitBoard(this.bitBoard);
 
         // Step 2: Simulate the move on the copied board
-        boardCopy.performMove(move, false); // Assuming 'false' means no need to update the score
+        boardCopy.performMove(move); // Assuming 'false' means no need to update the score
 
         // Step 3: Return the computed hash
         return boardCopy.getBoardStateHash();

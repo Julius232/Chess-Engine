@@ -50,11 +50,49 @@ public class PawnHelper {
             0, 0, 0, 0, 0, 0, 0, 0
     };
 
+    // Method to count pawns in the center (e4, d4, e5, d5 squares)
     public static int countCenterPawns(long pawnsBitboard) {
         // Bit positions for e4, d4, e5, d5
         long centerSquares = (1L << bitIndex('e', 4)) | (1L << bitIndex('d', 4))
                 | (1L << bitIndex('e', 5)) | (1L << bitIndex('d', 5));
         return Long.bitCount(pawnsBitboard & centerSquares);
     }
+
+
+    // Method to count doubled pawns, which are two pawns of the same color on the same file
+    public static int countDoubledPawns(long pawnsBitboard) {
+        int doubledPawns = 0;
+        for (char file = 'a'; file <= 'h'; file++) {
+            long fileBitboard = fileBitboard(file);
+            if (Long.bitCount(pawnsBitboard & fileBitboard) > 1) {
+                doubledPawns++;
+            }
+        }
+        return doubledPawns;
+    }
+
+    // Method to count isolated pawns, which are pawns with no friendly pawns on adjacent files
+    public static int countIsolatedPawns(long pawnsBitboard) {
+        int isolatedPawns = 0;
+        for (char file = 'a'; file <= 'h'; file++) {
+            long fileBitboard = fileBitboard(file);
+            long adjacentFiles = (file > 'a' ? fileBitboard((char) (file - 1)) : 0L)
+                    | (file < 'h' ? fileBitboard((char) (file + 1)) : 0L);
+            if ((pawnsBitboard & fileBitboard) != 0 && (pawnsBitboard & adjacentFiles) == 0) {
+                isolatedPawns++;
+            }
+        }
+        return isolatedPawns;
+    }
+
+    // Helper method to get a bitboard representing a file
+    private static long fileBitboard(char file) {
+        long fileBitboard = 0L;
+        for (int rank = 1; rank <= 8; rank++) {
+            fileBitboard |= 1L << bitIndex(file, rank);
+        }
+        return fileBitboard;
+    }
+
 
 }

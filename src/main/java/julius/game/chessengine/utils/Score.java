@@ -1,21 +1,470 @@
 package julius.game.chessengine.utils;
 
+import julius.game.chessengine.board.BitBoard;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
+
+import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
+import static julius.game.chessengine.helper.KingHelper.BLACK_KING_POSITIONAL_VALUES;
+import static julius.game.chessengine.helper.KingHelper.WHITE_KING_POSITIONAL_VALUES;
+import static julius.game.chessengine.helper.KnightHelper.KNIGHT_POSITIONAL_VALUES;
+import static julius.game.chessengine.helper.PawnHelper.*;
+import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES;
 
 @Data
 @Log4j2
 public class Score {
-    private int scoreWhite;
-    private int scoreBlack;
+    private int whiteScore;
+    private int blackScore;
 
-    public Score(int scoreWhite, int scoreBlack) {
-        this.scoreWhite = scoreWhite;
-        this.scoreBlack = scoreBlack;
+    //initialize number of pieces bonus
+    private int whitePawns = 0;
+    private int blackPawns = 0;
+    private int whiteKnights = 0;
+    private int blackKnights = 0;
+    private int whiteBishops = 0;
+    private int blackBishops = 0;
+    private int whiteRooks = 0;
+    private int blackRooks = 0;
+    private int whiteQueens = 0;
+    private int blackQueens = 0;
+
+    //agility
+    private int agilityWhite = 0;
+    private int agilityBlack = 0;
+
+    // Initialize bonuses and penalties for pawns
+    private int whiteCenterPawnBonus = 0;
+    private int blackCenterPawnBonus = 0;
+    private int whiteDoubledPawnPenalty = 0;
+    private int blackDoubledPawnPenalty = 0;
+    private int whiteIsolatedPawnPenalty = 0;
+    private int blackIsolatedPawnPenalty = 0;
+
+    // Initialize positional values
+    private int whitePawnsPosition = 0;
+    private int blackPawnsPosition = 0;
+    private int whiteKnightsPosition = 0;
+    private int blackKnightsPosition = 0;
+    private int whiteBishopsPosition = 0;
+    private int blackBishopsPosition = 0;
+    private int whiteQueensPosition = 0;
+    private int blackQueensPosition = 0;
+    private int whiteKingsPosition = 0;
+    private int blackKingsPosition = 0;
+
+    private int whiteStartingSquarePenalty = 0;
+    private int blackStartingSquarePenalty = 0;
+
+    // Constants for piece values
+    private static final int PAWN_VALUE = 1000;   // Pawns are worth 1 point, scaled by 100
+    private static final int KNIGHT_VALUE = 3000; // Knights are worth 3 points
+    private static final int BISHOP_VALUE = 3130; // Bishops are worth 3 points
+    private static final int ROOK_VALUE = 5000;   // Rooks are worth 5 points
+    private static final int QUEEN_VALUE = 9000;  // Queens are worth 9 points
+
+    // Pawn bonuses and penalties
+    private static final int CENTER_PAWN_BONUS = 10; // Example bonus value for controlling center squares
+    private static final int DOUBLED_PAWN_PENALTY = -20; // Example penalty value for doubled pawns
+    private static final int ISOLATED_PAWN_PENALTY = -10; // Penalty for isolated pawns
+    private static final int PASSED_PAWN_BONUS = 60;     // Bonus for passed pawns
+
+    // Other bonuses and penalties
+    private static final int NOT_CASTLED_AND_ROOK_MOVE_PENALTY = -31;
+    private static final int START_POSITION_PENALTY = -50; // Define the penalty value for starting position
+    private static final int CASTLING_BONUS = 50;
+
+    // Constants for the initial positions of each piece type
+    private static final long INITIAL_WHITE_KNIGHT_POSITION = 0x0000000000000042L; // Knights on b1 and g1
+    private static final long INITIAL_BLACK_KNIGHT_POSITION = 0x4200000000000000L; // Knights on b8 and g8
+    private static final long INITIAL_WHITE_BISHOP_POSITION = 0x0000000000000024L; // Bishops on c1 and f1
+    private static final long INITIAL_BLACK_BISHOP_POSITION = 0x2400000000000000L; // Bishops on c8 and f8
+    private static final long INITIAL_WHITE_ROOK_POSITION = 0x0000000000000081L; // Rooks on a1 and h1
+    private static final long INITIAL_BLACK_ROOK_POSITION = 0x8100000000000000L; // Rooks on a8 and h8
+
+
+    public Score() {
+        this.whiteScore = 0;
+        this.blackScore = 0;
     }
 
-    //Negative Score if Black is better and positive if White is better
+    public Score(Score other) {
+        this.whiteScore = other.whiteScore;
+        this.blackScore = other.blackScore;
+
+        this.whitePawns = other.whitePawns;
+        this.blackPawns = other.blackPawns;
+        this.whiteKnights = other.whiteKnights;
+        this.blackKnights = other.blackKnights;
+        this.whiteBishops = other.whiteBishops;
+        this.blackBishops = other.blackBishops;
+        this.whiteRooks = other.whiteRooks;
+        this.blackRooks = other.blackRooks;
+        this.whiteQueens = other.whiteQueens;
+        this.blackQueens = other.blackQueens;
+
+        this.agilityWhite = other.agilityWhite;
+        this.agilityBlack = other.agilityBlack;
+
+        this.whiteCenterPawnBonus = other.whiteCenterPawnBonus;
+        this.blackCenterPawnBonus = other.blackCenterPawnBonus;
+        this.whiteDoubledPawnPenalty = other.whiteDoubledPawnPenalty;
+        this.blackDoubledPawnPenalty = other.blackDoubledPawnPenalty;
+        this.whiteIsolatedPawnPenalty = other.whiteIsolatedPawnPenalty;
+        this.blackIsolatedPawnPenalty = other.blackIsolatedPawnPenalty;
+        this.whitePawnsPosition = other.whitePawnsPosition;
+        this.blackPawnsPosition = other.blackPawnsPosition;
+        this.whiteKnightsPosition = other.whiteKnightsPosition;
+        this.blackKnightsPosition = other.blackKnightsPosition;
+        this.whiteBishopsPosition = other.whiteBishopsPosition;
+        this.blackBishopsPosition = other.blackBishopsPosition;
+        this.whiteQueensPosition = other.whiteQueensPosition;
+        this.blackQueensPosition = other.blackQueensPosition;
+        this.whiteKingsPosition = other.whiteKingsPosition;
+        this.blackKingsPosition = other.blackKingsPosition;
+        this.whiteStartingSquarePenalty = other.whiteStartingSquarePenalty;
+        this.blackStartingSquarePenalty = other.blackStartingSquarePenalty;
+    }
+
+    /**
+     * Score mechanisms of the Game
+     */
+    public void initializeScore(BitBoard bitBoard) {
+        int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
+        int agilityBlack = bitBoard.generateAllPossibleMoves(false).size();
+
+        long whitePawns = bitBoard.getWhitePawns();
+        long blackPawns = bitBoard.getBlackPawns();
+        long whiteKnights = bitBoard.getWhiteKnights();
+        long blackKnights = bitBoard.getBlackKnights();
+        long whiteBishops = bitBoard.getWhiteBishops();
+        long blackBishops = bitBoard.getBlackBishops();
+        long whiteRooks = bitBoard.getWhiteRooks();
+        long blackRooks = bitBoard.getBlackRooks();
+        long whiteQueens = bitBoard.getWhiteQueens();
+        long blackQueens = bitBoard.getBlackQueens();
+        long whiteKing = bitBoard.getWhiteKing();
+        long blackKing = bitBoard.getBlackKing();
+
+        initializePawnScore(whitePawns, blackPawns);
+        initializeKnightScore(whiteKnights, blackKnights);
+        initializeBishopScore(whiteBishops, blackBishops);
+        initializeRookScore(whiteRooks, blackRooks);
+        initializeQueenScore(whiteQueens, blackQueens);
+
+        updateCenterPawnBonus(whitePawns, blackPawns);
+        updateDoubledPawnPenaltyWhite(whitePawns);
+        updateDoubledPawnPenaltyBlack(blackPawns);
+        updateIsolatedPawnPenaltyWhite(whitePawns);
+        updateIsolatedPawnPenaltyBlack(blackPawns);
+
+        // Apply positional values to the pawns
+        updatePawnsPositionBonusWhite(whitePawns);
+        updatePawnsPositionBonusBlack(blackPawns);
+        updateKnightsPositionBonusWhite(whiteKnights);
+        updateKnightsPositionBonusBlack(blackKnights);
+
+        updateBishopsPositionBonusWhite(whiteBishops);
+        updateBishopsPositionBonusBlack(blackBishops);
+        //                                                          <----- Rook is missing!!!
+        updateQueensPositionBonusWhite(whiteQueens);
+        updateQueensPositionBonusBlack(blackQueens);
+
+        updateWhiteKingsPositionBonus(whiteKing, bitBoard.isWhiteKingHasCastled(),
+                bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved());
+        updateBlackKingsPositionBonus(blackKing, bitBoard.isBlackKingHasCastled(),
+                bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved());
+
+        updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
+        updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
+
+        updateAgilityBonus(agilityWhite, agilityBlack);
+    }
+
+
     public int getScoreDifference() {
-        return (getScoreWhite() - getScoreBlack());
+        return calculateTotalWhiteScore() - calculateTotalBlackScore();
     }
+
+    public int calculateTotalWhiteScore() {
+        int totalWhiteScore = 0;
+
+        // Add piece count bonuses
+        totalWhiteScore += whitePawns;
+        totalWhiteScore += whiteKnights;
+        totalWhiteScore += whiteBishops;
+        totalWhiteScore += whiteRooks;
+        totalWhiteScore += whiteQueens;
+
+        totalWhiteScore += whiteCenterPawnBonus;
+        totalWhiteScore += whiteDoubledPawnPenalty;
+        totalWhiteScore += whiteIsolatedPawnPenalty;
+        totalWhiteScore += whitePawnsPosition;
+        totalWhiteScore += whiteKnightsPosition;
+        totalWhiteScore += whiteBishopsPosition;
+        totalWhiteScore += whiteQueensPosition;
+        totalWhiteScore += whiteKingsPosition;
+        totalWhiteScore += whiteStartingSquarePenalty;
+        // Add other scores and penalties if any
+        return totalWhiteScore;
+    }
+
+    /**
+     * Method to calculate the total score for black.
+     */
+    public int calculateTotalBlackScore() {
+        int totalBlackScore = 0;
+
+        totalBlackScore += blackPawns;
+        totalBlackScore += blackKnights;
+        totalBlackScore += blackBishops;
+        totalBlackScore += blackRooks;
+        totalBlackScore += blackQueens;
+
+        totalBlackScore += blackCenterPawnBonus;
+        totalBlackScore += blackDoubledPawnPenalty;
+        totalBlackScore += blackIsolatedPawnPenalty;
+        totalBlackScore += blackPawnsPosition;
+        totalBlackScore += blackKnightsPosition;
+        totalBlackScore += blackBishopsPosition;
+        totalBlackScore += blackQueensPosition;
+        totalBlackScore += blackKingsPosition;
+        totalBlackScore += blackStartingSquarePenalty;
+        // Add other scores and penalties if any
+        return totalBlackScore;
+    }
+
+    // Methods to incrementally update scores for specific pieces or actions
+
+    public void initializeQueenScore(long whiteQueens, long blackQueens) {
+        this.whiteQueens = Long.bitCount(whiteQueens) * QUEEN_VALUE;
+        this.blackQueens = Long.bitCount(blackQueens) * QUEEN_VALUE;
+    }
+
+    public void initializeRookScore(long whiteRooks, long blackRooks) {
+        this.whiteRooks = Long.bitCount(whiteRooks) * ROOK_VALUE;
+        this.blackRooks = Long.bitCount(blackRooks) * ROOK_VALUE;
+    }
+
+    public void initializeBishopScore(long whiteBishops, long blackBishops) {
+        this.whiteBishops = Long.bitCount(whiteBishops) * BISHOP_VALUE;
+        this.blackBishops = Long.bitCount(blackBishops) * BISHOP_VALUE;
+    }
+
+    public void initializeKnightScore(long whiteKnights, long blackKnights) {
+        this.whiteKnights = Long.bitCount(whiteKnights) * KNIGHT_VALUE;
+        this.blackKnights = Long.bitCount(blackKnights) * KNIGHT_VALUE;
+    }
+
+    public void initializePawnScore(long whitePawns, long blackPawns) {
+        this.whitePawns = Long.bitCount(whitePawns) * PAWN_VALUE;
+        this.blackPawns = Long.bitCount(whitePawns) * PAWN_VALUE;
+    }
+
+    /**
+     * Pawn Bonuses and Penalties
+     */
+    public void updateCenterPawnBonus(long whitePawns, long blackPawns) {
+        whiteCenterPawnBonus = countCenterPawns(whitePawns) * CENTER_PAWN_BONUS;
+        blackCenterPawnBonus = countCenterPawns(blackPawns) * CENTER_PAWN_BONUS;
+    }
+
+    // Method to add penalty for doubled pawns
+    public void updateDoubledPawnPenaltyWhite(long whitePawns) {
+        whiteDoubledPawnPenalty = countDoubledPawns(whitePawns) * DOUBLED_PAWN_PENALTY;
+    }
+
+    public void updateDoubledPawnPenaltyBlack(long blackPawns) {
+        blackDoubledPawnPenalty = countDoubledPawns(blackPawns) * DOUBLED_PAWN_PENALTY;
+    }
+
+    // Method to add penalty for isolated pawns
+    public void updateIsolatedPawnPenaltyWhite(long whitePawns) {
+        whiteIsolatedPawnPenalty = countIsolatedPawns(whitePawns) * ISOLATED_PAWN_PENALTY;
+    }
+    public void updateIsolatedPawnPenaltyBlack(long blackPawns) {
+        blackIsolatedPawnPenalty = countIsolatedPawns(blackPawns) * ISOLATED_PAWN_PENALTY;
+    }
+
+    /**
+     * Positional Bonuses
+     */
+
+    public void updatePawnsPositionBonusWhite(long whitePawns) {
+        whitePawnsPosition = applyPositionalValues(whitePawns, WHITE_PAWN_POSITIONAL_VALUES);
+    }
+
+    public void updatePawnsPositionBonusBlack(long blackPawns) {
+        blackPawnsPosition = applyPositionalValues(blackPawns, BLACK_PAWN_POSITIONAL_VALUES);
+    }
+
+    public void updateKnightsPositionBonusWhite(long whiteKnights) {
+        whiteKnightsPosition = applyPositionalValues(whiteKnights, KNIGHT_POSITIONAL_VALUES);
+    }
+
+    public void updateKnightsPositionBonusBlack(long blackKnights) {
+        blackKnightsPosition = applyPositionalValues(blackKnights, KNIGHT_POSITIONAL_VALUES);
+    }
+
+    public void updateBishopsPositionBonusWhite(long whiteBishops) {
+        whiteBishopsPosition = applyPositionalValues(whiteBishops, BISHOP_POSITIONAL_VALUES);
+    }
+
+    public void updateBishopsPositionBonusBlack(long blackBishops) {
+        blackBishopsPosition = applyPositionalValues(blackBishops, BISHOP_POSITIONAL_VALUES);
+    }
+
+    public void updateQueensPositionBonusWhite(long whiteQueens) {
+        whiteQueensPosition = applyPositionalValues(whiteQueens, QUEEN_POSITIONAL_VALUES);
+    }
+
+    public void updateQueensPositionBonusBlack(long blackQueens) {
+        blackQueensPosition = applyPositionalValues(blackQueens, QUEEN_POSITIONAL_VALUES);
+    }
+
+    public void updateWhiteKingsPositionBonus(long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
+        whiteKingsPosition = applyPositionalValues(whiteKing, WHITE_KING_POSITIONAL_VALUES);
+        if (isCastled) {
+            whiteKingsPosition += CASTLING_BONUS;
+        } else {
+            if (rookA1Moved) {
+                whiteKingsPosition += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+            if (rookH1Moved) {
+                whiteKingsPosition += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+        }
+    }
+
+    public void updateBlackKingsPositionBonus(long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved) {
+        blackKingsPosition = applyPositionalValues(blackKing, BLACK_KING_POSITIONAL_VALUES);
+        if (isCastled) {
+            blackKingsPosition += CASTLING_BONUS;
+        } else {
+            if (rookA8Moved) {
+                blackKingsPosition += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+            if (rookH8Moved) {
+                blackKingsPosition += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+        }
+    }
+
+    public void updateStartingSquarePenaltyWhite(long whiteKnights, long whiteBishops, long whiteRooks) {
+        // Check if white pieces are all on starting squares
+        if (areAllPiecesOnStartingSquares(whiteKnights, whiteBishops, whiteRooks, true)) {
+            whiteStartingSquarePenalty = START_POSITION_PENALTY;
+        }
+    }
+
+    public void updateStartingSquarePenaltyBlack(long blackKnights, long blackBishops, long blackRooks) {
+        // Check if white pieces are all on starting squares
+        if (areAllPiecesOnStartingSquares(blackKnights, blackBishops, blackRooks, false)) {
+            blackStartingSquarePenalty = START_POSITION_PENALTY;
+        }
+    }
+
+    public void updateAgilityBonus(int movesWhite, int movesBlack) {
+        agilityWhite = movesWhite;
+        agilityBlack = movesBlack;
+    }
+
+    public void updateAgilityBonusWhite(int movesWhite) {
+        agilityWhite = movesWhite;
+    }
+
+    public void updateAgilityBonusBlack(int movesBlack) {
+        agilityBlack = agilityBlack;
+    }
+
+    private void initializePieceScore(long whitePieces, long blackPieces, int pieceValue) {
+        whiteScore += Long.bitCount(whitePieces) * pieceValue;
+        blackScore += Long.bitCount(blackPieces) * pieceValue;
+    }
+
+    private int applyPositionalValues(long bitboard, int[] positionalValues) {
+        int score = 0;
+        for (int i = Long.numberOfTrailingZeros(bitboard); i < 64 - Long.numberOfLeadingZeros(bitboard); i++) {
+            if (((1L << i) & bitboard) != 0) {
+                score += positionalValues[i];
+            }
+        }
+        return score;
+    }
+
+    private boolean areAllPiecesOnStartingSquares(long knights, long bishops, long rooks, boolean isWhite) {
+        if (isWhite) {
+            return (knights == INITIAL_WHITE_KNIGHT_POSITION ||
+                    bishops == INITIAL_WHITE_BISHOP_POSITION ||
+                    rooks == INITIAL_WHITE_ROOK_POSITION);
+        } else {
+            return (knights == INITIAL_BLACK_KNIGHT_POSITION ||
+                    bishops == INITIAL_BLACK_BISHOP_POSITION ||
+                    rooks == INITIAL_BLACK_ROOK_POSITION);
+        }
+    }
+    public void updateWhitePawnValues(long whitePawns) {
+        this.whitePawns = Long.bitCount(whitePawns) * PAWN_VALUE;
+        updateIsolatedPawnPenaltyWhite(whitePawns);
+        updateDoubledPawnPenaltyWhite(whitePawns);
+        updatePawnsPositionBonusWhite(whitePawns);
+    }
+    public void updateBlackPawnValues(long blackPawns) {
+        this.blackPawns = Long.bitCount(blackPawns) * PAWN_VALUE;
+        updateIsolatedPawnPenaltyBlack(blackPawns);
+        updateDoubledPawnPenaltyBlack(blackPawns);
+        updatePawnsPositionBonusBlack(blackPawns);
+    }
+
+    public void updateWhiteKnightValues(long whiteKnights, long whiteBishops, long whiteRooks) {
+        this.whiteKnights = Long.bitCount(whiteKnights) * KNIGHT_VALUE;
+        updateKnightsPositionBonusWhite(whiteKnights);
+        updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
+    }
+
+    public void updateBlackKnightValues(long blackKnights, long blackBishops, long blackRooks) {
+        this.blackKnights = Long.bitCount(blackKnights) * KNIGHT_VALUE;
+        updateKnightsPositionBonusBlack(blackKnights);
+        updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
+    }
+
+    public void updateWhiteBishopValues(long whiteBishops, long whiteKnights, long whiteRooks) {
+        this.whiteBishops = Long.bitCount(whiteBishops) * BISHOP_VALUE;
+        updateBishopsPositionBonusWhite(whiteBishops);
+        updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
+    }
+
+    public void updateBlackBishopValues(long blackBishops, long blackKnights, long blackRooks) {
+        this.blackBishops = Long.bitCount(blackBishops) * BISHOP_VALUE;
+        updateBishopsPositionBonusBlack(blackBishops);
+        updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
+    }
+
+    public void updateWhiteRookValues(long whiteRooks, long whiteKnights, long whiteBishops, long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
+        this.whiteRooks = Long.bitCount(whiteRooks) * ROOK_VALUE;
+        updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
+        updateWhiteKingValues(whiteKing, isCastled, rookA1Moved, rookH1Moved);
+    }
+    public void updateBlackRookValues(long blackRooks, long blackKnights, long blackBishops, long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved) {
+        this.blackRooks = Long.bitCount(blackRooks) * ROOK_VALUE;
+        updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
+        updateBlackKingValues(blackKing, isCastled, rookA8Moved, rookH8Moved);
+    }
+
+    public void updateWhiteQueenValues(long whiteQueens) {
+        this.whiteQueens = Long.bitCount(whiteQueens) * QUEEN_VALUE;
+    }
+
+    public void updateBlackQueenValues(long blackQueens) {
+        this.blackQueens = Long.bitCount(blackQueens) * QUEEN_VALUE;
+    }
+
+    public void updateWhiteKingValues(long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
+        updateWhiteKingsPositionBonus(whiteKing, isCastled, rookA1Moved, rookH1Moved);
+    }
+
+    public void updateBlackKingValues(long blackKing,  boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
+        updateBlackKingsPositionBonus(blackKing, isCastled, rookA1Moved, rookH1Moved);
+    }
+
 }

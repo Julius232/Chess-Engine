@@ -22,21 +22,14 @@ import static julius.game.chessengine.helper.PawnHelper.countCenterPawns;
 import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES;
 
 @Log4j2
+@Getter
 public class BitBoard {
 
     BishopHelper bishopHelper = BishopHelper.getInstance();
 
-    // Constants for the initial positions of each piece type
-    private static final long INITIAL_WHITE_KNIGHT_POSITION = 0x0000000000000042L; // Knights on b1 and g1
-    private static final long INITIAL_BLACK_KNIGHT_POSITION = 0x4200000000000000L; // Knights on b8 and g8
-    private static final long INITIAL_WHITE_BISHOP_POSITION = 0x0000000000000024L; // Bishops on c1 and f1
-    private static final long INITIAL_BLACK_BISHOP_POSITION = 0x2400000000000000L; // Bishops on c8 and f8
-    private static final long INITIAL_WHITE_ROOK_POSITION = 0x0000000000000081L; // Rooks on a1 and h1
-    private static final long INITIAL_BLACK_ROOK_POSITION = 0x8100000000000000L; // Rooks on a8 and h8
 
     public boolean whitesTurn = true;
     // Add score field to the BitBoard class
-    private Score currentScore;
     private long whitePawns = 0L;
     private long blackPawns = 0L;
     private long whiteKnights = 0L;
@@ -97,17 +90,14 @@ public class BitBoard {
         this.blackRookH8Moved = blackRookH8Moved;
         this.whiteKingHasCastled = whiteKingHasCastled;
         this.blackKingHasCastled = blackKingHasCastled;
-        updateScore();
     }
 
     public BitBoard() {
         setInitialPosition();
-        updateScore();
     }
 
     public BitBoard(BitBoard other) {
         // Copying all the long fields representing the pieces
-        this.currentScore = new Score(other.getScore().getScoreWhite(), other.getScore().getScoreBlack());
         this.bishopHelper = other.bishopHelper;
         this.whitePawns = other.whitePawns;
         this.blackPawns = other.blackPawns;
@@ -143,6 +133,7 @@ public class BitBoard {
         this.whiteKingHasCastled = other.whiteKingHasCastled;
     }
 
+/*
     public void updateScore() {
         int agilityWhite = generateAllPossibleMoves(true).size();
         int agilityBlack = generateAllPossibleMoves(false).size();
@@ -258,8 +249,9 @@ public class BitBoard {
         blackScore += agilityBlack;
 
         // Return the score encapsulated in a Score object
-        this.currentScore = new Score(whiteScore, blackScore);
+        this.score = new Score(whiteScore, blackScore);
     }
+*/
 
 
     public boolean hasInsufficientMaterial() {
@@ -277,7 +269,7 @@ public class BitBoard {
     }
 
 
-    private boolean areAllPiecesOnStartingSquares(long knights, long bishops, long rooks, boolean isWhite) {
+/*    private boolean areAllPiecesOnStartingSquares(long knights, long bishops, long rooks, boolean isWhite) {
         if (isWhite) {
             return (knights == INITIAL_WHITE_KNIGHT_POSITION ||
                     bishops == INITIAL_WHITE_BISHOP_POSITION ||
@@ -287,21 +279,13 @@ public class BitBoard {
                     bishops == INITIAL_BLACK_BISHOP_POSITION ||
                     rooks == INITIAL_BLACK_ROOK_POSITION);
         }
-    }
+    }*/
 
     public MoveList getAllCurrentPossibleMoves() {
         return generateAllPossibleMoves(whitesTurn);
     }
 
-    private int applyPositionalValues(long bitboard, int[] positionalValues) {
-        int score = 0;
-        for (int i = Long.numberOfTrailingZeros(bitboard); i < 64 - Long.numberOfLeadingZeros(bitboard); i++) {
-            if (((1L << i) & bitboard) != 0) {
-                score += positionalValues[i];
-            }
-        }
-        return score;
-    }
+
 
     // Method to set up the initial position
     private void setInitialPosition() {
@@ -855,7 +839,7 @@ public class BitBoard {
     // The above-mentioned bishopAttackBitmask, rookAttackBitmask, queenAttackBitmask, and kingAttackBitmask methods
 // would generate all potential squares each piece can attack from a given position and compare it to the current
 // bitboard of that piece type to see if there's an overlap.
-    public void performMove(int moveInt, boolean scoreNeedsUpdate) {
+    public void performMove(int moveInt) {
         int fromIndex = moveInt & 0x3F; // Extract the first 6 bits
         int toIndex = (moveInt >> 6) & 0x3F; // Extract the next 6 bits
         int pieceTypeBits = (moveInt >> 12) & 0x07; // Extract the next 3 bits
@@ -936,10 +920,6 @@ public class BitBoard {
 
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
-
-        if (scoreNeedsUpdate) {
-            updateScore();
-        }
     }
 
 
@@ -1308,48 +1288,6 @@ public class BitBoard {
         return new Position(file, rank);
     }
 
-    public Score getScore() {
-        return this.currentScore;
-    }
-
-    // Method to count pawns in the center (e4, d4, e5, d5 squares)
-
-
-    // Method to count doubled pawns, which are two pawns of the same color on the same file
-    private int countDoubledPawns(long pawnsBitboard) {
-        int doubledPawns = 0;
-        for (char file = 'a'; file <= 'h'; file++) {
-            long fileBitboard = fileBitboard(file);
-            if (Long.bitCount(pawnsBitboard & fileBitboard) > 1) {
-                doubledPawns++;
-            }
-        }
-        return doubledPawns;
-    }
-
-    // Helper method to get a bitboard representing a file
-    private long fileBitboard(char file) {
-        long fileBitboard = 0L;
-        for (int rank = 1; rank <= 8; rank++) {
-            fileBitboard |= 1L << bitIndex(file, rank);
-        }
-        return fileBitboard;
-    }
-
-    // Method to count isolated pawns, which are pawns with no friendly pawns on adjacent files
-    private int countIsolatedPawns(long pawnsBitboard) {
-        int isolatedPawns = 0;
-        for (char file = 'a'; file <= 'h'; file++) {
-            long fileBitboard = fileBitboard(file);
-            long adjacentFiles = (file > 'a' ? fileBitboard((char) (file - 1)) : 0L)
-                    | (file < 'h' ? fileBitboard((char) (file + 1)) : 0L);
-            if ((pawnsBitboard & fileBitboard) != 0 && (pawnsBitboard & adjacentFiles) == 0) {
-                isolatedPawns++;
-            }
-        }
-        return isolatedPawns;
-    }
-
     public void logBoard() {
         StringBuilder logBoard = new StringBuilder();
         logBoard.append('\n');
@@ -1404,7 +1342,7 @@ public class BitBoard {
         return Math.abs(fromFile - toFile) > 1 || toRank < 0 || toRank > 7;
     }
 
-    public void undoMove(int moveInt, boolean scoreNeedsUpdate) {
+    public void undoMove(int moveInt) {
         int fromIndex = moveInt & 0x3F; // Extract the first 6 bits
         int toIndex = (moveInt >> 6) & 0x3F; // Extract the next 6 bits
         int pieceTypeBits = (moveInt >> 12) & 0x07; // Extract the next 3 bits
@@ -1437,9 +1375,6 @@ public class BitBoard {
 
         // Update the aggregated bitboards
         updateAggregatedBitboards();
-        if (scoreNeedsUpdate) {
-            updateScore();
-        }
         whitesTurn = !whitesTurn;
     }
 

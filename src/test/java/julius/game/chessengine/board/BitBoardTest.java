@@ -479,16 +479,16 @@ public class BitBoardTest {
     @Test
     public void testMoveGeneration() {
         BitBoard b = new BitBoard();
-        b.performMove(38668, true); //e4
-        b.performMove(6387, true);  //d5
+        b.performMove(38668); //e4
+        b.performMove(6387);  //d5
         assertEquals("[37896]:a3 [37961]:b3 [38026]:c3 [38091]:d3 [38221]:f3 [38286]:g3 [38351]:h3 [39196]:e5 [38408]:a4 [38473]:b4 [38538]:c4 [38603]:d4 [38733]:f4 [38798]:g4 [38863]:h4 [2201820]:exd5 [41985]:Na3 [42113]:Nc3 [41734]:Ne2 [42310]:Nf3 [42438]:Nh3 [45829]:Be2 [46277]:Bd3 [46725]:Bc4 [47173]:Bb5 [47621]:Ba6 [54019]:Qe2 [54595]:Qf3 [55171]:Qg4 [55747]:Qh5 [16835332]:Ke2 ", b.getAllCurrentPossibleMoves().toString());
-        b.performMove(46277, true); //Bd3
-        b.performMove(11134, true); //Nf6
-        b.performMove(42310, true); //Nf3
-        b.performMove(5859, true); // d4
-        b.performMove(50520452, true);
+        b.performMove(46277); //Bd3
+        b.performMove(11134); //Nf6
+        b.performMove(42310); //Nf3
+        b.performMove(5859); // d4
+        b.performMove(50520452);
         b.logBoard();
-        b.undoMove(50520452, true);
+        b.undoMove(50520452);
         b.logBoard();
     }
 

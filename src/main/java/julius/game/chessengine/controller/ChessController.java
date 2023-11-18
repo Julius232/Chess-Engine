@@ -33,7 +33,7 @@ public class ChessController {
 
     @GetMapping(value = "/score")
     public ResponseEntity<Score> getScore() {
-        return ResponseEntity.ok(engine.getScore());
+        return ResponseEntity.ok(engine.getGameState().getScore());
     }
 
     @PutMapping(value = "/reset")

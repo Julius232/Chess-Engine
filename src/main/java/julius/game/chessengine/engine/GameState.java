@@ -2,6 +2,7 @@ package julius.game.chessengine.engine;
 
 import julius.game.chessengine.board.BitBoard;
 import julius.game.chessengine.board.MoveList;
+import julius.game.chessengine.utils.Score;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
@@ -16,18 +17,32 @@ public class GameState {
 
     private GameStateEnum state;
 
-    public GameState() {
+    private Score score;
+
+    public GameState(BitBoard bitBoard) {
         repetitionCounter = new HashMap<>();
         state = GameStateEnum.PLAY;
+        score = new Score();
+        initializeScore(bitBoard);
     }
 
     public GameState(GameState other) {
         this.repetitionCounter = new HashMap<>(other.repetitionCounter); // Deep copy of the map
         this.state = other.state; // Enum, so a direct copy is fine
+        this.score = new Score(other.score);
     }
 
 
-    public void update(BitBoard bitBoard, MoveList legalMoves) {
+    private void initializeScore(BitBoard bitBoard) {
+        score.initializeScore(bitBoard);
+    }
+
+    public void update(BitBoard bitBoard, MoveList legalMoves, int move) {
+        updateState(bitBoard, legalMoves);
+        updateScore(bitBoard, legalMoves, move);
+    }
+
+    public void updateState(BitBoard bitBoard, MoveList legalMoves) {
         if (whiteInCheck(bitBoard)) {
             state = GameStateEnum.WHITE_IN_CHECK;
             if (whiteLost(legalMoves)) {
@@ -45,6 +60,74 @@ public class GameState {
             incrementHashCount(bitBoard.getBoardStateHash());
         }
     }
+
+    public void updateScore(BitBoard bitBoard, MoveList legalMoves, int moveInt) {
+        int specialProperty = (moveInt >> 16) & 0x03;
+        boolean isWhite = (moveInt & (1 << 15)) != 0;
+        int pieceTypeBits = (moveInt >> 12) & 0x07;
+        boolean isCapture = (specialProperty & 0x01) != 0;
+        int promotionPieceTypeBits = (moveInt >> 18) & 0x07;
+        int capturedPieceTypeBits = (moveInt >> 21) & 0x07;
+        boolean isEnPassantMove = specialProperty == 3;
+        boolean isCastlingMove = specialProperty == 2;
+        boolean isKingFirstMove = (moveInt & (1 << 24)) != 0;
+        boolean isRookFirstMove = (moveInt & (1 << 25)) != 0;
+
+        updatePieceValues(isWhite, pieceTypeBits, bitBoard, legalMoves);
+        if (capturedPieceTypeBits != 0) {
+            updateCapturedPieceValues(isWhite, capturedPieceTypeBits, bitBoard);
+        }
+
+        log.info("Piecetype: {}, CapturedType: {}, ScoreWhite: {}, ScoreBlack: {}",
+                pieceTypeBits, capturedPieceTypeBits, score.calculateTotalWhiteScore(), score.calculateTotalBlackScore());
+    }
+
+    private void updatePieceValues(boolean isWhite, int pieceTypeBits, BitBoard bitBoard, MoveList legalMoves) {
+        if (isWhite) {
+            updateValuesForWhite(pieceTypeBits, bitBoard);
+            score.updateAgilityBonusWhite(legalMoves.size());
+        } else {
+            updateValuesForBlack(pieceTypeBits, bitBoard);
+            score.updateAgilityBonusBlack(legalMoves.size());
+        }
+    }
+
+    private void updateValuesForWhite(int pieceTypeBits, BitBoard bitBoard) {
+        switch (pieceTypeBits) {
+            case 1: score.updateWhitePawnValues(bitBoard.getWhitePawns()); break;
+            case 2: score.updateWhiteKnightValues(bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteRooks()); break;
+            case 3: score.updateWhiteBishopValues(bitBoard.getWhiteBishops(), bitBoard.getWhiteKnights(), bitBoard.getWhiteRooks()); break;
+            case 4: score.updateWhiteRookValues(bitBoard.getWhiteRooks(), bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved()); break;
+            case 5: score.updateWhiteQueenValues(bitBoard.getWhiteQueens()); break;
+            case 6: score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved()); break;
+            default: break; // Optionally handle default case
+        }
+    }
+
+    private void updateValuesForBlack(int pieceTypeBits, BitBoard bitBoard) {
+        switch (pieceTypeBits) {
+            case 1: score.updateBlackPawnValues(bitBoard.getBlackPawns()); break;
+            case 2: score.updateBlackKnightValues(bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackRooks()); break;
+            case 3: score.updateBlackBishopValues(bitBoard.getBlackBishops(), bitBoard.getBlackKnights(), bitBoard.getBlackRooks()); break;
+            case 4: score.updateBlackRookValues(bitBoard.getBlackRooks(), bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved()); break;
+            case 5: score.updateBlackQueenValues(bitBoard.getBlackQueens()); break;
+            case 6: score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved()); break;
+            default: break; // Optionally handle default case
+        }
+    }
+
+    private void updateCapturedPieceValues(boolean isWhite, int capturedPieceTypeBits, BitBoard bitBoard) {
+        if (isWhite) {
+            updateValuesForBlack(capturedPieceTypeBits, bitBoard); // Update black pieces if white is capturing
+        } else {
+            updateValuesForWhite(capturedPieceTypeBits, bitBoard); // Update white pieces if black is capturing
+        }
+    }
+
+
+    /**
+     * State mechanisms of the Game
+     */
 
     public boolean isGameOver() {
         return isInStateCheckMate() || isInStateDraw();
