@@ -30,7 +30,7 @@ public class Engine {
     private MoveList legalMoves;
 
     @Getter
-    private CopyOnWriteArrayList<Integer> line = new CopyOnWriteArrayList<>();
+    private ArrayList<Integer> line = new ArrayList<>();
     private BitBoard bitBoard = new BitBoard();
     @Getter
     private GameState gameState = new GameState();
@@ -39,7 +39,7 @@ public class Engine {
         startNewGame();
     }
 
-    public Engine(BitBoard b, CopyOnWriteArrayList<Integer> m, MoveList l) {
+    public Engine(BitBoard b, ArrayList<Integer> m, MoveList l) {
         bitBoard = new BitBoard(b);
         gameState = new GameState();
         line = m;
@@ -75,8 +75,8 @@ public class Engine {
         updateGameState();
     }
 
-    public Engine createSimulation() {
-        CopyOnWriteArrayList<Integer> newLine = new CopyOnWriteArrayList<>(line); // Safe copy
+    public synchronized Engine createSimulation() {
+        ArrayList<Integer> newLine = new ArrayList<>(line); // Safe copy
         return new Engine(bitBoard, newLine, legalMoves);
     }
 
@@ -84,7 +84,7 @@ public class Engine {
         bitBoard = new BitBoard();
         gameState = new GameState();
         legalMovesNeedUpdate = true;
-        line = new CopyOnWriteArrayList<>();
+        line = new ArrayList<>();
     }
 
     private void generateLegalMoves() {
@@ -270,7 +270,7 @@ public class Engine {
         return bitBoard.whitesTurn;
     }
 
-    public void undoLastMove() {
+    public synchronized void undoLastMove() {
         if (!line.isEmpty()) {
             bitBoard.undoMove(line.getLast(), true);
             line.removeLast();

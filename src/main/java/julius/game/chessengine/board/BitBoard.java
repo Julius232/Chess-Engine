@@ -173,6 +173,7 @@ public class BitBoard {
         final int CENTER_PAWN_BONUS = 10;   // Bonus points for pawns in the center
         final int DOUBLED_PAWN_PENALTY = -20; // Penalty points for doubled pawns
         final int ISOLATED_PAWN_PENALTY = -10; // Penalty points for isolated pawns
+        final int NOT_CASTLED_AND_ROOK_MOVE_PENALTY = -31;
 
         final int START_POSITION_PENALTY = -50; // Define the penalty value for starting position
         final int CASTLING_BONUS = 50;
@@ -226,9 +227,27 @@ public class BitBoard {
         if(whiteKingHasCastled) {
             whiteScore += CASTLING_BONUS;
         }
+        else {
+            if(whiteRookA1Moved) {
+                whiteScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+            if(whiteRookH1Moved) {
+                whiteScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+        }
         if(blackKingHasCastled) {
             blackScore += CASTLING_BONUS;
         }
+        else {
+            if(blackRookA8Moved) {
+                blackScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+            if(blackRookH8Moved) {
+                blackScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+        }
+
+
 
         // Check if white pieces are all on starting squares
         if (areAllPiecesOnStartingSquares(whiteKnights, whiteBishops, whiteRooks, true)) {
