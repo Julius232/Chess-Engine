@@ -76,7 +76,7 @@ public class AI {
         startCalculationThread();
         scheduler.scheduleAtFixedRate(() -> {
             log.info("state: {}, keepCalculating: {}", engine.getGameState().getState(), keepCalculating);
-            if (!engine.getGameState().getState().equals("PLAY") || !keepCalculating) {
+            if (engine.getGameState().isGameOver() || !keepCalculating) {
                 stopCalculation();
                 scheduler.shutdown();
                 return;
@@ -269,7 +269,7 @@ public class AI {
 
         long boardHash = engine.getBoardStateHash();
 
-        if(engine.getGameState().isInStateDraw()) {
+        if (engine.getGameState().isInStateDraw()) {
             return 0;
         }
 
