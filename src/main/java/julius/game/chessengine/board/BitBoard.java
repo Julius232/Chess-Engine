@@ -2,7 +2,6 @@ package julius.game.chessengine.board;
 
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.helper.BishopHelper;
-import julius.game.chessengine.helper.KingHelper;
 import julius.game.chessengine.helper.PawnHelper;
 import julius.game.chessengine.helper.ZobristTable;
 import julius.game.chessengine.utils.Color;
@@ -10,8 +9,6 @@ import julius.game.chessengine.utils.Score;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
@@ -30,20 +27,12 @@ public class BitBoard {
     BishopHelper bishopHelper = BishopHelper.getInstance();
 
     // Constants for the initial positions of each piece type
-    private static final long INITIAL_WHITE_PAWN_POSITION = 0x000000000000FF00L; // Pawns on the second rank (a2-h2)
-    private static final long INITIAL_BLACK_PAWN_POSITION = 0x00FF000000000000L; // Pawns on the seventh rank (a7-h7)
     private static final long INITIAL_WHITE_KNIGHT_POSITION = 0x0000000000000042L; // Knights on b1 and g1
     private static final long INITIAL_BLACK_KNIGHT_POSITION = 0x4200000000000000L; // Knights on b8 and g8
     private static final long INITIAL_WHITE_BISHOP_POSITION = 0x0000000000000024L; // Bishops on c1 and f1
     private static final long INITIAL_BLACK_BISHOP_POSITION = 0x2400000000000000L; // Bishops on c8 and f8
     private static final long INITIAL_WHITE_ROOK_POSITION = 0x0000000000000081L; // Rooks on a1 and h1
     private static final long INITIAL_BLACK_ROOK_POSITION = 0x8100000000000000L; // Rooks on a8 and h8
-    private static final long INITIAL_WHITE_QUEEN_POSITION = 0x0000000000000008L; // Queen on d1
-    private static final long INITIAL_BLACK_QUEEN_POSITION = 0x0800000000000000L; // Queen on d8
-    private static final long INITIAL_WHITE_KING_POSITION = 0x0000000000000010L; // King on e1
-    private static final long INITIAL_BLACK_KING_POSITION = 0x1000000000000000L; // King on e8
-
-    private Map<Long, Integer> repetitionCounter = new HashMap<>();
 
     public boolean whitesTurn = true;
     // Add score field to the BitBoard class
@@ -77,13 +66,12 @@ public class BitBoard {
     private boolean blackRookA8Moved = false;
     private boolean blackRookH8Moved = false;
 
-    //Warning those booleans do not fully work for FEN imported games, because its impossible to determine if a king castled
+    //Warning those booleans do not fully work for FEN imported games, because it's impossible to determine if a king castled
     //I just need those values to give the Engine a better score if it castles
     private boolean whiteKingHasCastled = false;
     private boolean blackKingHasCastled = false;
 
     public BitBoard(boolean whitesTurn, long whitePawns, long blackPawns, long whiteKnights, long blackKnights, long whiteBishops, long blackBishops, long whiteRooks, long blackRooks, long whiteQueens, long blackQueens, long whiteKing, long blackKing, long whitePieces, long blackPieces, long allPieces, int lastMoveDoubleStepPawnIndex, boolean whiteKingMoved, boolean blackKingMoved, boolean whiteRookA1Moved, boolean whiteRookH1Moved, boolean blackRookA8Moved, boolean blackRookH8Moved, boolean whiteKingHasCastled, boolean blackKingHasCastled) {
-        this.repetitionCounter = new HashMap<>();
         this.whitesTurn = whitesTurn;
         this.whitePawns = whitePawns;
         this.blackPawns = blackPawns;
@@ -118,7 +106,6 @@ public class BitBoard {
     }
 
     public BitBoard(BitBoard other) {
-        this.repetitionCounter = new HashMap<>(other.repetitionCounter);
         // Copying all the long fields representing the pieces
         this.currentScore = new Score(other.getScore().getScoreWhite(), other.getScore().getScoreBlack());
         this.bishopHelper = other.bishopHelper;
@@ -157,10 +144,6 @@ public class BitBoard {
     }
 
     public void updateScore() {
-        if (isThreeFoldRepetition() || hasInsufficientMaterial()) {
-            this.currentScore = new Score(0, 0);
-            return;
-        }
         int agilityWhite = generateAllPossibleMoves(true).size();
         int agilityBlack = generateAllPossibleMoves(false).size();
 
@@ -278,29 +261,6 @@ public class BitBoard {
         this.currentScore = new Score(whiteScore, blackScore);
     }
 
-    private void incrementHashCount(long hash) {
-        repetitionCounter.put(hash, repetitionCounter.getOrDefault(hash, 0) + 1);
-    }
-
-    private void decrementHashCount(long hash) {
-        // Check if the hash exists in the map
-        if (repetitionCounter.containsKey(hash)) {
-            int count = repetitionCounter.get(hash);
-
-            // Decrement the count
-            if (count > 1) {
-                repetitionCounter.put(hash, count - 1);
-                log.info("[-] hash {}, count {}", hash, repetitionCounter.getOrDefault(getBoardStateHash(), 0));
-            } else {
-                // If the count reaches zero, remove the hash from the map
-                repetitionCounter.remove(hash);
-            }
-        }
-    }
-
-    public boolean isThreeFoldRepetition() {
-        return repetitionCounter.getOrDefault(getBoardStateHash(), 0) >= 3;
-    }
 
     public boolean hasInsufficientMaterial() {
         // Early return if any side has pawns, rooks, or queens, as these can achieve checkmate
@@ -478,7 +438,7 @@ public class BitBoard {
         long singleStepForward = whitesTurn ? pawns << 8 : pawns >>> 8;
         singleStepForward &= emptySquares;
 
-        long doubleStepForward = 0L;
+        long doubleStepForward;
         if (whitesTurn) {
             doubleStepForward = ((pawns & RankMasks[1]) << 8 & emptySquares) << 8 & emptySquares;
         } else {
@@ -905,11 +865,6 @@ public class BitBoard {
         boolean isEnPassantMove = specialProperty == 3;
         boolean isCastlingMove = specialProperty == 2;
         int promotionPieceTypeBits = (moveInt >> 18) & 0x07; // Extract the next 3 bits
-        int capturedPieceTypeBits = (moveInt >> 21) & 0x07; // Extract the next 3 bits
-
-        if (isEnPassantMove && isCastlingMove && isCapture) {
-            throw new IllegalStateException("Move cannot be En passant and Castling...");
-        }
 
         long pieceBitboard = intToPiecesBitboard(pieceTypeBits, isWhite);
 
@@ -981,7 +936,6 @@ public class BitBoard {
 
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
-        incrementHashCount(getBoardStateHash());
 
         if (scoreNeedsUpdate) {
             updateScore();
@@ -1115,14 +1069,6 @@ public class BitBoard {
         } else { // Color.BLACK
             return (blackPieces & positionMask) != 0;
         }
-    }
-
-    private boolean isValidBoardPosition(Position position) {
-        return position.getX() >= 'a' && position.getX() <= 'h' && position.getY() >= 1 && position.getY() <= 8;
-    }
-
-    private Color getOpponentColor(Color color) {
-        return color == Color.WHITE ? Color.BLACK : Color.WHITE;
     }
 
     public boolean isInCheck(boolean whitesTurn) {
@@ -1413,19 +1359,7 @@ public class BitBoard {
                 long positionMask = 1L << index;
 
                 // Determine the piece at the current position
-                char pieceChar = '.';
-                if ((whitePawns & positionMask) != 0) pieceChar = 'P';
-                else if ((blackPawns & positionMask) != 0) pieceChar = 'p';
-                else if ((whiteKnights & positionMask) != 0) pieceChar = 'N';
-                else if ((blackKnights & positionMask) != 0) pieceChar = 'n';
-                else if ((whiteBishops & positionMask) != 0) pieceChar = 'B';
-                else if ((blackBishops & positionMask) != 0) pieceChar = 'b';
-                else if ((whiteRooks & positionMask) != 0) pieceChar = 'R';
-                else if ((blackRooks & positionMask) != 0) pieceChar = 'r';
-                else if ((whiteQueens & positionMask) != 0) pieceChar = 'Q';
-                else if ((blackQueens & positionMask) != 0) pieceChar = 'q';
-                else if ((whiteKing & positionMask) != 0) pieceChar = 'K';
-                else if ((blackKing & positionMask) != 0) pieceChar = 'k';
+                char pieceChar = getPieceChar(positionMask);
 
                 // Add the piece character to the log board
                 logBoard.append(pieceChar).append(' ');
@@ -1436,11 +1370,28 @@ public class BitBoard {
         log.info(logBoard.toString()); // Log the current board state
     }
 
+    private char getPieceChar(long positionMask) {
+        char pieceChar = '.';
+        if ((whitePawns & positionMask) != 0) pieceChar = 'P';
+        else if ((blackPawns & positionMask) != 0) pieceChar = 'p';
+        else if ((whiteKnights & positionMask) != 0) pieceChar = 'N';
+        else if ((blackKnights & positionMask) != 0) pieceChar = 'n';
+        else if ((whiteBishops & positionMask) != 0) pieceChar = 'B';
+        else if ((blackBishops & positionMask) != 0) pieceChar = 'b';
+        else if ((whiteRooks & positionMask) != 0) pieceChar = 'R';
+        else if ((blackRooks & positionMask) != 0) pieceChar = 'r';
+        else if ((whiteQueens & positionMask) != 0) pieceChar = 'Q';
+        else if ((blackQueens & positionMask) != 0) pieceChar = 'q';
+        else if ((whiteKing & positionMask) != 0) pieceChar = 'K';
+        else if ((blackKing & positionMask) != 0) pieceChar = 'k';
+        return pieceChar;
+    }
+
     // Helper method to move a piece on a bitboard
     private long moveBit(long pieceBitboard, int fromIndex, int toIndex) {
-        // Clear the bit at the from index
+        // Clear the bit at the fromIndex
         pieceBitboard &= ~(1L << fromIndex);
-        // Set the bit at the to index
+        // Set the bit at the toIndex
         pieceBitboard |= 1L << toIndex;
         return pieceBitboard;
     }
@@ -1454,11 +1405,9 @@ public class BitBoard {
     }
 
     public void undoMove(int moveInt, boolean scoreNeedsUpdate) {
-        decrementHashCount(getBoardStateHash());
         int fromIndex = moveInt & 0x3F; // Extract the first 6 bits
         int toIndex = (moveInt >> 6) & 0x3F; // Extract the next 6 bits
-        int pieceTypeBits = (moveInt >> 12) & 0x07;
-        ; // Extract the next 3 bits
+        int pieceTypeBits = (moveInt >> 12) & 0x07; // Extract the next 3 bits
         boolean isWhite = (moveInt & (1 << 15)) != 0; // Extract the color bit
         int specialProperty = (moveInt >> 16) & 0x03; // Extract the next 2 bits
         boolean isCapture = (specialProperty & 0x01) != 0;

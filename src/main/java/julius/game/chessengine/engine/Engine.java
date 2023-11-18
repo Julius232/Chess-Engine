@@ -1,8 +1,6 @@
 package julius.game.chessengine.engine;
 
 import julius.game.chessengine.ai.CaptureTranspositionTableEntry;
-import julius.game.chessengine.ai.NodeType;
-import julius.game.chessengine.ai.TranspositionTableEntry;
 import julius.game.chessengine.board.*;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
@@ -12,11 +10,9 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,9 +35,9 @@ public class Engine {
         startNewGame();
     }
 
-    public Engine(BitBoard b, ArrayList<Integer> m, MoveList l) {
+    public Engine(BitBoard b, ArrayList<Integer> m, MoveList l, GameState g) {
         bitBoard = new BitBoard(b);
-        gameState = new GameState();
+        gameState = new GameState(g);
         line = m;
         legalMoves = l;
     }
@@ -55,31 +51,24 @@ public class Engine {
     }
 
     public void performMove(int move) {
-        if(gameState.getState().equals("PLAY")) {
-            this.bitBoard.performMove(move, true);
-            updateGameState();
-            legalMovesNeedUpdate = true; // Set flag
+        if(!gameState.isGameOver()) {
+            bitBoard.performMove(move, true);
+            generateLegalMoves();
+            gameState.update(bitBoard, legalMoves);
             line.add(move);
         }
-    }
-
-    public void undoMove(int move, boolean scoreNeedsUpdate) {
-        this.bitBoard.undoMove(move, scoreNeedsUpdate);
-        updateGameState();
-        legalMovesNeedUpdate = true; // Set flag
-        line.removeLast();
     }
 
     public void importBoardFromFen(String fen) {
         this.bitBoard = FEN.translateFENtoBitBoard(fen);
         this.gameState = new GameState();
         generateLegalMoves();
-        updateGameState();
+        gameState.update(bitBoard, legalMoves);
     }
 
     public synchronized Engine createSimulation() {
         ArrayList<Integer> newLine = new ArrayList<>(line); // Safe copy
-        return new Engine(bitBoard, newLine, legalMoves);
+        return new Engine(bitBoard, newLine, legalMoves, gameState);
     }
 
     public void startNewGame() {
@@ -92,7 +81,7 @@ public class Engine {
     private void generateLegalMoves() {
         this.legalMoves = new MoveList();
 
-        if(bitBoard.isThreeFoldRepetition()) {
+        if(gameState.isGameOver()) {
             return;
         }
 
@@ -138,9 +127,6 @@ public class Engine {
         // Execute the move on the bitboard
         performMove(randomMove);
 
-        // Update the game state
-        updateGameState();
-
         return gameState;
     }
 
@@ -183,9 +169,6 @@ public class Engine {
         } else {
             // Perform the move on the bitboard
             performMove(move);
-
-            // Update the game state
-            updateGameState();
         }
 
         return gameState;
@@ -217,37 +200,7 @@ public class Engine {
                 .collect(Collectors.toList());
     }
 
-    public boolean isInStateCheck(boolean isWhite) {
-        // The BitBoard class already has a method to check if a king is in check
-        return isInStateCheck(this.bitBoard, isWhite);
-    }
 
-    private boolean isInStateCheck(BitBoard board, boolean isWhite) {
-        // The BitBoard class already has a method to check if a king is in check
-        return board.isInCheck(isWhite);
-    }
-
-
-    public boolean isInStateCheckMate(boolean isWhite) {
-        // Then, generate all possible moves for the player.
-        MoveList possibleMoves = getAllLegalMoves();
-
-        // Filter out the moves that would leave the king in check after they are made.
-        // Note: You need to implement a method that checks if making a certain move would result in check.
-
-        // Checkmate occurs when the king is in check and there are no legal moves left.
-        return isInStateCheck(isWhite) && possibleMoves.size() == 0;
-    }
-
-    private void updateGameState() {
-        if (getAllLegalMoves().size() == 0 && isInStateCheckMate(true)) {
-            gameState.setState("BLACK WON");
-        } else if (getAllLegalMoves().size() == 0 && isInStateCheckMate(false)) {
-            gameState.setState("WHITE WON");
-        } else if (isDraw()) {
-            gameState.setState("DRAW");
-        }
-    }
 
     public synchronized long getBoardStateHash() {
         return bitBoard.getBoardStateHash();
@@ -264,10 +217,11 @@ public class Engine {
 
     public synchronized void undoLastMove() {
         if (!line.isEmpty()) {
-            bitBoard.undoMove(line.getLast(), true);
+            gameState.undo(bitBoard.getBoardStateHash());
+            this.bitBoard.undoMove(line.getLast(), true);
+            generateLegalMoves();
             line.removeLast();
         }
-        generateLegalMoves();
     }
 
     public Score getScore() {
@@ -278,18 +232,10 @@ public class Engine {
         return FEN.translateBoardToFEN(bitBoard);
     }
 
-    public boolean isDraw() {
-        if(bitBoard.hasInsufficientMaterial()) {
-            log.info("Insufficient Material");
-        }
-        if(bitBoard.isThreeFoldRepetition()) {
-            log.info("ThreeFoldRepetition");
-        }
-        return legalMoves.size() == 0 || bitBoard.hasInsufficientMaterial() || bitBoard.isThreeFoldRepetition();
-    }
+
 
     public double evaluateBoard(boolean isWhitesTurn) {
-        if (isInStateCheckMate(isWhitesTurn)) {
+        if (gameState.isInStateCheckMate()) {
             return CHECKMATE;
         }
 
@@ -377,4 +323,5 @@ public class Engine {
         // Step 3: Return the computed hash
         return boardCopy.getBoardStateHash();
     }
+
 }

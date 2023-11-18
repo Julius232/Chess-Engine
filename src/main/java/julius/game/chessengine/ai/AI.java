@@ -219,9 +219,9 @@ public class AI {
             engine.performMove(moveInt); // Perform move using its integer representation
             double score;
 
-            if (engine.isInStateCheckMate(!isWhitesTurn)) {
+            if (engine.getGameState().isInStateCheckMate()) {
                 score = isWhitesTurn ? Engine.CHECKMATE : -Engine.CHECKMATE;
-            } else if (engine.isDraw()) {
+            } else if (engine.getGameState().isInStateDraw()) {
                 score = 0;
             } else {
                 score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, !isWhitesTurn, startTime, timeLimit);
@@ -269,11 +269,11 @@ public class AI {
 
         long boardHash = engine.getBoardStateHash();
 
-        if(engine.isDraw()) {
+        if(engine.getGameState().isInStateDraw()) {
             return 0;
         }
 
-        if (depth == 0 || engine.isInStateCheckMate(isWhite)) {
+        if (depth == 0 || engine.getGameState().isInStateCheckMate()) {
             double eval = engine.evaluateBoard(isWhite);
             if (!isWhite) {
                 eval = -eval;

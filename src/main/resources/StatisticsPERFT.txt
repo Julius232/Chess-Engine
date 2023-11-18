@@ -7,6 +7,10 @@ Starting POS --> PERFT
 15.11.23 Time taken for move calculation: 3289.5339 ms
 -- after removing Move objects and using integer moves
 16.11.23 Time taken for move calculation: 1909.3527 ms
+-- after initial implementation of draw mechanism
+18.11.23 Time taken for move calculation: 5797.1654 ms :-(
+-- after implementing better GameState mechanism
+18.11.23 Time taken for move calculation: 2763.0737 ms
 
 POS_2 --> PERFTPos_2
 12.11.23 Time taken for move calculation: 275747.8732 ms
@@ -17,3 +21,7 @@ POS_2 --> PERFTPos_2
 15.11.23 Time taken for move calculation: 127014.3807 ms
 -- after removing Move objects and using integer moves
 16.11.23 Time taken for move calculation: 76797.8816 ms
+-- after initial implementation of draw mechanism
+18.11.23 Time taken for move calculation: 218854.1965 ms :-(
+-- after implementing better GameState mechanism
+18.11.23 Time taken for move calculation: 107199.0896 ms

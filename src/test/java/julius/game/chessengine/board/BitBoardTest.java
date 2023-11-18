@@ -141,13 +141,13 @@ public class BitBoardTest {
 
         // Depth 3
         PerftNode d3 = perft(3, engine);
-        assertEquals(17102, d3.getCaptures());
         assertEquals(45, d3.getEnPassant());
         assertEquals(3162, d3.getCastles());
-        assertEquals(0, d3.getPromotions());
         assertEquals(993, d3.getChecks());
         assertEquals(1, d3.getCheckmates());
         assertEquals(97862, d3.getNodes());
+        assertEquals(0, d3.getPromotions());
+        assertEquals(17102, d3.getCaptures());
 
         // Depth 4
         PerftNode d4 = perft(4, engine);
@@ -181,8 +181,8 @@ public class BitBoardTest {
 
         // Depth 2
         PerftNode d2 = perft(2, engine);
-        assertEquals(14, d2.getCaptures());
         assertEquals(10, d2.getChecks());
+        assertEquals(14, d2.getCaptures());
         assertEquals(191, d2.getNodes());
         assertEquals(0, d2.getEnPassant());
         assertEquals(0, d2.getCastles());
@@ -201,13 +201,13 @@ public class BitBoardTest {
 
         // Depth 4
         PerftNode d4 = perft(4, engine);
+        assertEquals(17, d4.getCheckmates());
         assertEquals(43238, d4.getNodes());
         assertEquals(3348, d4.getCaptures());
         assertEquals(123, d4.getEnPassant());
         assertEquals(0, d4.getCastles());
         assertEquals(0, d4.getPromotions());
         assertEquals(1680, d4.getChecks());
-        assertEquals(17, d4.getCheckmates());
     }
 
     @Test
@@ -277,7 +277,6 @@ public class BitBoardTest {
 
 
     private PerftNode perft(int depth, Engine engine, int lastMove) {
-        boolean isWhite = (lastMove & (1 << 15)) != 0; // Extract the color bit
         int specialProperty = (lastMove >> 16) & 0x03; // Extract the next 2 bits
         boolean isCapture = (specialProperty & 0x01) != 0;
         boolean isEnPassantMove = specialProperty == 3;
@@ -301,10 +300,10 @@ public class BitBoardTest {
                 if (promotionPieceTypeBits != 0) {
                     node.addPromotion(1);
                 }
-                if (engine.isInStateCheck(!isWhite)) {
+                if (engine.getGameState().isInStateCheck() || engine.getGameState().isInStateCheckMate()) {
                     node.addCheck(1);
                 }
-                if (engine.isInStateCheckMate(!isWhite)) {
+                if (engine.getGameState().isInStateCheckMate()) {
                     node.addCheckmate(1);
                 }
             }
@@ -325,7 +324,7 @@ public class BitBoardTest {
             node.addEnPassant(childNode.getEnPassant());
             node.addPromotion(childNode.getPromotions());
 
-            engine.undoMove(move, false);
+            engine.undoLastMove();
         }
 
         return node;
