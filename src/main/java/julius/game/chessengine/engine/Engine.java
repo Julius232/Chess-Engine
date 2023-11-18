@@ -55,10 +55,12 @@ public class Engine {
     }
 
     public void performMove(int move) {
-        this.bitBoard.performMove(move, true);
-        updateGameState();
-        legalMovesNeedUpdate = true; // Set flag
-        line.add(move);
+        if(gameState.getState().equals("PLAY")) {
+            this.bitBoard.performMove(move, true);
+            updateGameState();
+            legalMovesNeedUpdate = true; // Set flag
+            line.add(move);
+        }
     }
 
     public void undoMove(int move, boolean scoreNeedsUpdate) {
@@ -89,6 +91,11 @@ public class Engine {
 
     private void generateLegalMoves() {
         this.legalMoves = new MoveList();
+
+        if(bitBoard.isThreeFoldRepetition()) {
+            return;
+        }
+
         MoveList moves = bitBoard.getAllCurrentPossibleMoves();
 
         for (int i = 0; i < moves.size(); i++) {
@@ -187,9 +194,6 @@ public class Engine {
 
     private boolean isLegalMove(int move) {
         // Check if the move is within bounds of the board
-        if (!isMoveOnBoard(move)) {
-            return false;
-        }
         boolean isWhite = (move & (1 << 15)) != 0;
 
         BitBoard testBoard = simulateMove(bitBoard, move);
@@ -207,22 +211,10 @@ public class Engine {
         return boardCopy;
     }
 
-    private boolean isMoveOnBoard(int move) {
-        int fromIndex = move & 0x3F; // Extract the first 6 bits
-        int toIndex = (move >> 6) & 0x3F; // Extract the next 6 bits
-        return true;
-    }
-
     public List<Position> getPossibleMovesForPosition(int fromIndex) {
         return getMovesFromIndex(fromIndex).stream()
                 .map(Move::getTo)
                 .collect(Collectors.toList());
-    }
-
-    private boolean isNotInCheckAfterMove(BitBoard board, int move) {
-        BitBoard testBoard = simulateMove(board, move);
-        boolean isWhite = (move & (1 << 15)) != 0;
-        return !testBoard.isInCheck(isWhite);
     }
 
     public boolean isInStateCheck(boolean isWhite) {
@@ -252,7 +244,7 @@ public class Engine {
             gameState.setState("BLACK WON");
         } else if (getAllLegalMoves().size() == 0 && isInStateCheckMate(false)) {
             gameState.setState("WHITE WON");
-        } else if (getAllLegalMoves().size() == 0) {
+        } else if (isDraw()) {
             gameState.setState("DRAW");
         }
     }
@@ -286,29 +278,14 @@ public class Engine {
         return FEN.translateBoardToFEN(bitBoard);
     }
 
-    public boolean isGameOver() {
-        boolean noLegalMoves = getAllLegalMoves().size() == 0;
-        boolean isInCheck = isInStateCheck(bitBoard, bitBoard.whitesTurn);
-
-        // Checkmate condition
-        if (noLegalMoves && isInCheck) {
-            return true;
+    public boolean isDraw() {
+        if(bitBoard.hasInsufficientMaterial()) {
+            log.info("Insufficient Material");
         }
-
-        // Stalemate condition
-        if (noLegalMoves) {
-            return true;
+        if(bitBoard.isThreeFoldRepetition()) {
+            log.info("ThreeFoldRepetition");
         }
-
-        // Draw by insufficient material (more complex rules like threefold repetition are not covered here)
-        return isDrawByInsufficientMaterial();
-    }
-
-    private boolean isDrawByInsufficientMaterial() {
-        // Implement logic to check for draw due to insufficient material
-        // For instance, only kings left, king and bishop vs king, king and knight vs king, etc.
-        // You need to inspect the bitboards to determine the material left on the board.
-        return false; // Placeholder
+        return legalMoves.size() == 0 || bitBoard.hasInsufficientMaterial() || bitBoard.isThreeFoldRepetition();
     }
 
     public double evaluateBoard(boolean isWhitesTurn) {

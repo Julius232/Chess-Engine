@@ -34,6 +34,7 @@ public class BitBoardTest {
             0x8080808080808080L  // File H
     };
 
+
     @Test
     public void HashTest() {
         Engine a = new Engine();
@@ -311,7 +312,7 @@ public class BitBoardTest {
         }
 
         MoveList moves = engine.getAllLegalMoves();
-        for(int i = 0; i < moves.size(); i++) {
+        for (int i = 0; i < moves.size(); i++) {
             int move = moves.getMove(i);
             engine.performMove(move);
 
@@ -398,16 +399,16 @@ public class BitBoardTest {
     @Test
     public void checkForEnPassantWhiteRight() {
         Engine engine = new Engine(); // The chess engine
-  
+
         engine.moveFigure(convertStringToIndex("e2"), convertStringToIndex("e4"));
         engine.moveFigure(convertStringToIndex("h7"), convertStringToIndex("h6"));
         engine.moveFigure(convertStringToIndex("e4"), convertStringToIndex("e5"));
         engine.moveFigure(convertStringToIndex("f7"), convertStringToIndex("f5"));
-        
+
 
         engine.logBoard();
         MoveList mightNotLegalMoves = engine.getAllLegalMoves();
-        
+
         assertEquals(31, mightNotLegalMoves.size());
     }
 
@@ -482,10 +483,10 @@ public class BitBoardTest {
         b.performMove(38668, true); //e4
         b.performMove(6387, true);  //d5
         assertEquals("[37896]:a3 [37961]:b3 [38026]:c3 [38091]:d3 [38221]:f3 [38286]:g3 [38351]:h3 [39196]:e5 [38408]:a4 [38473]:b4 [38538]:c4 [38603]:d4 [38733]:f4 [38798]:g4 [38863]:h4 [2201820]:exd5 [41985]:Na3 [42113]:Nc3 [41734]:Ne2 [42310]:Nf3 [42438]:Nh3 [45829]:Be2 [46277]:Bd3 [46725]:Bc4 [47173]:Bb5 [47621]:Ba6 [54019]:Qe2 [54595]:Qf3 [55171]:Qg4 [55747]:Qh5 [16835332]:Ke2 ", b.getAllCurrentPossibleMoves().toString());
-        b.performMove(46277,true); //Bd3
-        b.performMove(11134,true); //Nf6
+        b.performMove(46277, true); //Bd3
+        b.performMove(11134, true); //Nf6
         b.performMove(42310, true); //Nf3
-        b.performMove(5859,true); // d4
+        b.performMove(5859, true); // d4
         b.performMove(50520452, true);
         b.logBoard();
         b.undoMove(50520452, true);

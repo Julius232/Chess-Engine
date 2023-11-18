@@ -35,7 +35,7 @@ public class AI {
 
     // Game configuration parameters
     private final int maxDepth = 18; // Adjust the level of depth according to your requirements
-    private final long timeLimit = 500; // milliseconds
+    private final long timeLimit = 2000; // milliseconds
 
 
     public AI(Engine engine) {
@@ -154,11 +154,11 @@ public class AI {
         long currentBoardHash = simulation.getBoardStateHash();
         List<MoveAndScore> newCalculatedLine = new LinkedList<>();
 
-        if(!transpositionTable.containsKey(currentBoardHash)) {
+        if (!transpositionTable.containsKey(currentBoardHash)) {
             log.info("[{}] hash not exists", currentBoardHash);
         }
 
-        if(transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove == -1) {
+        if (transpositionTable.containsKey(currentBoardHash) && transpositionTable.get(currentBoardHash).bestMove == -1) {
             log.info("[{}] hash exists but move: " + transpositionTable.get(currentBoardHash), currentBoardHash);
         }
 
@@ -221,6 +221,8 @@ public class AI {
 
             if (engine.isInStateCheckMate(!isWhitesTurn)) {
                 score = isWhitesTurn ? Engine.CHECKMATE : -Engine.CHECKMATE;
+            } else if (engine.isDraw()) {
+                score = 0;
             } else {
                 score = alphaBeta(engine, levelOfDepth - 1, alpha, beta, !isWhitesTurn, startTime, timeLimit);
                 // Check for time limit exceeded after alphaBeta call
@@ -267,7 +269,11 @@ public class AI {
 
         long boardHash = engine.getBoardStateHash();
 
-        if (depth == 0 || engine.isGameOver()) {
+        if(engine.isDraw()) {
+            return 0;
+        }
+
+        if (depth == 0 || engine.isInStateCheckMate(isWhite)) {
             double eval = engine.evaluateBoard(isWhite);
             if (!isWhite) {
                 eval = -eval;

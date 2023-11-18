@@ -29,6 +29,8 @@ public class ChessController {
     private final AI ai;
     private final Engine engine;
 
+
+
     @GetMapping(value = "/score")
     public ResponseEntity<Score> getScore() {
         return ResponseEntity.ok(engine.getScore());

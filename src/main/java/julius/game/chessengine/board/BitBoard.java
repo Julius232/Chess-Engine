@@ -2,6 +2,7 @@ package julius.game.chessengine.board;
 
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.helper.BishopHelper;
+import julius.game.chessengine.helper.KingHelper;
 import julius.game.chessengine.helper.PawnHelper;
 import julius.game.chessengine.helper.ZobristTable;
 import julius.game.chessengine.utils.Color;
@@ -9,10 +10,14 @@ import julius.game.chessengine.utils.Score;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.BitHelper.*;
+import static julius.game.chessengine.helper.KingHelper.BLACK_KING_POSITIONAL_VALUES;
+import static julius.game.chessengine.helper.KingHelper.WHITE_KING_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.KnightHelper.KNIGHT_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.KnightHelper.knightMoves;
 import static julius.game.chessengine.helper.PawnHelper.BLACK_PAWN_POSITIONAL_VALUES;
@@ -38,6 +43,7 @@ public class BitBoard {
     private static final long INITIAL_WHITE_KING_POSITION = 0x0000000000000010L; // King on e1
     private static final long INITIAL_BLACK_KING_POSITION = 0x1000000000000000L; // King on e8
 
+    private Map<Long, Integer> repetitionCounter = new HashMap<>();
 
     public boolean whitesTurn = true;
     // Add score field to the BitBoard class
@@ -77,6 +83,7 @@ public class BitBoard {
     private boolean blackKingHasCastled = false;
 
     public BitBoard(boolean whitesTurn, long whitePawns, long blackPawns, long whiteKnights, long blackKnights, long whiteBishops, long blackBishops, long whiteRooks, long blackRooks, long whiteQueens, long blackQueens, long whiteKing, long blackKing, long whitePieces, long blackPieces, long allPieces, int lastMoveDoubleStepPawnIndex, boolean whiteKingMoved, boolean blackKingMoved, boolean whiteRookA1Moved, boolean whiteRookH1Moved, boolean blackRookA8Moved, boolean blackRookH8Moved, boolean whiteKingHasCastled, boolean blackKingHasCastled) {
+        this.repetitionCounter = new HashMap<>();
         this.whitesTurn = whitesTurn;
         this.whitePawns = whitePawns;
         this.blackPawns = blackPawns;
@@ -111,8 +118,10 @@ public class BitBoard {
     }
 
     public BitBoard(BitBoard other) {
+        this.repetitionCounter = new HashMap<>(other.repetitionCounter);
         // Copying all the long fields representing the pieces
         this.currentScore = new Score(other.getScore().getScoreWhite(), other.getScore().getScoreBlack());
+        this.bishopHelper = other.bishopHelper;
         this.whitePawns = other.whitePawns;
         this.blackPawns = other.blackPawns;
         this.whiteKnights = other.whiteKnights;
@@ -148,6 +157,10 @@ public class BitBoard {
     }
 
     public void updateScore() {
+        if (isThreeFoldRepetition() || hasInsufficientMaterial()) {
+            this.currentScore = new Score(0, 0);
+            return;
+        }
         int agilityWhite = generateAllPossibleMoves(true).size();
         int agilityBlack = generateAllPossibleMoves(false).size();
 
@@ -224,29 +237,29 @@ public class BitBoard {
         whiteScore += applyPositionalValues(whiteQueens, QUEEN_POSITIONAL_VALUES);
         blackScore += applyPositionalValues(blackQueens, QUEEN_POSITIONAL_VALUES);
 
-        if(whiteKingHasCastled) {
-            whiteScore += CASTLING_BONUS;
-        }
-        else {
-            if(whiteRookA1Moved) {
-                whiteScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
-            }
-            if(whiteRookH1Moved) {
-                whiteScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
-            }
-        }
-        if(blackKingHasCastled) {
-            blackScore += CASTLING_BONUS;
-        }
-        else {
-            if(blackRookA8Moved) {
-                blackScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
-            }
-            if(blackRookH8Moved) {
-                blackScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
-            }
-        }
+        whiteScore += applyPositionalValues(whiteKing, WHITE_KING_POSITIONAL_VALUES);
+        blackScore += applyPositionalValues(blackKing, BLACK_KING_POSITIONAL_VALUES);
 
+        if (whiteKingHasCastled) {
+            whiteScore += CASTLING_BONUS;
+        } else {
+            if (whiteRookA1Moved) {
+                whiteScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+            if (whiteRookH1Moved) {
+                whiteScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+        }
+        if (blackKingHasCastled) {
+            blackScore += CASTLING_BONUS;
+        } else {
+            if (blackRookA8Moved) {
+                blackScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+            if (blackRookH8Moved) {
+                blackScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+        }
 
 
         // Check if white pieces are all on starting squares
@@ -264,6 +277,45 @@ public class BitBoard {
         // Return the score encapsulated in a Score object
         this.currentScore = new Score(whiteScore, blackScore);
     }
+
+    private void incrementHashCount(long hash) {
+        repetitionCounter.put(hash, repetitionCounter.getOrDefault(hash, 0) + 1);
+    }
+
+    private void decrementHashCount(long hash) {
+        // Check if the hash exists in the map
+        if (repetitionCounter.containsKey(hash)) {
+            int count = repetitionCounter.get(hash);
+
+            // Decrement the count
+            if (count > 1) {
+                repetitionCounter.put(hash, count - 1);
+                log.info("[-] hash {}, count {}", hash, repetitionCounter.getOrDefault(getBoardStateHash(), 0));
+            } else {
+                // If the count reaches zero, remove the hash from the map
+                repetitionCounter.remove(hash);
+            }
+        }
+    }
+
+    public boolean isThreeFoldRepetition() {
+        return repetitionCounter.getOrDefault(getBoardStateHash(), 0) >= 3;
+    }
+
+    public boolean hasInsufficientMaterial() {
+        // Early return if any side has pawns, rooks, or queens, as these can achieve checkmate
+        if ((whitePawns | blackPawns | whiteRooks | blackRooks | whiteQueens | blackQueens) != 0) {
+            return false;
+        }
+
+        // Count knights and bishops for both sides
+        int whiteMinorPieces = Long.bitCount(whiteKnights) + Long.bitCount(whiteBishops);
+        int blackMinorPieces = Long.bitCount(blackKnights) + Long.bitCount(blackBishops);
+
+        // Check if both sides have insufficient material
+        return (whiteMinorPieces <= 1) && (blackMinorPieces <= 1);
+    }
+
 
     private boolean areAllPiecesOnStartingSquares(long knights, long bishops, long rooks, boolean isWhite) {
         if (isWhite) {
@@ -397,9 +449,9 @@ public class BitBoard {
     }
 
     public MoveList generateAllPossibleMoves(boolean whitesTurn) {
-        //on average there are about 30 possible moves in a chess position
         MoveList moves = new MoveList();
 
+        //on average there are about 30 possible moves in a chess position
         // Generate moves for each piece type
         generatePawnMoves(whitesTurn, moves);
         generateKnightMoves(whitesTurn, moves);
@@ -929,6 +981,7 @@ public class BitBoard {
 
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
+        incrementHashCount(getBoardStateHash());
 
         if (scoreNeedsUpdate) {
             updateScore();
@@ -1401,6 +1454,7 @@ public class BitBoard {
     }
 
     public void undoMove(int moveInt, boolean scoreNeedsUpdate) {
+        decrementHashCount(getBoardStateHash());
         int fromIndex = moveInt & 0x3F; // Extract the first 6 bits
         int toIndex = (moveInt >> 6) & 0x3F; // Extract the next 6 bits
         int pieceTypeBits = (moveInt >> 12) & 0x07;
