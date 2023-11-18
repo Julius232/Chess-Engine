@@ -35,7 +35,7 @@ public class AI {
 
     // Game configuration parameters
     private final int maxDepth = 18; // Adjust the level of depth according to your requirements
-    private final long timeLimit = 2000; // milliseconds
+    private final long timeLimit = 500; // milliseconds
 
 
     public AI(Engine engine) {
@@ -112,42 +112,54 @@ public class AI {
         log.debug("keepCalculating: {}, interrupted: {}", keepCalculating, Thread.currentThread().isInterrupted());
         while (keepCalculating && !Thread.currentThread().isInterrupted()) {
             if (positionChanged()) {
-                log.debug(" --- TranspositionTable[{}] --- ", transpositionTable.size());
-                // Convert the string color to the Color enum
-                Engine simulation = engine.createSimulation();
-                long boardStateHash = simulation.getBoardStateHash();
-                lastCalculatedHash = boardStateHash;
-                boolean isWhite = simulation.whitesTurn();
-
-                int bestMove;
-                double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-                long startTime = System.currentTimeMillis(); // Record start time
-
-                for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
-                    if (!keepCalculating) break; // Check if we should stop calculating
-                    MoveAndScore moveAndScore = getBestMove(simulation, isWhite, currentDepth, startTime, timeLimit);
-                    log.debug(" --- DEPTH<{}> --- ", currentDepth);
-                    if (moveAndScore != null) {
-                        double score = moveAndScore.score;
-                        int move = moveAndScore.move;
-                        if (move != -1 && (isWhite ? score > bestScore : score < bestScore)) {
-                            bestScore = moveAndScore.score;
-                            bestMove = move;
-                            transpositionTable.put(boardStateHash, new TranspositionTableEntry(moveAndScore.score, currentDepth, NodeType.EXACT, bestMove));
-                        }
-                        fillCalculatedLine(simulation);
-                    }
-
-                    if (System.currentTimeMillis() - startTime > timeLimit) {
-                        log.debug("Time limit exceeded at depth {}", currentDepth);
-                        break;
-                    }
-                    if (Thread.interrupted()) { // Clears the interrupted status and checks
-                        break;
-                    }
-                }
+                performCalculation();
             }
         }
+    }
+
+    private void performCalculation() {
+        log.debug(" --- TranspositionTable[{}] --- ", transpositionTable.size());
+        Engine simulation = engine.createSimulation();
+        long boardStateHash = simulation.getBoardStateHash();
+        lastCalculatedHash = boardStateHash;
+        boolean isWhite = simulation.whitesTurn();
+
+        long startTime = System.currentTimeMillis();
+        calculateBestMove(simulation, boardStateHash, isWhite, startTime);
+    }
+
+    private void calculateBestMove(Engine simulation, long boardStateHash, boolean isWhite, long startTime) {
+        double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+        int bestMove;
+
+        for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
+            if (!keepCalculating) break;
+            MoveAndScore moveAndScore = getBestMove(simulation, isWhite, currentDepth, startTime, timeLimit);
+
+            if (moveAndScore != null && isNewBestMove(moveAndScore, bestScore, isWhite)) {
+                bestScore = moveAndScore.score;
+                bestMove = moveAndScore.move;
+                transpositionTable.put(boardStateHash, new TranspositionTableEntry(moveAndScore.score, currentDepth, NodeType.EXACT, bestMove));
+                fillCalculatedLine(simulation);
+            }
+
+            if (timeLimitExceeded(startTime)) {
+                break;
+            }
+
+            if (Thread.interrupted()) {
+                break;
+            }
+        }
+    }
+
+    private boolean isNewBestMove(MoveAndScore moveAndScore, double currentBestScore, boolean isWhite) {
+        double score = moveAndScore.score;
+        return (isWhite ? score > currentBestScore : score < currentBestScore);
+    }
+
+    private boolean timeLimitExceeded(long startTime) {
+        return System.currentTimeMillis() - startTime > timeLimit;
     }
 
     private void fillCalculatedLine(Engine simulation) {

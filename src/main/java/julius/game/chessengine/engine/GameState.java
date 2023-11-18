@@ -6,28 +6,27 @@ import julius.game.chessengine.utils.Score;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Data
 @Log4j2
 public class GameState {
 
-    private Map<Long, Integer> repetitionCounter;
+    private ConcurrentHashMap<Long, Integer> repetitionCounter;
 
     private GameStateEnum state;
 
     private Score score;
 
     public GameState(BitBoard bitBoard) {
-        repetitionCounter = new HashMap<>();
+        repetitionCounter = new ConcurrentHashMap<>();
         state = GameStateEnum.PLAY;
         score = new Score();
         initializeScore(bitBoard);
     }
 
     public GameState(GameState other) {
-        this.repetitionCounter = new HashMap<>(other.repetitionCounter); // Deep copy of the map
+        this.repetitionCounter = new ConcurrentHashMap<>(other.repetitionCounter); // Deep copy of the map
         this.state = other.state; // Enum, so a direct copy is fine
         this.score = new Score(other.score);
     }
