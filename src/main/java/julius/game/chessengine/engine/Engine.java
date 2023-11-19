@@ -39,7 +39,8 @@ public class Engine {
         this.bitBoard = new BitBoard(other.bitBoard); // Assuming BitBoard's constructor is a deep copy constructor
         this.gameState = new GameState(other.gameState); // Assuming GameState's constructor is a deep copy constructor
         this.line = new ArrayList<>(other.line);
-        this.legalMoves = new MoveList(other.legalMoves);
+        //this.legalMoves = new MoveList(other.legalMoves);
+        this.legalMoves = other.legalMoves;
         this.legalMovesNeedUpdate = other.legalMovesNeedUpdate;
     }
 

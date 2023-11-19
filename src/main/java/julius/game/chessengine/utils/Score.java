@@ -5,8 +5,7 @@ import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
 import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
-import static julius.game.chessengine.helper.KingHelper.BLACK_KING_POSITIONAL_VALUES;
-import static julius.game.chessengine.helper.KingHelper.WHITE_KING_POSITIONAL_VALUES;
+import static julius.game.chessengine.helper.KingHelper.*;
 import static julius.game.chessengine.helper.KnightHelper.KNIGHT_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.PawnHelper.*;
 import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES;
@@ -171,9 +170,9 @@ public class Score {
         updateQueensPositionBonusBlack(blackQueens);
 
         updateWhiteKingsPositionBonus(whiteKing, bitBoard.isWhiteKingHasCastled(),
-                bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved());
+                bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), whiteQueens == 0 && blackQueens == 0);
         updateBlackKingsPositionBonus(blackKing, bitBoard.isBlackKingHasCastled(),
-                bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved());
+                bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), whiteQueens == 0 && blackQueens == 0);
 
         updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
         updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
@@ -323,8 +322,8 @@ public class Score {
         blackQueensPosition = applyPositionalValues(blackQueens, QUEEN_POSITIONAL_VALUES);
     }
 
-    public void updateWhiteKingsPositionBonus(long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
-        whiteKingsPosition = applyPositionalValues(whiteKing, WHITE_KING_POSITIONAL_VALUES);
+    public void updateWhiteKingsPositionBonus(long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
+        whiteKingsPosition = applyPositionalValues(whiteKing, isEndgame ? KING_ENDGAME_POSITIONAL_VALUES : WHITE_KING_POSITIONAL_VALUES);
         if (isCastled) {
             whiteKingsPosition += CASTLING_BONUS;
         } else {
@@ -337,8 +336,8 @@ public class Score {
         }
     }
 
-    public void updateBlackKingsPositionBonus(long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved) {
-        blackKingsPosition = applyPositionalValues(blackKing, BLACK_KING_POSITIONAL_VALUES);
+    public void updateBlackKingsPositionBonus(long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved, boolean isEndgame) {
+        blackKingsPosition = applyPositionalValues(blackKing, isEndgame ? KING_ENDGAME_POSITIONAL_VALUES : BLACK_KING_POSITIONAL_VALUES);
         if (isCastled) {
             blackKingsPosition += CASTLING_BONUS;
         } else {
@@ -356,12 +355,18 @@ public class Score {
         if (areAllPiecesOnStartingSquares(whiteKnights, whiteBishops, whiteRooks, true)) {
             whiteStartingSquarePenalty = START_POSITION_PENALTY;
         }
+        else {
+            whiteStartingSquarePenalty = 0;
+        }
     }
 
     public void updateStartingSquarePenaltyBlack(long blackKnights, long blackBishops, long blackRooks) {
         // Check if white pieces are all on starting squares
         if (areAllPiecesOnStartingSquares(blackKnights, blackBishops, blackRooks, false)) {
             blackStartingSquarePenalty = START_POSITION_PENALTY;
+        }
+        else {
+            blackStartingSquarePenalty = 0;
         }
     }
 
@@ -443,16 +448,16 @@ public class Score {
         updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
     }
 
-    public void updateWhiteRookValues(long whiteRooks, long whiteKnights, long whiteBishops, long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
+    public void updateWhiteRookValues(long whiteRooks, long whiteKnights, long whiteBishops, long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
         this.whiteRooks = Long.bitCount(whiteRooks) * ROOK_VALUE;
         updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
-        updateWhiteKingValues(whiteKing, isCastled, rookA1Moved, rookH1Moved);
+        updateWhiteKingValues(whiteKing, isCastled, rookA1Moved, rookH1Moved, isEndgame);
     }
 
-    public void updateBlackRookValues(long blackRooks, long blackKnights, long blackBishops, long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved) {
+    public void updateBlackRookValues(long blackRooks, long blackKnights, long blackBishops, long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved, boolean isEndgame) {
         this.blackRooks = Long.bitCount(blackRooks) * ROOK_VALUE;
         updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
-        updateBlackKingValues(blackKing, isCastled, rookA8Moved, rookH8Moved);
+        updateBlackKingValues(blackKing, isCastled, rookA8Moved, rookH8Moved, isEndgame);
     }
 
     public void updateWhiteQueenValues(long whiteQueens) {
@@ -463,12 +468,12 @@ public class Score {
         this.blackQueens = Long.bitCount(blackQueens) * QUEEN_VALUE;
     }
 
-    public void updateWhiteKingValues(long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
-        updateWhiteKingsPositionBonus(whiteKing, isCastled, rookA1Moved, rookH1Moved);
+    public void updateWhiteKingValues(long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
+        updateWhiteKingsPositionBonus(whiteKing, isCastled, rookA1Moved, rookH1Moved, isEndgame);
     }
 
-    public void updateBlackKingValues(long blackKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
-        updateBlackKingsPositionBonus(blackKing, isCastled, rookA1Moved, rookH1Moved);
+    public void updateBlackKingValues(long blackKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
+        updateBlackKingsPositionBonus(blackKing, isCastled, rookA1Moved, rookH1Moved, isEndgame);
     }
 
 }

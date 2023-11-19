@@ -15,7 +15,7 @@ const makeRequest = async (method, url, callback) => {
 // Update the calculated line and game details
 const updateCalculatedLine = () => {
     makeRequest('GET', 'http://localhost:8080/chess/state', (data) => {
-        latestGameData = data;    
+        latestGameData = data;
         const lineText = data.move || "No moves yet";
         const gameState = data.gameState.state;
         const score = data.score;
@@ -50,6 +50,30 @@ const updateGameDetails = (data) => {
     details += '<tr><td>Black Rooks</td><td>' + data.gameState.score.blackRooks + '</td></tr>';
     details += '<tr><td>White Queens</td><td>' + data.gameState.score.whiteQueens + '</td></tr>';
     details += '<tr><td>Black Queens</td><td>' + data.gameState.score.blackQueens + '</td></tr>';
+
+    // Position and Penalty Scores
+    details += '<tr><td>White Center Pawn Bonus</td><td>' + data.gameState.score.whiteCenterPawnBonus + '</td></tr>';
+    details += '<tr><td>Black Center Pawn Bonus</td><td>' + data.gameState.score.blackCenterPawnBonus + '</td></tr>';
+    details += '<tr><td>White Doubled Pawn Penalty</td><td>' + data.gameState.score.whiteDoubledPawnPenalty + '</td></tr>';
+    details += '<tr><td>Black Doubled Pawn Penalty</td><td>' + data.gameState.score.blackDoubledPawnPenalty + '</td></tr>';
+    details += '<tr><td>White Isolated Pawn Penalty</td><td>' + data.gameState.score.whiteIsolatedPawnPenalty + '</td></tr>';
+    details += '<tr><td>Black Isolated Pawn Penalty</td><td>' + data.gameState.score.blackIsolatedPawnPenalty + '</td></tr>';
+
+    details += '<tr><td>White Pawns Position</td><td>' + data.gameState.score.whitePawnsPosition + '</td></tr>';
+    details += '<tr><td>Black Pawns Position</td><td>' + data.gameState.score.blackPawnsPosition + '</td></tr>';
+    details += '<tr><td>White Knights Position</td><td>' + data.gameState.score.whiteKnightsPosition + '</td></tr>';
+    details += '<tr><td>Black Knights Position</td><td>' + data.gameState.score.blackKnightsPosition + '</td></tr>';
+    details += '<tr><td>White Bishops Position</td><td>' + data.gameState.score.whiteBishopsPosition + '</td></tr>';
+    details += '<tr><td>Black Bishops Position</td><td>' + data.gameState.score.blackBishopsPosition + '</td></tr>';
+    details += '<tr><td>White Queens Position</td><td>' + data.gameState.score.whiteQueensPosition + '</td></tr>';
+    details += '<tr><td>Black Queens Position</td><td>' + data.gameState.score.blackQueensPosition + '</td></tr>';
+
+    details += '<tr><td>White King Position</td><td>' + data.gameState.score.whiteKingsPosition + '</td></tr>';
+    details += '<tr><td>Black King Position</td><td>' + data.gameState.score.blackKingsPosition + '</td></tr>';
+
+    details += '<tr><td>White Starting Square Penalty</td><td>' + data.gameState.score.whiteStartingSquarePenalty + '</td></tr>';
+    details += '<tr><td>Black Starting Square Penalty</td><td>' + data.gameState.score.blackStartingSquarePenalty + '</td></tr>';
+
 
     // Misc Details
     details += '<tr><td>Agility White</td><td>' + data.gameState.score.agilityWhite + '</td></tr>';

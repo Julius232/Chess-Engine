@@ -85,32 +85,37 @@ public class GameState {
         if (isWhite) {
             updateValuesForWhite(pieceTypeBits, bitBoard);
             score.updateAgilityBonusWhite(legalMoves.size());
+
         } else {
             updateValuesForBlack(pieceTypeBits, bitBoard);
             score.updateAgilityBonusBlack(legalMoves.size());
         }
+
+
     }
 
     private void updateValuesForWhite(int pieceTypeBits, BitBoard bitBoard) {
+        boolean isEndgame = bitBoard.getWhiteQueens() == 0 && bitBoard.getBlackQueens() == 0;
         switch (pieceTypeBits) {
             case 1: score.updateWhitePawnValues(bitBoard.getWhitePawns()); break;
             case 2: score.updateWhiteKnightValues(bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteRooks()); break;
             case 3: score.updateWhiteBishopValues(bitBoard.getWhiteBishops(), bitBoard.getWhiteKnights(), bitBoard.getWhiteRooks()); break;
-            case 4: score.updateWhiteRookValues(bitBoard.getWhiteRooks(), bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved()); break;
+            case 4: score.updateWhiteRookValues(bitBoard.getWhiteRooks(), bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), isEndgame); break;
             case 5: score.updateWhiteQueenValues(bitBoard.getWhiteQueens()); break;
-            case 6: score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved()); break;
+            case 6: score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), bitBoard.getWhiteQueens() == 0 && bitBoard.getBlackQueens() == 0); break;
             default: break; // Optionally handle default case
         }
     }
 
     private void updateValuesForBlack(int pieceTypeBits, BitBoard bitBoard) {
+        boolean isEndgame = bitBoard.getWhiteQueens() == 0 && bitBoard.getBlackQueens() == 0;
         switch (pieceTypeBits) {
             case 1: score.updateBlackPawnValues(bitBoard.getBlackPawns()); break;
             case 2: score.updateBlackKnightValues(bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackRooks()); break;
             case 3: score.updateBlackBishopValues(bitBoard.getBlackBishops(), bitBoard.getBlackKnights(), bitBoard.getBlackRooks()); break;
-            case 4: score.updateBlackRookValues(bitBoard.getBlackRooks(), bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved()); break;
+            case 4: score.updateBlackRookValues(bitBoard.getBlackRooks(), bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
             case 5: score.updateBlackQueenValues(bitBoard.getBlackQueens()); break;
-            case 6: score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved()); break;
+            case 6: score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
             default: break; // Optionally handle default case
         }
     }
@@ -120,6 +125,11 @@ public class GameState {
             updateValuesForBlack(capturedPieceTypeBits, bitBoard); // Update black pieces if white is capturing
         } else {
             updateValuesForWhite(capturedPieceTypeBits, bitBoard); // Update white pieces if black is capturing
+        }
+        //Endgamecheck if the queens are gone
+        if(capturedPieceTypeBits == 5 && bitBoard.getBlackQueens() == 0 && bitBoard.getWhiteQueens() == 0) {
+            score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), true);
+            score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), true);
         }
     }
 
