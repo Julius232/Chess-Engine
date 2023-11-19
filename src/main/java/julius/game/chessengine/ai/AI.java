@@ -36,7 +36,7 @@ public class AI {
 
     // Game configuration parameters
     private final int maxDepth = 18; // Adjust the level of depth according to your requirements
-    private final long timeLimit = 50; // milliseconds
+    private final long timeLimit = 20000; // milliseconds
 
 
     public AI(Engine engine) {

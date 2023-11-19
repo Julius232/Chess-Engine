@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="de">
-
 <head>
     <meta charset="utf-8">
     <title>Alieknek</title>
@@ -11,12 +10,23 @@
     <link rel="stylesheet" href="css/details.css">
     <link rel="stylesheet" href="css/styles.css?v=1.0">
 </head>
-
 <body>
     <main>
+        <nav class="top-bar">
+            <!-- Place all the buttons here -->
+            <button class="btn" id="playWhite">Play as White</button>
+            <button class="btn" id="playBlack">Play as Black</button>
+            <button class="btn" id="resetBoard">Reset Board</button>
+            <button class="btn" id="computerMove">Computer Move</button>
+            <button class="btn" id="undoMove">Undo Move</button>
+            <button class="btn" id="importFEN">Import from FEN</button>
+            <button class="btn" id="autoPlay">Autoplay</button>
+            <button class="btn" id="viewDetails">View Details</button>
+        </nav>
+
         <section id="section1">
             <div>
-                <h1 id="header">ALIEKNEK</h1>
+                <h1 id="header">ALIEKNEK 1.0</h1>
             </div>
         </section>
 
@@ -26,46 +36,23 @@
             </div>
         </section>
 
-        <section id="section3">
-            <div class="game-section">
-                <div id="buttonGroup">
-                    <button class="btn" id="resetBoard">Reset Board</button>
-                    <button class="btn" id="computerMove">Computer Move</button>
-                    <button class="btn" id="undoMove">Undo Move</button>
-                    <button class="btn" id="importFEN">Import from FEN</button>
-                    <button class="btn" id="autoPlay">Autoplay</button>
-                    <button id="viewDetails" class="btn">View Details</button>
-                </div>
-
-                <div id="score">Score</div>
-
-                <div id="chooseColor">
-                    <button class="btn" id="playWhite">Play as White</button>
-                    <button class="btn" id="playBlack">Play as Black</button>
-                </div>
-
-                <div id="calculatedLine">
-                    Calculated Line: <span></span>
-                </div>
-
-                <div id="detailsModal" class="modal">
-                    <div class="modal-content">
-                        <span class="close">&times;</span>
-                        <h2>Game Details</h2>
-                        <div id="gameDetails"></div>
-                    </div>
+        <section id="section3" class="game-section">
+            <div id="score">Score</div>
+            <div id="calculatedLine">Calculated Line: <span></span></div>
+            <div id="detailsModal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h2>Game Details</h2>
+                    <div id="gameDetails"></div>
                 </div>
             </div>
         </section>
     </main>
+    <script src="js/jquery-3.4.1.min.js"></script>
+    <script src="js/prettify.min.js"></script>
+    <script src="js/chessboard-1.0.0.min.js"></script>
+    <script src="js/chess-data-fetching.js"></script>
+    <script src="js/ui-interactions.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 </body>
-
 </html>
-
-<script src="js/jquery-3.4.1.min.js"></script>
-<script src="js/prettify.min.js"></script>
-<script src="js/chessboard-1.0.0.min.js"></script>
-<script src="js/chess-data-fetching.js"></script>
-<script src="js/ui-interactions.js"></script>
-<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-

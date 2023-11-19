@@ -62,7 +62,7 @@
 }
 .piece-417db {
     /* Custom piece styling */
-    filter: drop-shadow(0 0 10px #00ff00); /* Green glow */
+    filter: drop-shadow(0 0 0px #ff05c1); /* Green glow */
 }
 .square-55d63:hover {
     /* Hover effect on squares */

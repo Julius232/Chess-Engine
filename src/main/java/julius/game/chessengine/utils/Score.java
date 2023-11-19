@@ -282,6 +282,7 @@ public class Score {
     public void updateIsolatedPawnPenaltyWhite(long whitePawns) {
         whiteIsolatedPawnPenalty = countIsolatedPawns(whitePawns) * ISOLATED_PAWN_PENALTY;
     }
+
     public void updateIsolatedPawnPenaltyBlack(long blackPawns) {
         blackIsolatedPawnPenalty = countIsolatedPawns(blackPawns) * ISOLATED_PAWN_PENALTY;
     }
@@ -365,16 +366,16 @@ public class Score {
     }
 
     public void updateAgilityBonus(int movesWhite, int movesBlack) {
-        agilityWhite = movesWhite;
-        agilityBlack = movesBlack;
+        agilityWhite = movesWhite * 10;
+        agilityBlack = movesBlack * 10;
     }
 
     public void updateAgilityBonusWhite(int movesWhite) {
-        agilityWhite = movesWhite;
+        agilityWhite = movesWhite * 10;
     }
 
     public void updateAgilityBonusBlack(int movesBlack) {
-        agilityBlack = agilityBlack;
+        agilityBlack = movesBlack * 10;
     }
 
     private void initializePieceScore(long whitePieces, long blackPieces, int pieceValue) {
@@ -403,12 +404,14 @@ public class Score {
                     rooks == INITIAL_BLACK_ROOK_POSITION);
         }
     }
+
     public void updateWhitePawnValues(long whitePawns) {
         this.whitePawns = Long.bitCount(whitePawns) * PAWN_VALUE;
         updateIsolatedPawnPenaltyWhite(whitePawns);
         updateDoubledPawnPenaltyWhite(whitePawns);
         updatePawnsPositionBonusWhite(whitePawns);
     }
+
     public void updateBlackPawnValues(long blackPawns) {
         this.blackPawns = Long.bitCount(blackPawns) * PAWN_VALUE;
         updateIsolatedPawnPenaltyBlack(blackPawns);
@@ -445,6 +448,7 @@ public class Score {
         updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
         updateWhiteKingValues(whiteKing, isCastled, rookA1Moved, rookH1Moved);
     }
+
     public void updateBlackRookValues(long blackRooks, long blackKnights, long blackBishops, long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved) {
         this.blackRooks = Long.bitCount(blackRooks) * ROOK_VALUE;
         updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
@@ -463,7 +467,7 @@ public class Score {
         updateWhiteKingsPositionBonus(whiteKing, isCastled, rookA1Moved, rookH1Moved);
     }
 
-    public void updateBlackKingValues(long blackKing,  boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
+    public void updateBlackKingValues(long blackKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved) {
         updateBlackKingsPositionBonus(blackKing, isCastled, rookA1Moved, rookH1Moved);
     }
 

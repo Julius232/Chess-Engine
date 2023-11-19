@@ -127,8 +127,14 @@ function updateKingGlow(gameState) {
     }
 }
 
+let originalHeaderText = "ALIEKNEK";
+
 const checkState = (state) => {
-    if (state !== "PLAY") {
+    if (state === "PLAY") {
+        // Reset to the original header text when the state is "PLAY"
+        document.getElementById("header").textContent = originalHeaderText;
+    } else {
+        // Change the header text to the current state if it's not "PLAY"
         document.getElementById("header").textContent = state;
     }
 };
