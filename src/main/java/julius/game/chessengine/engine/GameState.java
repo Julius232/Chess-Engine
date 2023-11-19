@@ -83,12 +83,19 @@ public class GameState {
 
     private void updatePieceValues(boolean isWhite, int pieceTypeBits, BitBoard bitBoard, MoveList legalMoves) {
         if (isWhite) {
+            //TODO check if this could be done more efficient
+            int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
+
+            log.info(legalMoves.size());
             updateValuesForWhite(pieceTypeBits, bitBoard);
-            score.updateAgilityBonusWhite(legalMoves.size());
+            score.updateAgilityBonusWhite(agilityWhite);
 
         } else {
+            //TODO check if this could be done more efficient
+            int agilityBlack = bitBoard.generateAllPossibleMoves(false).size();
+
             updateValuesForBlack(pieceTypeBits, bitBoard);
-            score.updateAgilityBonusBlack(legalMoves.size());
+            score.updateAgilityBonusBlack(agilityBlack);
         }
 
 
@@ -100,9 +107,9 @@ public class GameState {
             case 1: score.updateWhitePawnValues(bitBoard.getWhitePawns()); break;
             case 2: score.updateWhiteKnightValues(bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteRooks()); break;
             case 3: score.updateWhiteBishopValues(bitBoard.getWhiteBishops(), bitBoard.getWhiteKnights(), bitBoard.getWhiteRooks()); break;
-            case 4: score.updateWhiteRookValues(bitBoard.getWhiteRooks(), bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), isEndgame); break;
+            case 4: score.updateWhiteRookValues(bitBoard.getWhiteRooks(), bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteKingMoved(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), isEndgame); break;
             case 5: score.updateWhiteQueenValues(bitBoard.getWhiteQueens()); break;
-            case 6: score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), bitBoard.getWhiteQueens() == 0 && bitBoard.getBlackQueens() == 0); break;
+            case 6: score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteKingMoved(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), bitBoard.getWhiteQueens() == 0 && bitBoard.getBlackQueens() == 0); break;
             default: break; // Optionally handle default case
         }
     }
@@ -113,23 +120,33 @@ public class GameState {
             case 1: score.updateBlackPawnValues(bitBoard.getBlackPawns()); break;
             case 2: score.updateBlackKnightValues(bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackRooks()); break;
             case 3: score.updateBlackBishopValues(bitBoard.getBlackBishops(), bitBoard.getBlackKnights(), bitBoard.getBlackRooks()); break;
-            case 4: score.updateBlackRookValues(bitBoard.getBlackRooks(), bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
+            case 4: score.updateBlackRookValues(bitBoard.getBlackRooks(), bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackKingMoved(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
             case 5: score.updateBlackQueenValues(bitBoard.getBlackQueens()); break;
-            case 6: score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
+            case 6: score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackKingMoved(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
             default: break; // Optionally handle default case
         }
     }
 
     private void updateCapturedPieceValues(boolean isWhite, int capturedPieceTypeBits, BitBoard bitBoard) {
+
+
         if (isWhite) {
+            //TODO check if this could be done more efficient
+            int agilityBlack = bitBoard.generateAllPossibleMoves(false).size();
+            score.updateAgilityBonusBlack(agilityBlack);
+
             updateValuesForBlack(capturedPieceTypeBits, bitBoard); // Update black pieces if white is capturing
         } else {
+            //TODO check if this could be done more efficient
+            int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
+            score.updateAgilityBonusBlack(agilityWhite);
+
             updateValuesForWhite(capturedPieceTypeBits, bitBoard); // Update white pieces if black is capturing
         }
         //Endgamecheck if the queens are gone
         if(capturedPieceTypeBits == 5 && bitBoard.getBlackQueens() == 0 && bitBoard.getWhiteQueens() == 0) {
-            score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), true);
-            score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), true);
+            score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteKingMoved(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), true);
+            score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackKingMoved(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), true);
         }
     }
 

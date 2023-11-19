@@ -69,9 +69,9 @@ public class Score {
     private static final int PASSED_PAWN_BONUS = 60;     // Bonus for passed pawns
 
     // Other bonuses and penalties
-    private static final int NOT_CASTLED_AND_ROOK_MOVE_PENALTY = -31;
+    private static final int NOT_CASTLED_AND_ROOK_MOVE_PENALTY = -50;
     private static final int START_POSITION_PENALTY = -50; // Define the penalty value for starting position
-    private static final int CASTLING_BONUS = 50;
+    private static final int CASTLING_BONUS = 75;
 
     // Constants for the initial positions of each piece type
     private static final long INITIAL_WHITE_KNIGHT_POSITION = 0x0000000000000042L; // Knights on b1 and g1
@@ -169,9 +169,9 @@ public class Score {
         updateQueensPositionBonusWhite(whiteQueens);
         updateQueensPositionBonusBlack(blackQueens);
 
-        updateWhiteKingsPositionBonus(whiteKing, bitBoard.isWhiteKingHasCastled(),
+        updateWhiteKingsPositionBonus(whiteKing, bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteKingMoved(),
                 bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), whiteQueens == 0 && blackQueens == 0);
-        updateBlackKingsPositionBonus(blackKing, bitBoard.isBlackKingHasCastled(),
+        updateBlackKingsPositionBonus(blackKing, bitBoard.isBlackKingHasCastled(), bitBoard.isBlackKingMoved(),
                 bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), whiteQueens == 0 && blackQueens == 0);
 
         updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
@@ -322,7 +322,7 @@ public class Score {
         blackQueensPosition = applyPositionalValues(blackQueens, QUEEN_POSITIONAL_VALUES);
     }
 
-    public void updateWhiteKingsPositionBonus(long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
+    public void updateWhiteKingsPositionBonus(long whiteKing, boolean isCastled, boolean isWhiteKingMoved, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
         whiteKingsPosition = applyPositionalValues(whiteKing, isEndgame ? KING_ENDGAME_POSITIONAL_VALUES : WHITE_KING_POSITIONAL_VALUES);
         if (isCastled) {
             whiteKingsPosition += CASTLING_BONUS;
@@ -333,10 +333,13 @@ public class Score {
             if (rookH1Moved) {
                 whiteKingsPosition += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
             }
+            if (isWhiteKingMoved) {
+                whiteKingsPosition += NOT_CASTLED_AND_ROOK_MOVE_PENALTY*2;
+            }
         }
     }
 
-    public void updateBlackKingsPositionBonus(long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved, boolean isEndgame) {
+    public void updateBlackKingsPositionBonus(long blackKing, boolean isCastled, boolean isBlackKingMoved, boolean rookA8Moved, boolean rookH8Moved, boolean isEndgame) {
         blackKingsPosition = applyPositionalValues(blackKing, isEndgame ? KING_ENDGAME_POSITIONAL_VALUES : BLACK_KING_POSITIONAL_VALUES);
         if (isCastled) {
             blackKingsPosition += CASTLING_BONUS;
@@ -346,6 +349,9 @@ public class Score {
             }
             if (rookH8Moved) {
                 blackKingsPosition += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
+            }
+            if (isBlackKingMoved) {
+                blackKingsPosition += NOT_CASTLED_AND_ROOK_MOVE_PENALTY*2;
             }
         }
     }
@@ -448,16 +454,16 @@ public class Score {
         updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
     }
 
-    public void updateWhiteRookValues(long whiteRooks, long whiteKnights, long whiteBishops, long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
+    public void updateWhiteRookValues(long whiteRooks, long whiteKnights, long whiteBishops, long whiteKing, boolean isCastled, boolean isWhiteKingMoved, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
         this.whiteRooks = Long.bitCount(whiteRooks) * ROOK_VALUE;
         updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
-        updateWhiteKingValues(whiteKing, isCastled, rookA1Moved, rookH1Moved, isEndgame);
+        updateWhiteKingValues(whiteKing, isCastled, isWhiteKingMoved, rookA1Moved, rookH1Moved, isEndgame);
     }
 
-    public void updateBlackRookValues(long blackRooks, long blackKnights, long blackBishops, long blackKing, boolean isCastled, boolean rookA8Moved, boolean rookH8Moved, boolean isEndgame) {
+    public void updateBlackRookValues(long blackRooks, long blackKnights, long blackBishops, long blackKing, boolean isCastled, boolean isBlackKingMoved, boolean rookA8Moved, boolean rookH8Moved, boolean isEndgame) {
         this.blackRooks = Long.bitCount(blackRooks) * ROOK_VALUE;
         updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
-        updateBlackKingValues(blackKing, isCastled, rookA8Moved, rookH8Moved, isEndgame);
+        updateBlackKingValues(blackKing, isCastled, isBlackKingMoved, rookA8Moved, rookH8Moved, isEndgame);
     }
 
     public void updateWhiteQueenValues(long whiteQueens) {
@@ -468,12 +474,12 @@ public class Score {
         this.blackQueens = Long.bitCount(blackQueens) * QUEEN_VALUE;
     }
 
-    public void updateWhiteKingValues(long whiteKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
-        updateWhiteKingsPositionBonus(whiteKing, isCastled, rookA1Moved, rookH1Moved, isEndgame);
+    public void updateWhiteKingValues(long whiteKing, boolean isCastled, boolean isWhiteKingMoved, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
+        updateWhiteKingsPositionBonus(whiteKing, isCastled, isWhiteKingMoved, rookA1Moved, rookH1Moved, isEndgame);
     }
 
-    public void updateBlackKingValues(long blackKing, boolean isCastled, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
-        updateBlackKingsPositionBonus(blackKing, isCastled, rookA1Moved, rookH1Moved, isEndgame);
+    public void updateBlackKingValues(long blackKing, boolean isCastled, boolean isBlackKingMoved, boolean rookA1Moved, boolean rookH1Moved, boolean isEndgame) {
+        updateBlackKingsPositionBonus(blackKing, isCastled, isBlackKingMoved, rookA1Moved, rookH1Moved, isEndgame);
     }
 
 }
