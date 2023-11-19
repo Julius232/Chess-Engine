@@ -232,7 +232,6 @@ public class Engine {
 
 
     public double evaluateBoard(boolean isWhitesTurn) {
-        log.info("evaluateBoard");
         if (gameState.isInStateCheckMate()) {
             return CHECKMATE;
         }

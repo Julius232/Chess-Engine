@@ -9,8 +9,6 @@
     box-sizing: content-box;
 }
 
-
-
 .square-55d63 {
     float: left;
     position: relative;
@@ -61,4 +59,12 @@
 .glow-red {
     filter: drop-shadow(0 0 15px rgba(255, 0, 0, 1))
             drop-shadow(0 0 20px rgba(255, 0, 0, 1))
+}
+.piece-417db {
+    /* Custom piece styling */
+    filter: drop-shadow(0 0 10px #00ff00); /* Green glow */
+}
+.square-55d63:hover {
+    /* Hover effect on squares */
+    background-color: rgba(0, 255, 0, 0.3); /* Subtle green highlight */
 }

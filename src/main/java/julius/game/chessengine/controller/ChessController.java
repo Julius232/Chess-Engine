@@ -1,6 +1,7 @@
 package julius.game.chessengine.controller;
 
 import julius.game.chessengine.ai.AI;
+import julius.game.chessengine.ai.MoveAndScore;
 import julius.game.chessengine.board.FEN;
 import julius.game.chessengine.board.Move;
 import julius.game.chessengine.board.MoveList;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,7 +30,6 @@ public class ChessController {
 
     private final AI ai;
     private final Engine engine;
-
 
 
     @GetMapping(value = "/score")
@@ -64,7 +65,7 @@ public class ChessController {
     public ResponseEntity<List<Move>> getAllPossibleFieldsWhite() {
         MoveList moves = engine.getAllLegalMoves();
         List<Move> restApiMoves = new ArrayList<>();
-        for(int i = 0; i < moves.size(); i++) {
+        for (int i = 0; i < moves.size(); i++) {
             restApiMoves.add(Move.convertIntToMove(moves.getMove(i)));
         }
 
@@ -75,7 +76,7 @@ public class ChessController {
     public ResponseEntity<List<Move>> getAllPossibleFieldsBlack() {
         MoveList moves = engine.getAllLegalMoves();
         List<Move> restApiMoves = new ArrayList<>();
-        for(int i = 0; i < moves.size(); i++) {
+        for (int i = 0; i < moves.size(); i++) {
             restApiMoves.add(Move.convertIntToMove(moves.getMove(i)));
         }
 
@@ -119,13 +120,25 @@ public class ChessController {
                 .build();
     }
 
-    @GetMapping(value = "/line")
-    public ResponseEntity<List<ApiMoveAndScore>> getCalculatedLine() {
-        List<ApiMoveAndScore> calculatedLine = ai.getCalculatedLine()
-                .stream()
-                .map(ms -> new ApiMoveAndScore(Move.convertIntToMove(ms.getMove()).toString(), ms.getScore()))
-                .collect(Collectors.toList()); // Assuming this returns List<String>
-        return ResponseEntity.ok(calculatedLine);
+    @GetMapping(value = "/state")
+    public ResponseEntity<BoardState> getBoardState() {
+        List<MoveAndScore> moveAndScores = ai.getCalculatedLine();
+        GameState gameState = ai.getEngine().getGameState();
+
+        BoardState boardState = new BoardState();
+        boardState.setGameState(gameState);
+
+        if (!moveAndScores.isEmpty()) {
+            String moves = moveAndScores.stream()
+                    .map(ms -> Move.convertIntToMove(ms.getMove()).toString())
+                    .collect(Collectors.joining(", "));
+            boardState.setMove(moves);
+
+            double lastScore = moveAndScores.get(moveAndScores.size() - 1).getScore();
+            boardState.setScore(lastScore);
+        }
+
+        return ResponseEntity.ok(boardState);
     }
 
 }

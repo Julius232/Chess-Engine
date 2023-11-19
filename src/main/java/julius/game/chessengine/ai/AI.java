@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 @Component
 public class AI {
 
+    @Getter
     private final Engine engine;
 
     private static final double EXIT_FLAG = Double.MAX_VALUE;
@@ -35,7 +36,7 @@ public class AI {
 
     // Game configuration parameters
     private final int maxDepth = 18; // Adjust the level of depth according to your requirements
-    private final long timeLimit = 500; // milliseconds
+    private final long timeLimit = 50; // milliseconds
 
 
     public AI(Engine engine) {
