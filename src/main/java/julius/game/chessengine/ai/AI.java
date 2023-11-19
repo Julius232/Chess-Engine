@@ -38,7 +38,7 @@ public class AI {
 
     // Game configuration parameters
     private final int maxDepth = 18; // Adjust the level of depth according to your requirements
-    private final long timeLimit = 200; // milliseconds
+    private final long timeLimit = 60000; // milliseconds
 
 
     public AI(Engine mainEngine) {
@@ -150,9 +150,8 @@ public class AI {
             if (moveAndScore != null && isNewBestMove(moveAndScore, bestScore, isWhite)) {
                 bestScore = moveAndScore.score;
                 bestMove = moveAndScore.move;
-                log.info("New best move found: {}, boardStateHash {}", Move.convertIntToMove(bestMove), boardStateHash);
+                log.info("New best move found: {}, currentDepth: {}, boardStateHash {}", Move.convertIntToMove(bestMove), currentDepth, boardStateHash);
                 transpositionTable.put(boardStateHash, new TranspositionTableEntry(moveAndScore.score, currentDepth, NodeType.EXACT, bestMove));
-                simulatorEngine.logBoard();
                 fillCalculatedLine(simulatorEngine);
             }
 

@@ -86,7 +86,6 @@ public class GameState {
             //TODO check if this could be done more efficient
             int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
 
-            log.info(legalMoves.size());
             updateValuesForWhite(pieceTypeBits, bitBoard);
             score.updateAgilityBonusWhite(agilityWhite);
 
@@ -192,13 +191,6 @@ public class GameState {
     private boolean isDraw(BitBoard bitBoard, MoveList legalMoves) {
         boolean insufficientMaterial = bitBoard.hasInsufficientMaterial();
         boolean isThreeFoldRepetition = isThreeFoldRepetition(bitBoard.getBoardStateHash());
-
-        if (insufficientMaterial) {
-            log.info("Insufficient Material");
-        }
-        if (isThreeFoldRepetition) {
-            log.info("ThreeFoldRepetition");
-        }
         return legalMoves.size() == 0 || insufficientMaterial || isThreeFoldRepetition;
     }
 

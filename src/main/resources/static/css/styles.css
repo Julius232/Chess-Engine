@@ -55,7 +55,6 @@ body {
     }
 }
 
-
 #section1 {
     margin-top: 30px;
 }
@@ -64,10 +63,7 @@ body {
     margin-bottom: 50px; /* Adds space below Section 2 */
 }
 
-/* Alternatively, you can add space above Section 3 */
-#section3 {
-    margin-top: 30px; /* Adds space above Section 3 */
-}
+
 
 #section1 > div, #section3 > div {
     margin: 0 auto;
@@ -85,19 +81,59 @@ body {
     border: 3px solid greenyellow;
 }
 
+#section3 {
+    width: 800px; /* or any other value smaller than 512px */
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+#section3 > * {
+    margin: 0 10px; /* Adjust spacing as needed */
+}
+
+
+.arrow {
+    /* Basic styling for arrows */
+    background-color: #f0f0f0;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px 10px;
+    margin: 5px;
+    flex-grow: 0; /* Prevents arrows from growing */
+}
+
+
+#scoreAndLineContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 0; /* Allows this container to take up more space */
+}
+
+#scoreAndLineContainer > * {
+    margin: 5px; /* Adjust spacing as needed */
+}
+
 #board {
     width: 512px;
 }
 
 /* Top Bar Styles */
-.top-bar {
-    width: 100%;
-    background-color: rgba(10, 10, 30, 0.9); /* Dark, slightly transparent background */
-    padding: 10px 0;
+.top-bar ul {
+    list-style: none; /* Removes default list styling */
+    padding: 0;
+    margin: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    box-shadow: 0px 5px 15px rgba(0, 255, 0, 0.5); /* Subtle green glow */
+}
+
+.top-bar li {
+    margin: 0 5px; /* Adjust spacing between menu items */
 }
 
 /* Button Styles */

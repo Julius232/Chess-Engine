@@ -13,15 +13,15 @@
 <body>
     <main>
         <nav class="top-bar">
-            <!-- Place all the buttons here -->
-            <button class="btn" id="playWhite">Play as White</button>
-            <button class="btn" id="playBlack">Play as Black</button>
-            <button class="btn" id="resetBoard">Reset Board</button>
-            <button class="btn" id="computerMove">Computer Move</button>
-            <button class="btn" id="undoMove">Undo Move</button>
-            <button class="btn" id="importFEN">Import from FEN</button>
-            <button class="btn" id="autoPlay">Autoplay</button>
-            <button class="btn" id="viewDetails">View Details</button>
+            <ul>
+                <li><a href="#" class="btn" id="playWhite">Play as White</a></li>
+                <li><a href="#" class="btn" id="playBlack">Play as Black</a></li>
+                <li><a href="#" class="btn" id="resetBoard">Reset Board</a></li>
+                <li><a href="#" class="btn" id="computerMove">Computer Move</a></li>
+                <li><a href="#" class="btn" id="importFEN">Import from FEN</a></li>
+                <li><a href="#" class="btn" id="autoPlay">Autoplay</a></li>
+                <li><a href="#" class="btn" id="viewDetails">View Details</a></li>
+            </ul>
         </nav>
 
         <section id="section1">
@@ -37,17 +37,23 @@
         </section>
 
         <section id="section3" class="game-section">
-            <div id="score">Score</div>
-            <div id="calculatedLine">Calculated Line: <span></span></div>
-            <div id="detailsModal" class="modal">
-                <div class="modal-content">
-                    <span class="close">&times;</span>
-                    <h2>Game Details</h2>
-                    <div id="gameDetails"></div>
-                </div>
+            <button class="btn arrow" id="undoMove">←</button>
+            
+            <div id="scoreAndLineContainer">
+                <div id="score">Score</div>
+                <div id="calculatedLine">Calculated Line: <span></span></div>
             </div>
+        
+            <button class="btn arrow" id="rightArrow">→</button>
         </section>
     </main>
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Game Details</h2>
+            <div id="gameDetails"></div>
+        </div>
+    </div>
     <script src="js/jquery-3.4.1.min.js"></script>
     <script src="js/prettify.min.js"></script>
     <script src="js/chessboard-1.0.0.min.js"></script>

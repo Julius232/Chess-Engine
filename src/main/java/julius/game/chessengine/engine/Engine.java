@@ -250,12 +250,10 @@ public class Engine {
 
     public double evaluateBoard(boolean isWhitesTurn, long startTime, long timeLimit) {
         if (gameState.isInStateCheckMate()) {
-            log.info("checkmate");
             return CHECKMATE;
         }
 
         if (gameState.isInStateDraw()) {
-            log.info("draw");
             return 0;
         }
 
