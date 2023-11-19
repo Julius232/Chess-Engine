@@ -33,6 +33,10 @@
         <section id="section2">
             <div>
                 <div id="board"></div>
+                <div id="sliderContainer">
+                    <input type="range" id="autoplaySlider" min="50" max="60000" value="50" class="slider">
+                    <span id="sliderValue">50</span>ms
+                </div>
             </div>
         </section>
 
@@ -43,9 +47,9 @@
                 <div id="score">Score</div>
                 <div id="calculatedLine">Calculated Line: <span></span></div>
             </div>
-        
             <button class="btn arrow" id="rightArrow">→</button>
         </section>
+        
     </main>
     <div id="detailsModal" class="modal">
         <div class="modal-content">

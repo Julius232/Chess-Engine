@@ -29,6 +29,20 @@ const updateCalculatedLine = () => {
     });
 };
 
+const updateSliderValue = (value) => {
+    $('#sliderValue').text(value);
+};
+
+const handleSliderChange = () => {
+    const sliderValue = $('#autoplaySlider').val();
+    updateSliderValue(sliderValue);
+    makeRequest('PATCH', `http://localhost:8080/chess/autoplay/${sliderValue}`, reloadBoard);
+};
+
+// Initialize slider event listener
+$('#autoplaySlider').on('input change', handleSliderChange);
+
+
 // Update the details in the modal
 const updateGameDetails = (data) => {
     let details = '<div class="game-details-container">';

@@ -49,8 +49,15 @@ public class ChessController {
     }
 
     @GetMapping(value = "/autoplay")
-    public ResponseEntity<?> autoplay() throws InterruptedException {
+    public ResponseEntity<?> autoplay() {
         ai.startAutoPlay();
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping(value = "/autoplay/{timeLimit}")
+    public ResponseEntity<?> autoplaySetTimelimit(@PathVariable("timeLimit") long timeLimit)  {
+        ai.setTimeLimit(timeLimit);
+        log.info("setting to: " + timeLimit);
         return ResponseEntity.ok().build();
     }
 

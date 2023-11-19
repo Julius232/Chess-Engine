@@ -5,6 +5,7 @@ import julius.game.chessengine.board.MoveList;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
@@ -38,11 +39,15 @@ public class AI {
 
     // Game configuration parameters
     private final int maxDepth = 18; // Adjust the level of depth according to your requirements
-    private final long timeLimit = 60000; // milliseconds
+
+    @Getter
+    @Setter
+    private long timeLimit; // milliseconds
 
 
     public AI(Engine mainEngine) {
         this.mainEngine = mainEngine;
+        this.timeLimit = 50;
     }
 
     private void startCalculationThread() {

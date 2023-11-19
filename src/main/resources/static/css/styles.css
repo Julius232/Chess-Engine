@@ -21,6 +21,7 @@ body {
 
 /* Header Glitch Animation Styles */
 #header {
+    box-shadow: 0px 0px 10px 5px #00eeff;
     font-family: 'Orbitron', sans-serif; /* Futuristic font */
     color: #32CD32; /* Neon green color */
     position: relative;
@@ -70,7 +71,6 @@ body {
     width: 512px;
     text-align: center;
     color: #32CD32;
-    border: 3px solid #32CD32;
     background-color: rgba(0, 0, 0, 0.5);
     text-shadow: 0px 0px 5px #32CD32; /* Reduced glow */
 }
@@ -78,8 +78,60 @@ body {
 #section2 > div {
     margin: 0 auto;
     width: 512px;
-    border: 3px solid greenyellow;
 }
+
+/* Slider Container */
+#sliderContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center slider in container */
+    padding: 10px; /* Add some padding */
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0px 0px 10px 5px #00eeff;
+    margin-top: 1px; /* Space from the board */
+}
+
+/* Styling the Slider */
+#autoplaySlider {
+    -webkit-appearance: none; /* Override default browser appearance */
+    width: 100%; /* Full width of the container */
+    height: 8px; /* Slider thickness */
+    background: #003366; /* Dark base color */
+    outline: none; /* Remove outline */
+    opacity: 0.7; /* Semi-transparency */
+    transition: opacity .2s; /* Smooth transition for hover effect */
+    border-radius: 5px; /* Rounded slider */
+}
+
+#autoplaySlider::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Override default appearance */
+    appearance: none;
+    width: 25px; /* Width of the thumb */
+    height: 25px; /* Height of the thumb */
+    background: #32CD32; /* Neon green thumb */
+    cursor: pointer; /* Cursor on hover */
+    border-radius: 50%; /* Circular thumb */
+    box-shadow: 0 0 10px #ff00ff; /* Neon glow effect */
+}
+
+#autoplaySlider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    background: #32CD32;
+    cursor: pointer;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #ff00ff;
+}
+
+/* Styling the Slider Value Display */
+#sliderValue {
+    color: #32CD32; /* Neon green text */
+    font-family: 'Orbitron', sans-serif; /* Futuristic font */
+    margin-left: 10px; /* Space from the slider */
+    text-shadow: 0 0 5px #32CD32; /* Text glow effect */
+}
+
 
 #section3 {
     width: 800px; /* or any other value smaller than 512px */
@@ -117,6 +169,12 @@ body {
 #scoreAndLineContainer > * {
     margin: 5px; /* Adjust spacing as needed */
 }
+
+.slider {
+    width: 100%; /* Adjust as needed */
+    margin: 10px 0;
+}
+
 
 #board {
     width: 512px;

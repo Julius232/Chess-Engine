@@ -83,7 +83,7 @@ public class Engine {
         gameState.updateState(bitBoard, legalMoves);
     }
 
-    public Engine createSimulation() {
+    public synchronized Engine createSimulation() {
         // Safe copy
         return new Engine(this);
     }
