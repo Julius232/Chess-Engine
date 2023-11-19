@@ -10,8 +10,8 @@ public class EvalTest {
     @Test
     public void quiencesearch() {
         Engine e = new Engine();
-        e.importBoardFromFen("rnbqkbnr/ppppp2p/5pp1/7Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 0 3");
-        log.info(e.evaluateBoard(true));
+        e.importBoardFromFen("b4rk1/5ppR/3N4/8/3n4/4B3/5P2/4K3 w - - 0 1");
+        log.info(e.evaluateBoard(true, System.currentTimeMillis(), 10000000));
     }
 
 }

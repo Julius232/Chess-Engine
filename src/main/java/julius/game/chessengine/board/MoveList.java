@@ -16,6 +16,13 @@ public class MoveList {
         this.moveCount = 0;
     }
 
+    // Deep copy constructor
+    public MoveList(MoveList original) {
+        this.moveCount = original.moveCount;
+        this.moves = new int[original.moves.length];
+        System.arraycopy(original.moves, 0, this.moves, 0, original.moveCount);
+    }
+
     public void add(int move) {
         if (moveCount >= moves.length) {
             resizeArray();

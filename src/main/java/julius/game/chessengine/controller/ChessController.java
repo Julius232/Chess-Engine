@@ -16,7 +16,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -123,7 +122,7 @@ public class ChessController {
     @GetMapping(value = "/state")
     public ResponseEntity<BoardState> getBoardState() {
         List<MoveAndScore> moveAndScores = ai.getCalculatedLine();
-        GameState gameState = ai.getEngine().getGameState();
+        GameState gameState = ai.getMainEngine().getGameState();
 
         BoardState boardState = new BoardState();
         boardState.setGameState(gameState);

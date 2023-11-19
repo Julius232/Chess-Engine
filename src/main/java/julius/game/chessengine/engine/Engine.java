@@ -35,24 +35,40 @@ public class Engine {
         startNewGame();
     }
 
-    public Engine(BitBoard b, ArrayList<Integer> m, MoveList l, GameState g) {
-        bitBoard = new BitBoard(b);
-        gameState = new GameState(g);
-        line = m;
-        legalMoves = l;
+    public Engine(Engine other) {
+        this.bitBoard = new BitBoard(other.bitBoard); // Assuming BitBoard's constructor is a deep copy constructor
+        this.gameState = new GameState(other.gameState); // Assuming GameState's constructor is a deep copy constructor
+        this.line = new ArrayList<>(other.line);
+        this.legalMoves = new MoveList(other.legalMoves);
+        this.legalMovesNeedUpdate = other.legalMovesNeedUpdate;
     }
 
     public MoveList getAllLegalMoves() {
+        if(gameState.isGameOver()) {
+            return new MoveList();
+        }
         if (legalMovesNeedUpdate) {
             generateLegalMoves();
-            legalMovesNeedUpdate = false; // Reset flag after generating
         }
         return this.legalMoves;
     }
 
     public void performMove(int move) {
-        if(!gameState.isGameOver()) {
-            bitBoard.performMove(move);
+        if (!gameState.isGameOver()) {
+            if (isLegalMove(move)) {
+                bitBoard.performMove(move);
+            } else {
+                log.warn("Move: {}", Move.convertIntToMove(move));
+                log.info(gameState.toString());
+                MoveList moves = getAllLegalMoves();
+                for (int i = 0; i < moves.size(); i++) {
+                    int m = moves.getMove(i);
+                    if (isCapture(m)) {
+                        log.info(Move.convertIntToMove(m));
+                    }
+                }
+                throw new IllegalStateException("Move not legal for AI");
+            }
             generateLegalMoves();
             gameState.update(bitBoard, legalMoves, move);
             line.add(move);
@@ -66,9 +82,9 @@ public class Engine {
         gameState.updateState(bitBoard, legalMoves);
     }
 
-    public synchronized Engine createSimulation() {
-        ArrayList<Integer> newLine = new ArrayList<>(line); // Safe copy
-        return new Engine(bitBoard, newLine, legalMoves, gameState);
+    public Engine createSimulation() {
+        // Safe copy
+        return new Engine(this);
     }
 
     public void startNewGame() {
@@ -80,8 +96,8 @@ public class Engine {
 
     private void generateLegalMoves() {
         this.legalMoves = new MoveList();
-
-        if(gameState.isGameOver()) {
+        legalMovesNeedUpdate = false; // Reset flag after generating
+        if (gameState.isGameOver()) {
             return;
         }
 
@@ -201,7 +217,6 @@ public class Engine {
     }
 
 
-
     public synchronized long getBoardStateHash() {
         return bitBoard.getBoardStateHash();
     }
@@ -215,13 +230,15 @@ public class Engine {
         return bitBoard.whitesTurn;
     }
 
-    public synchronized void undoLastMove() {
+    public void undoLastMove() {
         if (!line.isEmpty()) {
             gameState.undo(bitBoard.getBoardStateHash());
             this.bitBoard.undoMove(line.getLast());
             gameState.updateScore(bitBoard, legalMoves, line.getLast());
             generateLegalMoves();
             line.removeLast();
+        } else {
+            throw new IllegalStateException("undoLastMoveWasNotPossible, line is empty");
         }
     }
 
@@ -230,10 +247,15 @@ public class Engine {
     }
 
 
-
-    public double evaluateBoard(boolean isWhitesTurn) {
+    public double evaluateBoard(boolean isWhitesTurn, long startTime, long timeLimit) {
         if (gameState.isInStateCheckMate()) {
+            log.info("checkmate");
             return CHECKMATE;
+        }
+
+        if (gameState.isInStateDraw()) {
+            log.info("draw");
+            return 0;
         }
 
         double alpha = Double.NEGATIVE_INFINITY;
@@ -247,13 +269,19 @@ public class Engine {
             return entry.getScore();
         }
 
-        double score = quiescenceSearch(isWhitesTurn, alpha, beta);
-
+        double score = quiescenceSearch(isWhitesTurn, alpha, beta, startTime, timeLimit);
         captureTranspositionTable.put(boardStateHash, new CaptureTranspositionTableEntry(score, isWhitesTurn));
+
         return score;
     }
 
-    private double quiescenceSearch(boolean isWhitesTurn, double alpha, double beta) {
+    private double quiescenceSearch(boolean isWhitesTurn, double alpha, double beta, long startTime, long timeLimit) {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - startTime > timeLimit) {
+            log.info("timeout");
+            return Double.MAX_VALUE; // Timeout, return MAX_VALUE
+        }
+
         MoveList moves = getPossibleCaptures();
 
         if (moves.size() == 0) {
@@ -268,11 +296,11 @@ public class Engine {
             alpha = standPat;
         }
 
+
         for (int i = 0; i < moves.size(); i++) {
             performMove(moves.getMove(i));
-            double score = -quiescenceSearch(!isWhitesTurn, -beta, -alpha);
+            double score = -quiescenceSearch(!isWhitesTurn, -beta, -alpha, startTime, timeLimit);
             undoLastMove();
-
             if (score >= beta) {
                 return beta;
             }
@@ -286,22 +314,27 @@ public class Engine {
 
 
     private double evaluateStaticPosition(boolean isWhitesTurn) {
-        //logBoard();
+        if (gameState.isInStateCheckMate()) {
+            return CHECKMATE;
+        }
+        if (gameState.isInStateDraw()) {
+            return 0;
+        }
         // Assuming getScore().getScoreDifference() returns a score from white's perspective
         double scoreDifference = gameState.getScore().getScoreDifference() / 1000.0;
         return isWhitesTurn ? scoreDifference : -scoreDifference;
     }
 
     private MoveList getPossibleCaptures() {
+        MoveList allLegalMoves = getAllLegalMoves();
         MoveList captures = new MoveList();
-        MoveList moves = getAllLegalMoves();
-
-        for (int i = 0; i < moves.size(); i++) {
-            int m = moves.getMove(i);
+        for (int i = 0; i < allLegalMoves.size(); i++) {
+            int m = allLegalMoves.getMove(i);
             if (isCapture(m)) {
                 captures.add(m);
             }
         }
+
         return captures;
     }
 
