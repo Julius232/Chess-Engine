@@ -147,11 +147,16 @@ public class Engine {
         return gameState;
     }
 
-    public GameState moveFigure(int fromIndex, int toIndex) {
-        return moveFigure(bitBoard, fromIndex, toIndex);
+    public GameState moveFigure(int fromIndex, int toIndex, int promotionPiece) {
+        return moveFigure(bitBoard, fromIndex, toIndex, promotionPiece);
     }
 
-    public GameState moveFigure(BitBoard bitBoard, int fromIndex, int toIndex) {
+    //always queen
+    public GameState moveFigure(int fromIndex, int toIndex) {
+        return moveFigure(bitBoard, fromIndex, toIndex, 5);
+    }
+
+    public GameState moveFigure(BitBoard bitBoard, int fromIndex, int toIndex, int promotionPiece) {
         // Determine the piece type and color from the bitboard based on the 'from' position
         PieceType pieceType = bitBoard.getPieceTypeAtIndex(fromIndex);
         Color color = bitBoard.getPieceColorAtIndex(fromIndex);
@@ -175,8 +180,9 @@ public class Engine {
             int m = legalMoves.getMove(i);
             int from = m & 0x3F; // Extract the first 6 bits
             int to = (m >> 6) & 0x3F; // Extract the next 6 bits
+            int promotionPieceTypeBits = (m >> 18) & 0x07;
 
-            if (from == fromIndex && to == toIndex) {
+            if (from == fromIndex && to == toIndex && (promotionPieceTypeBits == 0 | promotionPieceTypeBits == promotionPiece)) {
                 move = m;
             }
         }
