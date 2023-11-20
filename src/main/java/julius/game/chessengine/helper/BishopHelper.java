@@ -49,9 +49,6 @@ public class BishopHelper {
         return instance;
     }
 
-
-
-
     public void findMagicNumbersParallel() {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         ConcurrentHashMap<Integer, Long> magicNumbers = new ConcurrentHashMap<>();

@@ -5,7 +5,7 @@ import julius.game.chessengine.utils.Color;
 import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.Test;
 
-import static julius.game.chessengine.board.Position.convertStringToIndex;
+import static julius.game.chessengine.board.MoveHelper.convertStringToIndex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 

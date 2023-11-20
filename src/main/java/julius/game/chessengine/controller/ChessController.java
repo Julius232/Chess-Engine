@@ -2,12 +2,10 @@ package julius.game.chessengine.controller;
 
 import julius.game.chessengine.ai.AI;
 import julius.game.chessengine.ai.MoveAndScore;
-import julius.game.chessengine.board.FEN;
-import julius.game.chessengine.board.Move;
-import julius.game.chessengine.board.MoveList;
-import julius.game.chessengine.board.Position;
+import julius.game.chessengine.board.*;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
+import julius.game.chessengine.engine.GameStateEnum;
 import julius.game.chessengine.utils.Score;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -19,7 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static julius.game.chessengine.board.Position.convertStringToIndex;
+import static julius.game.chessengine.board.MoveHelper.convertIndexToString;
+import static julius.game.chessengine.board.MoveHelper.convertStringToIndex;
 
 @Log4j2
 @Controller
@@ -29,7 +28,6 @@ public class ChessController {
 
     private final AI ai;
     private final Engine engine;
-
 
     @GetMapping(value = "/score")
     public ResponseEntity<Score> getScore() {
@@ -50,15 +48,36 @@ public class ChessController {
 
     @GetMapping(value = "/autoplay")
     public ResponseEntity<?> autoplay() {
-        ai.startAutoPlay();
+        ai.reset();
+        ai.startAutoPlay(true, true);
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping(value = "/autoplay/{timeLimit}")
+    @PatchMapping(value = "/autoplay/timelimit/{timeLimit}")
     public ResponseEntity<?> autoplaySetTimelimit(@PathVariable("timeLimit") long timeLimit)  {
         ai.setTimeLimit(timeLimit);
         log.info("setting to: " + timeLimit);
         return ResponseEntity.ok().build();
+    }
+    @PatchMapping(value = "/autoplay/{color}")
+    public ResponseEntity<?> calculateMoveForColor(@PathVariable("color") String color) {
+        if (color != null) {
+            ai.reset();
+            log.info(color);
+            ai.startAutoPlay(color.equalsIgnoreCase("WHITE"), color.equalsIgnoreCase("BLACK"));
+            return ResponseEntity.ok().build();
+        } else return ResponseEntity.status(406).build();
+    }
+
+    @GetMapping(value = "/autoplay/lastMove")
+    public ResponseEntity<ApiMove> getLastMove() {
+        GameStateEnum state = ai.getMainEngine().getGameState().getState();
+        int lastMove = ai.getMainEngine().getLine().getLast();
+        int fromIndex = MoveHelper.deriveLastMoveFromIndex(lastMove);
+        int toIndex = MoveHelper.deriveLastMovetoIndex(lastMove);
+
+        ApiMove move = new ApiMove(state, convertIndexToString(fromIndex),convertIndexToString(toIndex));
+        return ResponseEntity.ok(move);
     }
 
     @GetMapping(value = "/undo")
@@ -99,24 +118,10 @@ public class ChessController {
                                                 @PathVariable("to") String to) {
         if (from != null && to != null) {
             GameState state = engine.moveFigure(convertStringToIndex(from), convertStringToIndex(to));
+            ai.updateBoardStateHash();
             return ResponseEntity.ok(state);
         } else return ResponseEntity.status(406).build();
     }
-
-    @PatchMapping(value = "/figure/move/intelligent/{color}")
-    public ResponseEntity<GameState> calculateMoveForColor(@PathVariable("color") String color) {
-        if (color != null) {
-            return ResponseEntity.ok(ai.performMove());
-        } else return ResponseEntity.status(406).build();
-    }
-
-    @PatchMapping(value = "/figure/move/random/{color}")
-    public ResponseEntity<GameState> moveRandomFigure(@PathVariable("color") String color) {
-        if (color != null) {
-            return ResponseEntity.ok(engine.moveRandomFigure(color.equals("WHITE")));
-        } else return ResponseEntity.status(406).build();
-    }
-
     @GetMapping(value = "/figure/move/possible/{from}")
     public ResponseEntity<List<Position>> getPossibleToPositions(@PathVariable("from") String from) {
         if (from != null) {

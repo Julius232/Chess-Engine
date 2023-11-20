@@ -36,7 +36,7 @@ const updateSliderValue = (value) => {
 const handleSliderChange = () => {
     const sliderValue = $('#autoplaySlider').val();
     updateSliderValue(sliderValue);
-    makeRequest('PATCH', `http://localhost:8080/chess/autoplay/${sliderValue}`, reloadBoard);
+    makeRequest('PATCH', `http://localhost:8080/chess/autoplay/timelimit/${sliderValue}`, reloadBoard);
 };
 
 // Initialize slider event listener
@@ -186,8 +186,8 @@ function importFEN(fenString) {
 }
 
 // Function to make a move
-const makeMove = (type, color) => {
-    makeRequest('PATCH', `http://localhost:8080/chess/figure/move/${type}/${color}`, (data) => {
+const autoPlayColor = (color) => {
+    makeRequest('PATCH', `http://localhost:8080/chess/autoplay/${color}`, (data) => {
         checkState(data.state);
         reloadBoard();
     });

@@ -1,9 +1,9 @@
 package julius.game.chessengine.ai;
 
 import julius.game.chessengine.board.Move;
+import julius.game.chessengine.board.MoveHelper;
 import julius.game.chessengine.board.MoveList;
 import julius.game.chessengine.engine.Engine;
-import julius.game.chessengine.engine.GameState;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
@@ -47,7 +47,7 @@ public class AI {
 
     public AI(Engine mainEngine) {
         this.mainEngine = mainEngine;
-        this.timeLimit = 50;
+        this.timeLimit = 500;
     }
 
     private void startCalculationThread() {
@@ -58,15 +58,16 @@ public class AI {
     }
 
     public void reset() {
-        mainEngine.startNewGame();
         stopCalculation();
+        calculatedLine = Collections.synchronizedList(new ArrayList<>());
+        mainEngine.startNewGame();
         currentBoardState = -1;
         beforeCalculationBoardState = -2;
     }
 
     public void stopCalculation() {
         keepCalculating = false;
-        if (calculationThread != null) {
+        if (calculationThread != null && calculationThread.isAlive()) {
             calculationThread.interrupt();
             try {
                 calculationThread.join(); // Wait for the thread to finish
@@ -78,7 +79,8 @@ public class AI {
         calculatedLine = Collections.synchronizedList(new ArrayList<>());
     }
 
-    public void startAutoPlay() {
+    public void startAutoPlay(boolean aiIsWhite, boolean aiIsBlack) {
+        log.info("timelimit is: " + timeLimit);
         if (scheduler != null && !scheduler.isShutdown()) {
             scheduler.shutdownNow(); // Ensure previous scheduler is stopped
         }
@@ -92,11 +94,14 @@ public class AI {
                 scheduler.shutdown();
                 return;
             }
-            performMove();
+            if ((aiIsWhite && mainEngine.whitesTurn()) || (aiIsBlack && !mainEngine.whitesTurn())) {
+                log.info("AI is white {}, AI is black {}, whiteTurn {}", aiIsWhite, aiIsBlack, mainEngine.whitesTurn());
+                performMove();
+            }
         }, 0, timeLimit, TimeUnit.MILLISECONDS);
     }
 
-    public GameState performMove() {
+    public void performMove() {
         if (calculatedLine.isEmpty()) {
             mainEngine.logBoard();
             // If the calculatedLine is empty, log an error and return the current game state without making a move.
@@ -104,20 +109,19 @@ public class AI {
             log.error("boardStateBeforeCalculation {}, currentBoardHash {}", beforeCalculationBoardState, currentBoardState);
             log.error("WhitesTurn = " + mainEngine.whitesTurn());
             log.error("Gamestate = " + mainEngine.getGameState());
-            return mainEngine.getGameState(); // Return the current state without making a move
+            return; // Return the current state without making a move
         }
 
         MoveAndScore aiMove = calculatedLine.remove(0); // Retrieve and remove the move from the list
-        if (aiMove == null || aiMove.getMove() == -1) {
+        if (aiMove == null || aiMove.getMove() == -1 || !MoveHelper.isWhitesMove(aiMove.getMove()) == mainEngine.whitesTurn()) {
             // If the move is null or invalid, log an error and return the current game state without making a move.
             log.error("Calculated move is null or invalid.");
             log.error("");
-            return mainEngine.getGameState(); // Return the current state without making a move
+            return; // Return the current state without making a move
         }
 
         mainEngine.performMove(aiMove.getMove());
         currentBoardState = mainEngine.getBoardStateHash();
-        return mainEngine.getGameState();
     }
 
     private void calculateLine() {
@@ -363,7 +367,7 @@ public class AI {
                 if (eval == EXIT_FLAG || positionChanged()) {
                     // If time limit exceeded, exit the loop
                     simulatorEngine.undoLastMove();
-                    log.info("EXITFLAG {} ---------- exitMaxi ---------- positionChanged {}", eval == EXIT_FLAG, positionChanged());
+                    log.debug("EXITFLAG {} ---------- exitMaxi ---------- positionChanged {}", eval == EXIT_FLAG, positionChanged());
                     return EXIT_FLAG;
                 }
             }
@@ -419,7 +423,7 @@ public class AI {
                 eval = alphaBeta(simulatorEngine, depth - 1, alpha, beta, !isWhite, startTime, timeLimit);
 
                 if (eval == EXIT_FLAG || positionChanged()) {
-                    log.info("EXITFLAG {} ---------- exit mini ---------- positionChanged {}", eval == EXIT_FLAG, positionChanged());
+                    log.debug("EXITFLAG {} ---------- exit mini ---------- positionChanged {}", eval == EXIT_FLAG, positionChanged());
                     simulatorEngine.undoLastMove();
                     return EXIT_FLAG;
                 }
@@ -479,11 +483,12 @@ public class AI {
         while (!sortedMoves.isEmpty()) {
             sortedMoveList.add(sortedMoves.poll());
         }
-        //log.debug("DEPTH: " + currentDepth);
-        //log.debug(moves + "Time taken for move sorting: {} ms", (endTime - startTime) / 1e6);
+
         return sortedMoveList;
 
     }
 
-
+    public void updateBoardStateHash() {
+        currentBoardState = mainEngine.getBoardStateHash();
+    }
 }

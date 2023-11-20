@@ -1,11 +1,21 @@
 $(document).ready(function () {
     let computerColor = 'black'; // Default computer color
 
+    // Function to set board orientation based on color choice
+    const setBoardOrientation = (color) => {
+        board.orientation(color); // Set board orientation to chosen color
+    };
+
+    const chooseColorAndAutoPlay = (color) => {
+        setBoardOrientation(color); // Set orientation based on user choice
+        computerColor = (color === 'white') ? 'black' : 'white'; // Computer plays opposite color
+        autoPlayColor(computerColor); // Call autoPlayColor with updated color
+    };
+
     // Event listeners for UI interactions
     const initEventListeners = () => {
-        $('#computerMove').on('click', () => {
-            makeMove('intelligent', computerColor); // Assuming makeMove is defined in chess-data-fetching.js
-        });
+        $('#playWhite').on('click', () => chooseColorAndAutoPlay('white'));
+        $('#playBlack').on('click', () => chooseColorAndAutoPlay('black'));
         $('#resetBoard').on('click', () => {
             makeRequest('PUT', 'http://localhost:8080/chess/reset', reloadBoard); // Assuming makeRequest and reloadBoard are defined in chess-data-fetching.js
         });
@@ -18,28 +28,13 @@ $(document).ready(function () {
         $('#importFEN').on('click', function () {
             var fenString = prompt("Please enter FEN:");
             if (fenString) {
-                importFEN(fenString);
+                importFEN(fenString); // Assuming importFEN is defined in chess-data-fetching.js
             }
         });
     };
 
-    // Function to set board orientation based on color choice
-    const setBoardOrientation = (color) => {
-        board.orientation(color); // Set board orientation to chosen color
-    };
-
-    const chooseColor = (color) => {
-        setBoardOrientation(color); // Set orientation based on user choice
-        computerColor = (color === 'white') ? 'black' : 'white'; // Computer plays opposite color
-    };
-
-    const initColorChoiceEventListeners = () => {
-        $('#playWhite').on('click', () => chooseColor('white'));
-        $('#playBlack').on('click', () => chooseColor('black'));
-    };
-    
     // Initialize event listeners
     initEventListeners();
-    initColorChoiceEventListeners();
-    setupModal();
+    // Additional setup if required (e.g., setupModal)
+    setupModal(); // Uncomment if setupModal is a function that needs to be called
 });
