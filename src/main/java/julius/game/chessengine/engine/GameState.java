@@ -38,7 +38,7 @@ public class GameState {
 
     public void update(BitBoard bitBoard, MoveList legalMoves, int move) {
         updateState(bitBoard, legalMoves);
-        updateScore(bitBoard, legalMoves, move);
+        updateScore(bitBoard, move);
     }
 
     public void updateState(BitBoard bitBoard, MoveList legalMoves) {
@@ -60,7 +60,7 @@ public class GameState {
         }
     }
 
-    public void updateScore(BitBoard bitBoard, MoveList legalMoves, int moveInt) {
+    public void updateScore(BitBoard bitBoard, int moveInt) {
         int specialProperty = (moveInt >> 16) & 0x03;
         boolean isWhite = (moveInt & (1 << 15)) != 0;
         int pieceTypeBits = (moveInt >> 12) & 0x07;
@@ -72,7 +72,7 @@ public class GameState {
         boolean isKingFirstMove = (moveInt & (1 << 24)) != 0;
         boolean isRookFirstMove = (moveInt & (1 << 25)) != 0;
 
-        updatePieceValues(isWhite, pieceTypeBits, bitBoard, legalMoves);
+        updatePieceValues(isWhite, pieceTypeBits, bitBoard, state);
         if (capturedPieceTypeBits != 0) {
             updateCapturedPieceValues(isWhite, capturedPieceTypeBits, bitBoard);
         }
@@ -81,13 +81,14 @@ public class GameState {
                 pieceTypeBits, capturedPieceTypeBits, score.calculateTotalWhiteScore(), score.calculateTotalBlackScore());
     }
 
-    private void updatePieceValues(boolean isWhite, int pieceTypeBits, BitBoard bitBoard, MoveList legalMoves) {
+    private void updatePieceValues(boolean isWhite, int pieceTypeBits, BitBoard bitBoard, GameStateEnum state) {
         if (isWhite) {
             //TODO check if this could be done more efficient
             int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
 
             updateValuesForWhite(pieceTypeBits, bitBoard);
             score.updateAgilityBonusWhite(agilityWhite);
+            score.updateStateValuesWhite(state);
 
         } else {
             //TODO check if this could be done more efficient
@@ -95,6 +96,7 @@ public class GameState {
 
             updateValuesForBlack(pieceTypeBits, bitBoard);
             score.updateAgilityBonusBlack(agilityBlack);
+            score.updateStateValuesBlack(state);
         }
 
 

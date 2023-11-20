@@ -66,13 +66,11 @@ def reset_board(engine_url):
     response = requests.put(f"{engine_url}/chess/reset")
     return response.status_code == 200
 
-target_directory = "C:\\Development\\Chess-Engine\\target"
+target_directory = "..\\..\\..\\..\\target"
 jar_file_name = find_latest_jar(target_directory)
 
-
-
 # Paths to the JAR files and ports
-jar1_path = "C:\\Development\\Chess-Engine\\src\\main\\resources\\engine\\v1\\chess-engine-1.0.0.jar"
+jar1_path = "D:/engine/v1/chess-engine-1.0.0.jar"
 
 if jar_file_name:
     jar2_path = os.path.join(target_directory, jar_file_name)
@@ -106,8 +104,12 @@ last_move_made_by_engine2 = None
 move_time_limit = 1
 
 # Check if both servers are running
-if not is_server_running(engine1_url) or not is_server_running(engine2_url):
-    print("One or both servers are not running.")
+if not is_server_running(engine1_url):
+    print(f"{engine1_url} is not running.")
+    exit(1)
+
+if not is_server_running(engine2_url):
+    print(f"{engine2_url} is not running.")
     exit(1)
 
 print("Both servers are running. Ready to play.")

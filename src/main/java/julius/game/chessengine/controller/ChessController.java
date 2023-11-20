@@ -48,7 +48,6 @@ public class ChessController {
 
     @GetMapping(value = "/autoplay")
     public ResponseEntity<?> autoplay() {
-        ai.reset();
         ai.startAutoPlay(true, true);
         return ResponseEntity.ok().build();
     }
@@ -62,7 +61,6 @@ public class ChessController {
     @PatchMapping(value = "/autoplay/{color}")
     public ResponseEntity<?> calculateMoveForColor(@PathVariable("color") String color) {
         if (color != null) {
-            ai.reset();
             log.info(color);
             ai.startAutoPlay(color.equalsIgnoreCase("WHITE"), color.equalsIgnoreCase("BLACK"));
             return ResponseEntity.ok().build();

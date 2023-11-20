@@ -1,6 +1,7 @@
 package julius.game.chessengine.utils;
 
 import julius.game.chessengine.board.BitBoard;
+import julius.game.chessengine.engine.GameStateEnum;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
@@ -13,6 +14,12 @@ import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES
 @Data
 @Log4j2
 public class Score {
+
+    public static final double CHECKMATE = 100000;
+    public static final int DRAW = 0;
+
+    public static final double KILLER_MOVE_SCORE = 10;
+
     private int whiteScore;
     private int blackScore;
 
@@ -54,6 +61,10 @@ public class Score {
 
     private int whiteStartingSquarePenalty = 0;
     private int blackStartingSquarePenalty = 0;
+
+    // State bonuses
+    private int whiteStateBonus = 0;
+    private int blackStateBonus = 0;
 
     // Constants for piece values
     private static final int PAWN_VALUE = 1000;   // Pawns are worth 1 point, scaled by 100
@@ -123,6 +134,9 @@ public class Score {
         this.blackKingsPosition = other.blackKingsPosition;
         this.whiteStartingSquarePenalty = other.whiteStartingSquarePenalty;
         this.blackStartingSquarePenalty = other.blackStartingSquarePenalty;
+
+        this.whiteStateBonus = other.whiteStateBonus;
+        this.blackStateBonus = other.blackStateBonus;
     }
 
     /**
@@ -204,6 +218,10 @@ public class Score {
         totalWhiteScore += whiteQueensPosition;
         totalWhiteScore += whiteKingsPosition;
         totalWhiteScore += whiteStartingSquarePenalty;
+
+        totalWhiteScore += whiteStateBonus;
+
+        whiteScore = totalWhiteScore;
         // Add other scores and penalties if any
         return totalWhiteScore;
     }
@@ -229,6 +247,10 @@ public class Score {
         totalBlackScore += blackQueensPosition;
         totalBlackScore += blackKingsPosition;
         totalBlackScore += blackStartingSquarePenalty;
+
+        totalBlackScore += blackStateBonus;
+
+        blackScore = totalBlackScore;
         // Add other scores and penalties if any
         return totalBlackScore;
     }
@@ -477,4 +499,21 @@ public class Score {
         updateBlackKingsPositionBonus(blackKing, isCastled, isBlackKingMoved, rookA1Moved, rookH1Moved, isEndgame);
     }
 
+    public void updateStateValuesWhite(GameStateEnum state) {
+        if(state.equals(GameStateEnum.BLACK_IN_CHECK)) {
+            whiteStateBonus = 100;
+        }
+        else {
+            whiteStateBonus = 0;
+        }
+    }
+
+    public void updateStateValuesBlack(GameStateEnum state) {
+        if(state.equals(GameStateEnum.BLACK_IN_CHECK)) {
+            blackStateBonus = 100;
+        }
+        else {
+            blackStateBonus = 0;
+        }
+    }
 }

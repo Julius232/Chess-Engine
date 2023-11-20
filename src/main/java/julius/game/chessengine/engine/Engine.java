@@ -15,13 +15,15 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import static julius.game.chessengine.utils.Score.CHECKMATE;
+import static julius.game.chessengine.utils.Score.DRAW;
+
 @Service
 @Log4j2
 public class Engine {
 
     private static final ConcurrentHashMap<Long, CaptureTranspositionTableEntry> captureTranspositionTable = new ConcurrentHashMap<>();
 
-    public static final double CHECKMATE = 100000;
     private boolean legalMovesNeedUpdate = true;
     private MoveList legalMoves;
 
@@ -56,6 +58,7 @@ public class Engine {
 
     public void performMove(int move) {
         if (!gameState.isGameOver()) {
+            //TODO remove in the future should be already legal
             if (isLegalMove(move)) {
                 bitBoard.performMove(move);
             } else {
@@ -241,7 +244,7 @@ public class Engine {
         if (!line.isEmpty()) {
             gameState.undo(bitBoard.getBoardStateHash());
             this.bitBoard.undoMove(line.getLast());
-            gameState.updateScore(bitBoard, legalMoves, line.getLast());
+            gameState.updateScore(bitBoard, line.getLast());
             generateLegalMoves();
             line.removeLast();
         } else {
@@ -256,11 +259,12 @@ public class Engine {
 
     public double evaluateBoard(boolean isWhitesTurn, long startTime, long timeLimit) {
         if (gameState.isInStateCheckMate()) {
+            log.info(" -------------- CHECHMATE found -----------");
             return CHECKMATE;
         }
 
         if (gameState.isInStateDraw()) {
-            return 0;
+            return DRAW;
         }
 
         double alpha = Double.NEGATIVE_INFINITY;
@@ -281,55 +285,46 @@ public class Engine {
     }
 
     private double quiescenceSearch(boolean isWhitesTurn, double alpha, double beta, long startTime, long timeLimit) {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - startTime > timeLimit) {
+        if (System.currentTimeMillis() - startTime > timeLimit) {
             log.info("timeout");
-            return Double.MAX_VALUE; // Timeout, return MAX_VALUE
-        }
-
-        MoveList moves = getPossibleCaptures();
-
-        if (moves.size() == 0) {
-            return evaluateStaticPosition(isWhitesTurn);
+            return Double.MAX_VALUE; // Timeout
         }
 
         double standPat = evaluateStaticPosition(isWhitesTurn);
         if (standPat >= beta) {
-            return beta;
+            return beta; // Fail-hard beta cutoff
         }
         if (alpha < standPat) {
-            alpha = standPat;
+            alpha = standPat; // Delta pruning
         }
 
-
+        MoveList moves = getPossibleCaptures();
         for (int i = 0; i < moves.size(); i++) {
             performMove(moves.getMove(i));
             double score = -quiescenceSearch(!isWhitesTurn, -beta, -alpha, startTime, timeLimit);
             undoLastMove();
+
             if (score >= beta) {
-                return beta;
+                return beta; // Beta cutoff
             }
             if (score > alpha) {
-                alpha = score;
+                alpha = score; // Found a better move
             }
         }
-
-        return alpha;
+        return alpha; // Best score in the subtree
     }
-
 
     private double evaluateStaticPosition(boolean isWhitesTurn) {
         if (gameState.isInStateCheckMate()) {
+            log.info("Checkmate found");
             return CHECKMATE;
         }
         if (gameState.isInStateDraw()) {
-            return 0;
+            return DRAW;
         }
-        // Assuming getScore().getScoreDifference() returns a score from white's perspective
         double scoreDifference = gameState.getScore().getScoreDifference() / 1000.0;
         return isWhitesTurn ? scoreDifference : -scoreDifference;
     }
-
     private MoveList getPossibleCaptures() {
         MoveList allLegalMoves = getAllLegalMoves();
         MoveList captures = new MoveList();
