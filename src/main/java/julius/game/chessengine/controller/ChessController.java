@@ -117,7 +117,8 @@ public class ChessController {
     public ResponseEntity<GameState> moveFigure(@PathVariable("from") String from,
                                                 @PathVariable("to") String to) {
         if (from != null && to != null) {
-            GameState state = engine.moveFigure(convertStringToIndex(from), convertStringToIndex(to));
+            //TODO implement promotion
+            GameState state = engine.moveFigure(convertStringToIndex(from), convertStringToIndex(to), 5);
             ai.updateBoardStateHash();
             return ResponseEntity.ok(state);
         } else return ResponseEntity.status(406).build();
