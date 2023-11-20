@@ -257,7 +257,7 @@ public class Score {
 
     public void initializePawnScore(long whitePawns, long blackPawns) {
         this.whitePawns = Long.bitCount(whitePawns) * PAWN_VALUE;
-        this.blackPawns = Long.bitCount(whitePawns) * PAWN_VALUE;
+        this.blackPawns = Long.bitCount(blackPawns) * PAWN_VALUE;
     }
 
     /**
@@ -387,11 +387,6 @@ public class Score {
 
     public void updateAgilityBonusBlack(int movesBlack) {
         agilityBlack = movesBlack * 10;
-    }
-
-    private void initializePieceScore(long whitePieces, long blackPieces, int pieceValue) {
-        whiteScore += Long.bitCount(whitePieces) * pieceValue;
-        blackScore += Long.bitCount(blackPieces) * pieceValue;
     }
 
     private int applyPositionalValues(long bitboard, int[] positionalValues) {
