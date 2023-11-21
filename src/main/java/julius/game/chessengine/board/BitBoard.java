@@ -1074,14 +1074,6 @@ public class BitBoard {
         return attacks;
     }
 
-
-    // Convert bit index back to board position
-    public Position indexToPosition(int index) {
-        char file = (char) ('a' + index % 8);
-        int rank = 1 + index / 8;
-        return new Position(file, rank);
-    }
-
     public void logBoard() {
         StringBuilder logBoard = new StringBuilder();
         logBoard.append('\n');
