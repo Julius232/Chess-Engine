@@ -5,8 +5,6 @@ import lombok.extern.log4j.Log4j2;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @Log4j2
 public class BishopHelper {

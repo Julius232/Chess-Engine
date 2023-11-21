@@ -2,24 +2,16 @@ package julius.game.chessengine.board;
 
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.helper.BishopHelper;
-import julius.game.chessengine.helper.PawnHelper;
 import julius.game.chessengine.helper.RookHelper;
 import julius.game.chessengine.helper.ZobristTable;
 import julius.game.chessengine.utils.Color;
-import julius.game.chessengine.utils.Score;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.Objects;
 
-import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.BitHelper.*;
-import static julius.game.chessengine.helper.KingHelper.BLACK_KING_POSITIONAL_VALUES;
-import static julius.game.chessengine.helper.KingHelper.WHITE_KING_POSITIONAL_VALUES;
-import static julius.game.chessengine.helper.KnightHelper.*;
-import static julius.game.chessengine.helper.PawnHelper.BLACK_PAWN_POSITIONAL_VALUES;
-import static julius.game.chessengine.helper.PawnHelper.countCenterPawns;
-import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES;
+import static julius.game.chessengine.helper.KnightHelper.knightMoveTable;
 
 @Log4j2
 @Getter
@@ -99,6 +91,8 @@ public class BitBoard {
     public BitBoard(BitBoard other) {
         // Copying all the long fields representing the pieces
         this.bishopHelper = other.bishopHelper;
+        this.rookHelper = other.rookHelper;
+
         this.whitePawns = other.whitePawns;
         this.blackPawns = other.blackPawns;
         this.whiteKnights = other.whiteKnights;
