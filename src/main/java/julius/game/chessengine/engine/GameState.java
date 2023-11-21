@@ -83,19 +83,19 @@ public class GameState {
 
     private void updatePieceValues(boolean isWhite, int pieceTypeBits, BitBoard bitBoard, GameStateEnum state) {
         if (isWhite) {
-            //TODO check if this could be done more efficient
-            int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
+/*            //TODO check if this could be done more efficient
+            int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();*/
 
             updateValuesForWhite(pieceTypeBits, bitBoard);
-            score.updateAgilityBonusWhite(agilityWhite);
+/*            score.updateAgilityBonusWhite(agilityWhite);*/
             score.updateStateValuesWhite(state);
 
         } else {
-            //TODO check if this could be done more efficient
-            int agilityBlack = bitBoard.generateAllPossibleMoves(false).size();
+/*            //TODO check if this could be done more efficient
+            int agilityBlack = bitBoard.generateAllPossibleMoves(false).size();*/
 
             updateValuesForBlack(pieceTypeBits, bitBoard);
-            score.updateAgilityBonusBlack(agilityBlack);
+/*            score.updateAgilityBonusBlack(agilityBlack);*/
             score.updateStateValuesBlack(state);
         }
 

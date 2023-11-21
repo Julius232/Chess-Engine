@@ -461,6 +461,7 @@ public class AI {
 
                     for (int killerMove : killerMoves[currentDepth]) {
                         if (moveInt == killerMove) {
+                            log.info("KILLER_MOVE_SCORE" + KILLER_MOVE_SCORE);
                             return KILLER_MOVE_SCORE; //adjust as needed
                         }
                     }
@@ -476,7 +477,6 @@ public class AI {
                         return isWhite ? entry.score : -entry.score;
                     } else {
                         simulatorEngine.performMove(moveInt);
-                        log.info("evaluating move: " + moveInt);
                         double score = simulatorEngine.evaluateBoard(isWhite, startTime, timeLimit);
                         simulatorEngine.undoLastMove();
                         scoreCache.put(moveInt, score);

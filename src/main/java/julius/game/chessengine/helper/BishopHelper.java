@@ -3,11 +3,10 @@ package julius.game.chessengine.helper;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Log4j2
 public class BishopHelper {
@@ -26,6 +25,7 @@ public class BishopHelper {
 
     public long[] bishopMasks = new long[64];
     public long[][] bishopAttacks = new long[64][];
+
     public long[] bishopMagics = new long[64]; // To store the found magic numbers
 
     boolean[] squareMagicFound = new boolean[64];
@@ -53,14 +53,50 @@ public class BishopHelper {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         ConcurrentHashMap<Integer, Long> magicNumbers = new ConcurrentHashMap<>();
 
+        // Map to store square indices and their corresponding index counts
+        Map<Integer, Integer> squareIndexCounts = new HashMap<>();
+
+        int total = 0;
+        // Calculate index counts for each square
         for (int square = 0; square < 64; square++) {
-            final int finalSquare = square;
-            executor.submit(() -> findMagicNumberForSquare(finalSquare, magicNumbers));
+            long mask = bishopMasks[square];
+            int indexCount = calculateIndexCount(bishopMagics[square], square, mask);
+            squareIndexCounts.put(square, indexCount);
+            total += indexCount;
+        }
+        log.info(" --- Bishop attacks take up a size of {} --- ", total);
+
+        // Create a list of square indices sorted by index counts in descending order
+        List<Integer> squares = squareIndexCounts.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                .map(Map.Entry::getKey)
+                .toList();
+
+        // Submit a task for each square in the sorted list
+        for (int square : squares) {
+            Set<Long> uniqueAttacks = new HashSet<>();
+            boolean duplicatesFound = false;
+
+            for (long attacks : bishopAttacks[square]) {
+                if (!uniqueAttacks.add(attacks)) { // add() returns false if the item was already in the set
+                    duplicatesFound = true;
+                    break;
+                }
+            }
+
+            if (duplicatesFound) {
+                // Submit the task only if duplicates are found, indicating a need for optimization
+                executor.submit(() -> findMagicNumberForSquare(square, magicNumbers));
+            }
+            else {
+                log.info("Bishop square {} is fully optimized size {}", square, squareIndexCounts.get(square));
+            }
         }
 
+        // Shutdown executor and wait for termination
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(60, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(5, TimeUnit.MINUTES)) {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {
@@ -72,64 +108,87 @@ public class BishopHelper {
     }
 
     private void findMagicNumberForSquare(int square, ConcurrentHashMap<Integer, Long> magicNumbers) {
-        if (squareMagicFound[square]) {
-            return; // Early return if magic number already found
-        }
-        log.info("Searching magic number for square: " + square);
-
         long mask = bishopMasks[square];
-        List<Long> occupancies = generateAllOccupancies(mask);
+        Set<Long> occupancies = generateAllOccupancies(mask);
+        int minIndices = calculateIndexCount(bishopMagics[square], square, mask);
+        log.info("Bishop Square: {}, has a size of {}", square, minIndices);
+
+
 
         while (true) {
             long magicCandidate = randomMagicNumber();
             Map<Integer, Long> indexToOccupancy = new HashMap<>();
-            boolean isMagic = true;
+            boolean collision = false;
 
             for (long occupancy : occupancies) {
                 int index = transform(occupancy, magicCandidate, mask);
                 Long existingOccupancy = indexToOccupancy.get(index);
 
-                if (existingOccupancy != null && existingOccupancy != occupancy) {
-                    isMagic = false;
+                if (existingOccupancy != null && calculateBishopMoves(square, occupancy) != calculateBishopMoves(square, existingOccupancy)) {
+                    collision = true;
                     break;
                 }
 
                 indexToOccupancy.put(index, occupancy);
             }
 
-            if (isMagic) {
+            if (!collision && indexToOccupancy.size() < minIndices) {
+                minIndices = indexToOccupancy.size(); // Update to the new lower value
+                bishopMagics[square] = magicCandidate; // Update the magic number
                 squareMagicFound[square] = true;
-                bishopMagics[square] = magicCandidate;
-                log.info("Magic number found for square " + square + ": " + magicCandidate);
+                log.info("Bishop Optimized magic number found for square " + square + ": " + magicCandidate);
                 magicNumbers.put(square, magicCandidate);
                 break;
             }
         }
     }
 
+    private int calculateIndexCount(long magicNumber, int square, long mask) {
+        Set<Long> occupancies = generateAllOccupancies(mask);
+        Set<Integer> indices = new HashSet<>();
+
+        for (long occupancy : occupancies) {
+            int index = transform(occupancy, magicNumber, mask);
+            indices.add(index);
+        }
+
+        return indices.size();
+    }
+
 
     private void writeMagicNumbersToFile(ConcurrentHashMap<Integer, Long> magicNumbers) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("src/main/resources/magic/bishop_magic_numbers.txt", true))) {
-            for (Map.Entry<Integer, Long> entry : magicNumbers.entrySet()) {
+        File file = new File("src/main/resources/magic/bishop_magic_numbers.txt");
+        Map<Integer, Long> existingNumbers = new HashMap<>();
+
+        // Load existing magic numbers from the file
+        if (file.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(":");
+                    if (parts.length == 2) {
+                        int square = Integer.parseInt(parts[0]);
+                        long magicNumber = Long.parseLong(parts[1]);
+                        existingNumbers.put(square, magicNumber);
+                    }
+                }
+            } catch (IOException e) {
+                log.error("Error reading magic numbers from file", e);
+            }
+        }
+
+        // Update with new magic numbers
+        existingNumbers.putAll(magicNumbers);
+
+        // Write updated magic numbers back to the file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, false))) { // false to overwrite the file
+            for (Map.Entry<Integer, Long> entry : existingNumbers.entrySet()) {
                 writer.write(entry.getKey() + ":" + entry.getValue() + "\n");
             }
         } catch (IOException e) {
             log.error("Error writing magic numbers to file", e);
         }
     }
-
-
-    // ... [Rest of the class remains the same]
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -150,7 +209,7 @@ public class BishopHelper {
                     }
 
                     long mask = bishopMasks[square]; // Use the pre-stored mask
-                    List<Long> occupancies = generateAllOccupancies(mask);
+                    Set<Long> occupancies = generateAllOccupancies(mask);
 
                     Map<Integer, Long> indexToOccupancy = new HashMap<>();
                     boolean isMagic = true;
@@ -190,7 +249,7 @@ public class BishopHelper {
     public void initializeBishopAttacks() {
         for (int square = 0; square < 64; square++) {
             long mask = bishopMasks[square];
-            List<Long> occupancies = generateAllOccupancies(mask);
+            Set<Long> occupancies = generateAllOccupancies(mask);
             bishopAttacks[square] = new long[occupancies.size()];
 
             for (long occupancy : occupancies) {
@@ -200,8 +259,8 @@ public class BishopHelper {
         }
     }
 
-    public List<Long> generateAllOccupancies(long mask) {
-        List<Long> occupancies = new ArrayList<>();
+    public Set<Long> generateAllOccupancies(long mask) {
+        Set<Long> occupancies = new HashSet<>();
         int numberOfBits = Long.bitCount(mask);
 
         // Generate all possible combinations of bits within the mask
@@ -245,7 +304,7 @@ public class BishopHelper {
 
         for (int[] direction : directions) {
             int r = row + direction[0], c = col + direction[1];
-            while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+            while (r >= 0 && r < 7 && c >= 0 && c < 7) {
                 mask |= (1L << (r * 8 + c));
                 r += direction[0];
                 c += direction[1];
@@ -255,7 +314,7 @@ public class BishopHelper {
     }
 
     private long randomMagicNumber() {
-        return ThreadLocalRandom.current().nextLong() & ThreadLocalRandom.current().nextLong() & ThreadLocalRandom.current().nextLong();
+        return ThreadLocalRandom.current().nextLong();
     }
 
     public int transform(long occupancy, long magicNumber, long mask) {
@@ -283,7 +342,7 @@ public class BishopHelper {
     public long calculateMovesUsingBishopMagic(int square, long occupancy) {
         // Calculate the index using the magic number
         int index = this.transform(occupancy, this.bishopMagics[square], this.bishopMasks[square]);
-        // Retrieve the moves from the rookAttacks table
+        // Retrieve the moves from the bishopAttacks table
         return this.bishopAttacks[square][index];
     }
 

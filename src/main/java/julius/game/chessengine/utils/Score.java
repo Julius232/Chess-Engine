@@ -5,6 +5,8 @@ import julius.game.chessengine.engine.GameStateEnum;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
+import java.util.Random;
+
 import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.KingHelper.*;
 import static julius.game.chessengine.helper.KnightHelper.KNIGHT_POSITIONAL_VALUES;
@@ -18,7 +20,7 @@ public class Score {
     public static final double CHECKMATE = 100000;
     public static final int DRAW = 0;
 
-    public static final double KILLER_MOVE_SCORE = 10;
+    public static final double KILLER_MOVE_SCORE = 0.6324172589069544;
 
     private int whiteScore;
     private int blackScore;
@@ -143,8 +145,8 @@ public class Score {
      * Score mechanisms of the Game
      */
     public void initializeScore(BitBoard bitBoard) {
-        int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
-        int agilityBlack = bitBoard.generateAllPossibleMoves(false).size();
+/*        int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
+        int agilityBlack = bitBoard.generateAllPossibleMoves(false).size();*/
 
         long whitePawns = bitBoard.getWhitePawns();
         long blackPawns = bitBoard.getBlackPawns();
@@ -191,7 +193,7 @@ public class Score {
         updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
         updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
 
-        updateAgilityBonus(agilityWhite, agilityBlack);
+/*        updateAgilityBonus(agilityWhite, agilityBlack);*/
     }
 
 

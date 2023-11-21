@@ -13,6 +13,9 @@ Starting POS --> PERFT
 18.11.23 Time taken for move calculation: 2763.0737 ms
 -- after implementing better Score mechanism
 18.11.23 Time taken for move calculation: 2257.0605 ms
+-- after implementing Knight Move-table and removing Agility from Score
+20.11.23 Time taken for move calculation: 2004.0165 ms
+20.11.23 Time taken for move calculation: 1960.3816 ms
 
 POS_2 --> PERFTPos_2
 12.11.23 Time taken for move calculation: 275747.8732 ms
@@ -29,3 +32,6 @@ POS_2 --> PERFTPos_2
 18.11.23 Time taken for move calculation: 107199.0896 ms
 -- after implementing better Score mechanism
 18.11.23 Time taken for move calculation: 84176.7309 ms
+-- after implementing Knight Move-table and removing Agility from Score
+20.11.23 Time taken for move calculation: 78019.2258 ms
+20.11.23 Time taken for move calculation: 74726.0707 ms

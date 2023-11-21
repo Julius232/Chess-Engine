@@ -3,6 +3,7 @@ package julius.game.chessengine.board;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.helper.BishopHelper;
 import julius.game.chessengine.helper.PawnHelper;
+import julius.game.chessengine.helper.RookHelper;
 import julius.game.chessengine.helper.ZobristTable;
 import julius.game.chessengine.utils.Color;
 import julius.game.chessengine.utils.Score;
@@ -15,8 +16,7 @@ import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALU
 import static julius.game.chessengine.helper.BitHelper.*;
 import static julius.game.chessengine.helper.KingHelper.BLACK_KING_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.KingHelper.WHITE_KING_POSITIONAL_VALUES;
-import static julius.game.chessengine.helper.KnightHelper.KNIGHT_POSITIONAL_VALUES;
-import static julius.game.chessengine.helper.KnightHelper.knightMoves;
+import static julius.game.chessengine.helper.KnightHelper.*;
 import static julius.game.chessengine.helper.PawnHelper.BLACK_PAWN_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.PawnHelper.countCenterPawns;
 import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES;
@@ -26,7 +26,7 @@ import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES
 public class BitBoard {
 
     BishopHelper bishopHelper = BishopHelper.getInstance();
-
+    RookHelper rookHelper = RookHelper.getInstance();
 
     public boolean whitesTurn = true;
     // Add score field to the BitBoard class
@@ -133,126 +133,6 @@ public class BitBoard {
         this.whiteKingHasCastled = other.whiteKingHasCastled;
     }
 
-/*
-    public void updateScore() {
-        int agilityWhite = generateAllPossibleMoves(true).size();
-        int agilityBlack = generateAllPossibleMoves(false).size();
-
-        // Initialize bonuses and penalties
-        int whiteCenterBonus = 0;
-        int blackCenterBonus = 0;
-        int whiteDoubledPenalty = 0;
-        int blackDoubledPenalty = 0;
-        int whiteIsolatedPenalty = 0;
-        int blackIsolatedPenalty = 0;
-
-        // Define the piece values
-        final int PAWN_VALUE = 1000;   // Pawns are worth 1 point, scaled by 100
-        final int KNIGHT_VALUE = 3000; // Knights are worth 3 points
-        final int BISHOP_VALUE = 3130; // Bishops are worth 3 points
-        final int ROOK_VALUE = 5000;   // Rooks are worth 5 points
-        final int QUEEN_VALUE = 9000;  // Queens are worth 9 points
-
-        // Initialize scores
-        int whiteScore = 0;
-        int blackScore = 0;
-
-        final int CENTER_PAWN_BONUS = 10;   // Bonus points for pawns in the center
-        final int DOUBLED_PAWN_PENALTY = -20; // Penalty points for doubled pawns
-        final int ISOLATED_PAWN_PENALTY = -10; // Penalty points for isolated pawns
-        final int NOT_CASTLED_AND_ROOK_MOVE_PENALTY = -31;
-
-        final int START_POSITION_PENALTY = -50; // Define the penalty value for starting position
-        final int CASTLING_BONUS = 50;
-
-        // Calculate scores based on bitboards
-        whiteScore += Long.bitCount(whitePawns) * PAWN_VALUE;
-        whiteScore += Long.bitCount(whiteKnights) * KNIGHT_VALUE;
-        whiteScore += Long.bitCount(whiteBishops) * BISHOP_VALUE;
-        whiteScore += Long.bitCount(whiteRooks) * ROOK_VALUE;
-        whiteScore += Long.bitCount(whiteQueens) * QUEEN_VALUE;
-
-        blackScore += Long.bitCount(blackPawns) * PAWN_VALUE;
-        blackScore += Long.bitCount(blackKnights) * KNIGHT_VALUE;
-        blackScore += Long.bitCount(blackBishops) * BISHOP_VALUE;
-        blackScore += Long.bitCount(blackRooks) * ROOK_VALUE;
-        blackScore += Long.bitCount(blackQueens) * QUEEN_VALUE;
-
-        // Factor in king safety, piece positions, control of center, etc., for a more advanced scoring
-        // These advanced concepts are omitted for brevity, but would involve additional logic.
-        // Define additional score values
-
-        // Calculate bonuses and penalties for white
-        whiteCenterBonus += countCenterPawns(whitePawns) * CENTER_PAWN_BONUS;
-        whiteDoubledPenalty += countDoubledPawns(whitePawns) * DOUBLED_PAWN_PENALTY;
-        whiteIsolatedPenalty += countIsolatedPawns(whitePawns) * ISOLATED_PAWN_PENALTY;
-
-        // Calculate bonuses and penalties for black
-        blackCenterBonus += countCenterPawns(blackPawns) * CENTER_PAWN_BONUS;
-        blackDoubledPenalty += countDoubledPawns(blackPawns) * DOUBLED_PAWN_PENALTY;
-        blackIsolatedPenalty += countIsolatedPawns(blackPawns) * ISOLATED_PAWN_PENALTY;
-
-        // Apply bonuses and penalties to the score
-        whiteScore += whiteCenterBonus + whiteDoubledPenalty + whiteIsolatedPenalty;
-        blackScore += blackCenterBonus + blackDoubledPenalty + blackIsolatedPenalty;
-
-        // Apply positional values to the pawns
-        whiteScore += applyPositionalValues(whitePawns, PawnHelper.WHITE_PAWN_POSITIONAL_VALUES);
-        blackScore += applyPositionalValues(blackPawns, BLACK_PAWN_POSITIONAL_VALUES);
-
-        // Calculate positional values for white and black knights
-        whiteScore += applyPositionalValues(whiteKnights, KNIGHT_POSITIONAL_VALUES);
-        blackScore += applyPositionalValues(blackKnights, KNIGHT_POSITIONAL_VALUES);
-
-        // Calculate positional values for white and black knights
-        whiteScore += applyPositionalValues(whiteBishops, BISHOP_POSITIONAL_VALUES);
-        blackScore += applyPositionalValues(blackBishops, BISHOP_POSITIONAL_VALUES);
-
-        whiteScore += applyPositionalValues(whiteQueens, QUEEN_POSITIONAL_VALUES);
-        blackScore += applyPositionalValues(blackQueens, QUEEN_POSITIONAL_VALUES);
-
-        whiteScore += applyPositionalValues(whiteKing, WHITE_KING_POSITIONAL_VALUES);
-        blackScore += applyPositionalValues(blackKing, BLACK_KING_POSITIONAL_VALUES);
-
-        if (whiteKingHasCastled) {
-            whiteScore += CASTLING_BONUS;
-        } else {
-            if (whiteRookA1Moved) {
-                whiteScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
-            }
-            if (whiteRookH1Moved) {
-                whiteScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
-            }
-        }
-        if (blackKingHasCastled) {
-            blackScore += CASTLING_BONUS;
-        } else {
-            if (blackRookA8Moved) {
-                blackScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
-            }
-            if (blackRookH8Moved) {
-                blackScore += NOT_CASTLED_AND_ROOK_MOVE_PENALTY;
-            }
-        }
-
-
-        // Check if white pieces are all on starting squares
-        if (areAllPiecesOnStartingSquares(whiteKnights, whiteBishops, whiteRooks, true)) {
-            whiteScore += START_POSITION_PENALTY;
-        }
-        // Check if black pieces are all on starting squares
-        if (areAllPiecesOnStartingSquares(blackKnights, blackBishops, blackRooks, false)) {
-            blackScore += START_POSITION_PENALTY;
-        }
-
-        whiteScore += agilityWhite;
-        blackScore += agilityBlack;
-
-        // Return the score encapsulated in a Score object
-        this.score = new Score(whiteScore, blackScore);
-    }
-*/
-
 
     public boolean hasInsufficientMaterial() {
         // Early return if any side has pawns, rooks, or queens, as these can achieve checkmate
@@ -268,24 +148,9 @@ public class BitBoard {
         return (whiteMinorPieces <= 1) && (blackMinorPieces <= 1);
     }
 
-
-/*    private boolean areAllPiecesOnStartingSquares(long knights, long bishops, long rooks, boolean isWhite) {
-        if (isWhite) {
-            return (knights == INITIAL_WHITE_KNIGHT_POSITION ||
-                    bishops == INITIAL_WHITE_BISHOP_POSITION ||
-                    rooks == INITIAL_WHITE_ROOK_POSITION);
-        } else {
-            return (knights == INITIAL_BLACK_KNIGHT_POSITION ||
-                    bishops == INITIAL_BLACK_BISHOP_POSITION ||
-                    rooks == INITIAL_BLACK_ROOK_POSITION);
-        }
-    }*/
-
     public MoveList getAllCurrentPossibleMoves() {
         return generateAllPossibleMoves(whitesTurn);
     }
-
-
 
     // Method to set up the initial position
     private void setInitialPosition() {
@@ -507,61 +372,55 @@ public class BitBoard {
     private boolean checkForInitialDoubleSquareMove(int fromIndex, int toIndex, int direction) {
         int fromRow = fromIndex / 8;
         int toRow = toIndex / 8;
-        int yDiff = Math.abs(toRow - fromRow);
+        int yDiff = toRow - fromRow; // No need for Math.abs as pawns only move forward
 
-        //capture
-        if (yDiff == 1 && ((fromIndex + toIndex) % 2 != 0)) {
+        // Check for capture
+        if (yDiff == direction && ((fromIndex + toIndex) % 2 != 0)) {
             return isOccupiedByOpponent(toIndex, whitesTurn);
         }
 
-        //single move
-        if (yDiff == 1) {
-            return !(isOccupied(toIndex));
+        // Check for single forward move
+        if (yDiff == direction) {
+            return !isOccupied(toIndex);
         }
 
-        //double move
-        if (yDiff == 2) {
-            // Calculate the index of the square directly in front of the starting position
+        // Check for double forward move
+        if (yDiff == 2 * direction) {
             int inBetweenIndex = fromIndex + 8 * direction;
-
-            // Return true if both the destination square and the square in between are not occupied
-            return !(isOccupied(toIndex) || isOccupied(inBetweenIndex));
+            return !isOccupied(toIndex) && !isOccupied(inBetweenIndex);
         }
 
         return false;
     }
 
+
     private void generateKnightMoves(boolean whitesTurn, MoveList moves) {
         long knights = whitesTurn ? whiteKnights : blackKnights;
+        long opponentPieces = whitesTurn ? blackPieces : whitePieces;
         long ownPieces = whitesTurn ? whitePieces : blackPieces;
 
-        // Iterate over all bits where knights exist
-        for (int i = Long.numberOfTrailingZeros(knights); i < 64 - Long.numberOfLeadingZeros(knights); i++) {
-            if (((1L << i) & knights) != 0) {
-                int fromRank = i / 8;
-                int fromFile = i % 8;
+        while (knights != 0) {
+            int knightIndex = Long.numberOfTrailingZeros(knights);
+            long potentialMoves = knightMoveTable[knightIndex]; // Use precomputed moves
 
-                // Iterate through all possible L moves
-                for (int[] offset : knightMoves) {
-                    int toFile = fromFile + offset[0];
-                    int toRank = fromRank + offset[1];
+            while (potentialMoves != 0) {
+                int targetIndex = Long.numberOfTrailingZeros(potentialMoves);
 
-                    // Check if the target position is within the board limits
-                    if (toFile >= 0 && toFile < 8 && toRank >= 0 && toRank < 8) {
-                        int toIndex = toRank * 8 + toFile;
+                // Use parentheses to ensure the correct order of evaluation
+                boolean isCapture = (opponentPieces & (1L << targetIndex)) != 0;
+                boolean isOwnPiece = (ownPieces & (1L << targetIndex)) != 0;
 
-                        // Check if the target position is occupied by own piece
-                        if ((ownPieces & (1L << toIndex)) == 0) {
-                            // Determine if the target position is a capture
-                            boolean isCapture = (allPieces & (1L << toIndex)) != 0;
-                            PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(toIndex) : null;
-                            moves.add(createMoveInt(i, toIndex, PieceType.KNIGHT, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false));
-                        }
-                    }
+                // Proceed if the target position is not occupied by own piece
+                if (!isOwnPiece) {
+                    PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(targetIndex) : null;
+                    moves.add(createMoveInt(knightIndex, targetIndex, PieceType.KNIGHT, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false));
                 }
-            }
-        }
 
+                potentialMoves &= potentialMoves - 1; // Clear the lowest set bit
+            }
+
+            knights &= knights - 1; // Clear the lowest set bit
+        }
     }
 
 
@@ -581,6 +440,7 @@ public class BitBoard {
                 int targetSquare = Long.numberOfTrailingZeros(attacks);
                 attacks &= attacks - 1; // Remove the least significant bit representing an attack
 
+
                 boolean isCapture = (opponentPieces & (1L << targetSquare)) != 0;
                 moves.add(createMoveInt(bishopSquare, targetSquare, PieceType.BISHOP, isWhite, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, false));
             }
@@ -593,104 +453,44 @@ public class BitBoard {
         long ownPieces = whitesTurn ? whitePieces : blackPieces;
         long opponentPieces = whitesTurn ? blackPieces : whitePieces;
 
-        // Directions a rook can move: up, down, left, right
-        int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        while (rooks != 0) {
+            int rookSquare = Long.numberOfTrailingZeros(rooks);
+            rooks &= rooks - 1; // Remove the least significant bit representing a rook
 
-        // Iterate over all bits where rooks exist
-        for (int i = Long.numberOfTrailingZeros(rooks); i < 64 - Long.numberOfLeadingZeros(rooks); i++) {
-            if (((1L << i) & rooks) != 0) {
-                Position fromPosition = indexToPosition(i);
+            // Use RookHelper to calculate rook moves using magic bitboards
+            long occupancy = allPieces & rookHelper.rookMasks[rookSquare];
+            long attacks = rookHelper.calculateMovesUsingRookMagic(rookSquare, occupancy) & ~ownPieces;
 
-                // Iterate through each direction a rook can move
-                for (int[] direction : directions) {
-                    int toFile = fromPosition.getX() - 'a';
-                    int toRank = fromPosition.getY() - 1;
-
-                    // Keep moving in the direction until you hit the edge of the board or another piece
-                    while (true) {
-                        toFile += direction[0];
-                        toRank += direction[1];
-
-                        if (toFile >= 0 && toFile < 8 && toRank >= 0 && toRank < 8) {
-                            int toIndex = toRank * 8 + toFile;
-
-                            // If the position is occupied by own piece, break the loop, can't jump over
-                            if ((ownPieces & (1L << toIndex)) != 0) {
-                                break;
-                            }
-
-                            // If it's an opponent's piece, it's a capture move
-                            boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
-                            PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(toIndex) : null;
-
-                            boolean isFirstRookMove = !hasRookMoved(i);
-
-                            moves.add(createMoveInt(i, toIndex, PieceType.ROOK, whitesTurn, isCapture, false, false, null, capturedPieceType, false, isFirstRookMove));
-
-                            // If you capture a piece, you must stop.
-                            if (isCapture) {
-                                break;
-                            }
-                        } else {
-                            // If the position is off the board, stop checking this direction
-                            break;
-                        }
-                    }
-                }
+            while (attacks != 0) {
+                int targetSquare = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1; // Remove the least significant bit representing an attack
+                boolean isFirstRookMove = !hasRookMoved(rookSquare);
+                boolean isCapture = (opponentPieces & (1L << targetSquare)) != 0;
+                moves.add(createMoveInt(rookSquare, targetSquare, PieceType.ROOK, whitesTurn, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, isFirstRookMove));
             }
         }
     }
-
 
     private void generateQueenMoves(boolean whitesTurn, MoveList moves) {
         long queens = whitesTurn ? whiteQueens : blackQueens;
         long ownPieces = whitesTurn ? whitePieces : blackPieces;
         long opponentPieces = whitesTurn ? blackPieces : whitePieces;
 
-        // Directions a queen can move: horizontally, vertically, and diagonally
-        int[][] directions = {
-                {-1, 0}, {1, 0}, {0, -1}, {0, 1},   // Horizontal and vertical
-                {-1, -1}, {1, 1}, {-1, 1}, {1, -1}  // Diagonal
-        };
+        while (queens != 0) {
+            int queenSquare = Long.numberOfTrailingZeros(queens);
+            queens &= queens - 1;
+            long occupancyBishop = allPieces & bishopHelper.bishopMasks[queenSquare];
+            long occupancyRook = allPieces & rookHelper.rookMasks[queenSquare];
 
-        // Iterate over all bits where queens exist
-        for (int i = Long.numberOfTrailingZeros(queens); i < 64 - Long.numberOfLeadingZeros(queens); i++) {
-            if (((1L << i) & queens) != 0) {
-                Position fromPosition = indexToPosition(i);
-
-                // Iterate through each direction a queen can move
-                for (int[] direction : directions) {
-                    int toFile = fromPosition.getX() - 'a';
-                    int toRank = fromPosition.getY() - 1;
-
-                    // Keep moving in the direction until you hit the edge of the board or another piece
-                    while (true) {
-                        toFile += direction[0];
-                        toRank += direction[1];
-
-                        if (toFile >= 0 && toFile < 8 && toRank >= 0 && toRank < 8) {
-                            int toIndex = toRank * 8 + toFile;
-
-                            // If the position is occupied by own piece, break the loop, can't jump over
-                            if ((ownPieces & (1L << toIndex)) != 0) {
-                                break;
-                            }
-
-                            // If it's an opponent's piece, it's a capture move
-                            boolean isCapture = (opponentPieces & (1L << toIndex)) != 0;
-                            PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(toIndex) : null;
-                            moves.add(createMoveInt(i, toIndex, PieceType.QUEEN, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false));
-
-                            // If you capture a piece, you must stop.
-                            if (isCapture) {
-                                break;
-                            }
-                        } else {
-                            // If the position is off the board, stop checking this direction
-                            break;
-                        }
-                    }
-                }
+            long attacks = (
+                    bishopHelper.calculateMovesUsingBishopMagic(queenSquare, occupancyBishop) |
+                    rookHelper.calculateMovesUsingRookMagic(queenSquare, occupancyRook)
+            ) & ~ownPieces;
+            while (attacks != 0) {
+                int targetSquare = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1; // Remove the least significant bit representing an attack
+                boolean isCapture = (opponentPieces & (1L << targetSquare)) != 0;
+                moves.add(createMoveInt(queenSquare, targetSquare, PieceType.QUEEN, whitesTurn, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, false));
             }
         }
     }
