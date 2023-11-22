@@ -1,5 +1,6 @@
 package julius.game.chessengine.engine;
 
+import julius.game.chessengine.ai.AI;
 import julius.game.chessengine.ai.CaptureTranspositionTableEntry;
 import julius.game.chessengine.board.*;
 import julius.game.chessengine.figures.PieceType;
@@ -47,7 +48,7 @@ public class Engine {
     }
 
     public MoveList getAllLegalMoves() {
-        if(gameState.isGameOver()) {
+        if (gameState.isGameOver()) {
             return new MoveList();
         }
         if (legalMovesNeedUpdate) {
@@ -63,12 +64,12 @@ public class Engine {
                 bitBoard.performMove(move);
             } else {
                 log.warn("Move: {}", Move.convertIntToMove(move));
-                log.info(gameState.toString());
+                log.debug(gameState.toString());
                 MoveList moves = getAllLegalMoves();
                 for (int i = 0; i < moves.size(); i++) {
                     int m = moves.getMove(i);
                     if (isCapture(m)) {
-                        log.info(Move.convertIntToMove(m));
+                        log.debug(Move.convertIntToMove(m));
                     }
                 }
                 throw new IllegalStateException("Move not legal for AI");
@@ -259,7 +260,7 @@ public class Engine {
 
     public double evaluateBoard(boolean isWhitesTurn, long startTime, long timeLimit) {
         if (gameState.isInStateCheckMate()) {
-            log.info(" -------------- CHECHMATE found -----------");
+            log.debug(" -------------- CHECHMATE found -----------");
             return CHECKMATE;
         }
 
@@ -286,8 +287,8 @@ public class Engine {
 
     private double quiescenceSearch(boolean isWhitesTurn, double alpha, double beta, long startTime, long timeLimit) {
         if (System.currentTimeMillis() - startTime > timeLimit) {
-            log.info("timeout");
-            return Double.MAX_VALUE; // Timeout
+            log.debug("timeout");
+            return AI.EXIT_FLAG; // Timeout
         }
 
         double standPat = evaluateStaticPosition(isWhitesTurn);
@@ -316,15 +317,20 @@ public class Engine {
 
     private double evaluateStaticPosition(boolean isWhitesTurn) {
         if (gameState.isInStateCheckMate()) {
-            log.info("Checkmate found");
+            log.debug("Checkmate found");
             return CHECKMATE;
         }
         if (gameState.isInStateDraw()) {
+            log.info("DRAW");
             return DRAW;
         }
+        bitBoard.logBoard();
         double scoreDifference = gameState.getScore().getScoreDifference() / 1000.0;
+
+        log.info("Evaluate static position score {}, {} ", isWhitesTurn ? scoreDifference : -scoreDifference, isWhitesTurn ? "WHITE" : "BLACK");
         return isWhitesTurn ? scoreDifference : -scoreDifference;
     }
+
     private MoveList getPossibleCaptures() {
         MoveList allLegalMoves = getAllLegalMoves();
         MoveList captures = new MoveList();

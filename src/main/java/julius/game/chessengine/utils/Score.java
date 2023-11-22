@@ -15,10 +15,12 @@ import static julius.game.chessengine.helper.QueenHelper.QUEEN_POSITIONAL_VALUES
 @Log4j2
 public class Score {
 
-    public static final double CHECKMATE = 100000;
+    public static final int CHECKMATE = 100000;
     public static final int DRAW = 0;
 
-    public static final double KILLER_MOVE_SCORE = 0.6324172589069544;
+    public static final int KILLER_MOVE_SCORE = Integer.MAX_VALUE;
+
+    private Integer cachedScoreDifference = null;
 
     private int whiteScore;
     private int blackScore;
@@ -184,9 +186,9 @@ public class Score {
         updateQueensPositionBonusBlack(blackQueens);
 
         updateWhiteKingsPositionBonus(whiteKing, bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteKingMoved(),
-                bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), whiteQueens == 0 && blackQueens == 0);
+                bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), bitBoard.isEndgame());
         updateBlackKingsPositionBonus(blackKing, bitBoard.isBlackKingHasCastled(), bitBoard.isBlackKingMoved(),
-                bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), whiteQueens == 0 && blackQueens == 0);
+                bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), bitBoard.isEndgame());
 
         updateStartingSquarePenaltyWhite(whiteKnights, whiteBishops, whiteRooks);
         updateStartingSquarePenaltyBlack(blackKnights, blackBishops, blackRooks);
@@ -196,7 +198,10 @@ public class Score {
 
 
     public int getScoreDifference() {
-        return calculateTotalWhiteScore() - calculateTotalBlackScore();
+        if (cachedScoreDifference == null) {
+            cachedScoreDifference = calculateTotalWhiteScore() - calculateTotalBlackScore();
+        }
+        return cachedScoreDifference;
     }
 
     public int calculateTotalWhiteScore() {
@@ -502,6 +507,8 @@ public class Score {
     public void updateStateValuesWhite(GameStateEnum state) {
         if(state.equals(GameStateEnum.BLACK_IN_CHECK)) {
             whiteStateBonus = 250;
+        } else if(state.equals(GameStateEnum.WHITE_IN_CHECK)) {
+            whiteStateBonus = CHECKMATE;
         }
         else {
             whiteStateBonus = 0;
@@ -509,11 +516,17 @@ public class Score {
     }
 
     public void updateStateValuesBlack(GameStateEnum state) {
-        if(state.equals(GameStateEnum.BLACK_IN_CHECK)) {
+        if(state.equals(GameStateEnum.WHITE_IN_CHECK)) {
             blackStateBonus = 250;
+        } else if(state.equals(GameStateEnum.BLACK_WON)) {
+            blackStateBonus = CHECKMATE;
         }
         else {
             blackStateBonus = 0;
         }
+    }
+
+    public void resetCachedStoreDifference() {
+        this.cachedScoreDifference = null;
     }
 }

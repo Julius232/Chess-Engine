@@ -55,13 +55,13 @@ public class ChessController {
     @PatchMapping(value = "/autoplay/timelimit/{timeLimit}")
     public ResponseEntity<?> autoplaySetTimelimit(@PathVariable("timeLimit") long timeLimit)  {
         ai.setTimeLimit(timeLimit);
-        log.info("setting to: " + timeLimit);
+        log.debug("setting to: " + timeLimit);
         return ResponseEntity.ok().build();
     }
     @PatchMapping(value = "/autoplay/{color}")
     public ResponseEntity<?> calculateMoveForColor(@PathVariable("color") String color) {
         if (color != null) {
-            log.info(color);
+            log.debug(color);
             ai.startAutoPlay(color.equalsIgnoreCase("WHITE"), color.equalsIgnoreCase("BLACK"));
             return ResponseEntity.ok().build();
         } else return ResponseEntity.status(406).build();

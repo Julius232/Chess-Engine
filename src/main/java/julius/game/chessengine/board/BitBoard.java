@@ -1323,6 +1323,23 @@ public class BitBoard {
         };
     }
 
+    public boolean isEndgame() {
+        // Check if both queens are off the board
+        if (blackQueens == 0 && whiteQueens == 0) {
+            return true;
+        }
+
+        // Count the total number of major and minor pieces on the board using bit counts
+        int totalPieces = Long.bitCount(whiteKnights) + Long.bitCount(blackKnights) +
+                Long.bitCount(whiteBishops) + Long.bitCount(blackBishops) +
+                Long.bitCount(whiteRooks) + Long.bitCount(blackRooks) +
+                Long.bitCount(whiteQueens) + Long.bitCount(blackQueens);
+
+        // Consider it endgame if there are fewer than a certain number of pieces
+        final int ENDGAME_PIECE_THRESHOLD = 6;
+        return totalPieces <= ENDGAME_PIECE_THRESHOLD;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

@@ -26,7 +26,7 @@ public class AI {
     @Getter
     private final Engine mainEngine;
 
-    private static final double EXIT_FLAG = Double.MAX_VALUE;
+    public static final double EXIT_FLAG = Double.MAX_VALUE;
     private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
 
     private final int[][] killerMoves; // 2D array for killer moves, initialized in the constructor
@@ -94,7 +94,7 @@ public class AI {
     }
 
     public void startAutoPlay(boolean aiIsWhite, boolean aiIsBlack) {
-        log.info("timelimit is: " + timeLimit);
+        log.debug("timelimit is: " + timeLimit);
         if (scheduler != null && !scheduler.isShutdown()) {
             scheduler.shutdownNow(); // Ensure previous scheduler is stopped
         }
@@ -149,7 +149,7 @@ public class AI {
     }
 
     private void performCalculation() {
-        log.info(" --- TranspositionTable[{}] --- ", transpositionTable.size());
+        log.debug(" --- TranspositionTable[{}] --- ", transpositionTable.size());
         Engine simulatorEngine = mainEngine.createSimulation();
         long boardStateHash = simulatorEngine.getBoardStateHash();
         log.error("boardStateBeforeCalculation {}, currentBoardState {}", beforeCalculationBoardState, currentBoardState);
@@ -169,7 +169,7 @@ public class AI {
         try {
             for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
                 if (!keepCalculating || positionChanged()) {
-                    log.info("Calculation stopped or position changed");
+                    log.debug("Calculation stopped or position changed");
                     break;
                 }
 
@@ -178,19 +178,19 @@ public class AI {
                 if (moveAndScore != null && isNewBestMove(moveAndScore, bestScore, isWhite)) {
                     bestScore = moveAndScore.score;
                     bestMove = moveAndScore.move;
-                    log.info("New best move found: {}, currentDepth: {}, boardStateHash {}", Move.convertIntToMove(bestMove), currentDepth, boardStateHash);
+                    log.debug("New best move found: {}, currentDepth: {}, boardStateHash {}", Move.convertIntToMove(bestMove), currentDepth, boardStateHash);
 
                     // Update the transposition table if necessary
                     updateTranspositionTable(boardStateHash, moveAndScore, currentDepth);
                 }
 
                 if (timeLimitExceeded(startTime)) {
-                    log.info("Time limit exceeded, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
+                    log.debug("Time limit exceeded, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
                     break;
                 }
 
                 if (Thread.interrupted()) {
-                    log.info("Thread interrupted, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
+                    log.debug("Thread interrupted, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
                     break;
                 }
             }
@@ -229,10 +229,10 @@ public class AI {
 
         this.calculatedLine = new ArrayList<>(newCalculatedLine);
 
-        log.info("Move Line: {}", newCalculatedLine.stream()
+        log.debug("Move Line: {}", newCalculatedLine.stream()
                 .map(m -> Move.convertIntToMove(m.move).toString())
                 .collect(Collectors.joining(", ")));
-        log.info("");
+        log.debug("");
     }
 
 
@@ -285,7 +285,7 @@ public class AI {
      * *
      */
     private double alphaBeta(Engine simulatorEngine, int depth, double alpha, double beta, boolean isWhite, long startTime, long timeLimit) {
-        log.info(" ------------------------- {} ------------------------- ", depth);
+        log.debug(" ------------------------- {} ------------------------- ", depth);
         // Check for time limit exceeded
         if (System.currentTimeMillis() - startTime > timeLimit) {
             return EXIT_FLAG;
@@ -461,7 +461,7 @@ public class AI {
 
                     for (int killerMove : killerMoves[currentDepth]) {
                         if (moveInt == killerMove) {
-                            log.info("KILLER_MOVE_SCORE" + KILLER_MOVE_SCORE);
+                            log.debug("KILLER_MOVE_SCORE" + KILLER_MOVE_SCORE);
                             return KILLER_MOVE_SCORE; //adjust as needed
                         }
                     }
