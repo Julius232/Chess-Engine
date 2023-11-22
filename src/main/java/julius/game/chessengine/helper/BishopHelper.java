@@ -94,7 +94,7 @@ public class BishopHelper {
         // Shutdown executor and wait for termination
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(60, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(480, TimeUnit.MINUTES)) {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {
