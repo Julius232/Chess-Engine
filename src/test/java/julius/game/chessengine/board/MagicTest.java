@@ -11,13 +11,20 @@ import java.util.Set;
 public class MagicTest {
 
     @Test
-    public void generateMagicMoves() {
+    public void generateMagicMovesRook() {
         RookHelper rookHelper = RookHelper.getInstance();
+
+        // Initialize and find magic numbers
+        log.info("Rook Finding magic numbers...");
+        rookHelper.findMagicNumbersParallel();
+    }
+
+    @Test
+    public void generateMagicMovesBishop() {
         BishopHelper bishopHelper = BishopHelper.getInstance();
 
         // Initialize and find magic numbers
-        log.info("Finding magic numbers...");
-        rookHelper.findMagicNumbersParallel();
+        log.info("Bishop Finding magic numbers...");
         bishopHelper.findMagicNumbersParallel();
     }
 
