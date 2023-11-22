@@ -192,12 +192,12 @@ public class BitBoardTest {
         // Depth 3
         PerftNode d3 = perft(3, engine);
         assertEquals(267, d3.getChecks());
-        assertEquals(2812, d3.getNodes());
         assertEquals(209, d3.getCaptures());
         assertEquals(2, d3.getEnPassant());
         assertEquals(0, d3.getCastles());
         assertEquals(0, d3.getPromotions());
         assertEquals(0, d3.getCheckmates());
+        assertEquals(2812, d3.getNodes());
 
         // Depth 4
         PerftNode d4 = perft(4, engine);
@@ -239,12 +239,12 @@ public class BitBoardTest {
         // Depth 3
         PerftNode d3 = perft(3, engine);
         assertEquals(1021, d3.getCaptures());
-        assertEquals(9467, d3.getNodes());
         assertEquals(4, d3.getEnPassant());
         assertEquals(0, d3.getCastles());
         assertEquals(120, d3.getPromotions());
         assertEquals(38, d3.getChecks());
         assertEquals(22, d3.getCheckmates());
+        assertEquals(9467, d3.getNodes());
 
         // Depth 4
         PerftNode d4 = perft(4, engine);

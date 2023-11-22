@@ -1,129 +1,138 @@
-def print_chessboard_from_number(number):
+import tkinter as tk
 
-    number = number.replace("L", "")
-    # Determine the input format (hex, binary, or decimal)
-    if isinstance(number, str):
-        if number.startswith("0x"):
-            # Hexadecimal
-            number = int(number, 16)
-        elif number.startswith("0b"):
-            # Binary
-            number = int(number, 2)
+def print_chessboard_from_number(number, base):
+    try:
+        number = int(number, base)
+        if number < 0:
+            number = number + (1 << 64)  # Convert to two's complement
+        binary_string = bin(number & 0xFFFFFFFFFFFFFFFF)[2:].zfill(64)
+        chessboard = [["0" for _ in range(8)] for _ in range(8)]
+        for i, bit in enumerate(binary_string):
+            if bit == "1":
+                rank = i // 8
+                file = 7 - (i % 8)
+                chessboard[rank][file] = "1"
+        return chessboard
+    except ValueError:
+        return [["Invalid" for _ in range(8)] for _ in range(8)]
+
+entry_update_allowed = True
+
+def cell_clicked(row, col):
+    current_text = labels[row][col].cget("text")
+    labels[row][col].config(text='0' if current_text == '1' else '1', fg='black' if current_text == '1' else 'red')
+    update_chessboard_state()
+    update_entry_from_chessboard()
+
+def update_chessboard():
+    global entry_update_allowed
+    if entry_update_allowed:
+        if entry_hex.get():
+            try:
+                number = int(entry_hex.get(), 16)
+                valid = True
+            except ValueError:
+                valid = False
+        elif entry_dec.get():
+            try:
+                number = int(entry_dec.get(), 10)
+                valid = True
+            except ValueError:
+                valid = False
+        elif entry_bin.get():
+            try:
+                number = int(entry_bin.get(), 2)
+                valid = True
+            except ValueError:
+                valid = False
         else:
-            # Decimal string
-            number = int(number)
-    elif isinstance(number, int):
-        # Decimal number
-        pass
+            valid = False
+
+        if valid:
+            chessboard = print_chessboard_from_number(str(number), 10)
+            for row in range(8):
+                for col in range(8):
+                    text = chessboard[row][col]
+                    color = 'red' if text == '1' else 'black'
+                    labels[row][col].config(text=text, fg=color)
+
+def update_chessboard_from_entries():
+    global entry_update_allowed
+    entry_update_allowed = True
+    update_chessboard()
+
+def update_chessboard_state():
+    binary_string = ''
+    for row in range(8):  # Start from the bottom row (h1) and go to the top row (a8)
+        for col in range(7, -1, -1):  # Traverse each column from right to left
+            binary_string += '1' if labels[row][col].cget("text") == '1' else '0'
+    return int(binary_string, 2)
+
+
+def update_entry_from_chessboard():
+    number = update_chessboard_state()
+    binary_str = bin(number)[2:].zfill(64)
+    binary_label.config(text=binary_str)  # Update the binary number label
+    
+    # Update the input fields, considering negative numbers
+    if number >= 0:
+        entry_bin.delete(0, tk.END)
+        entry_bin.insert(0, binary_str)
     else:
-        return "Invalid input format. Please enter a decimal, hexadecimal, or binary number."
+        entry_bin.delete(0, tk.END)
+        entry_bin.insert(0, '-' + binary_str[1:])  # Exclude the negative sign from binary
+    
+    entry_dec.delete(0, tk.END)
+    entry_dec.insert(0, str(number))
+    entry_hex.delete(0, tk.END)
+    entry_hex.insert(0, hex(number)[2:])
 
-    # Convert the number to a binary string and fill with leading zeros to represent all squares
-    binary_string = bin(number & 0xFFFFFFFFFFFFFFFF)[2:].zfill(64)
+def on_entry_click(event):
+    global entry_update_allowed
+    entry_update_allowed = False
 
-    # Initialize the chessboard as a list of lists with empty squares
-    chessboard = [["." for _ in range(8)] for _ in range(8)]
+def create_chessboard_frame(parent):
+    frame = tk.Frame(parent)
+    for row in range(8):
+        for col in range(8):
+            label = tk.Label(frame, text='0', width=4, height=2, font=('Arial', 20))
+            label.grid(row=row, column=col)
+            label.bind("<Button-1>", lambda event, r=row, c=col: cell_clicked(r, c))
+            labels[row].append(label)
+    return frame
 
-    # Fill the chessboard with pieces (P for demonstration) where the binary string has a 1
-    for i, bit in enumerate(binary_string):
-        if bit == "1":
-            rank = 7 - (i // 8)
-            # Corrected the file index for proper orientation
-            file = 7 - (i % 8)
-            chessboard[rank][file] = "X"
+def create_update_button(parent):
+    update_button = tk.Button(parent, text='Update Chessboard', command=update_chessboard_from_entries)
+    update_button.pack()
 
-    # Print the chessboard with the correct orientation
-    for rank in chessboard[::-1]:
-        print(" ".join(rank))
-    print("a b c d e f g h")
+# Set up the main window
+root = tk.Tk()
+root.title("Bitboard Generator")
 
-    return chessboard
+# Create a label for displaying the binary number
+binary_label = tk.Label(root, text='', font=('Arial', 12))
+binary_label.pack()
 
+# Create labels and input fields for binary, decimal (long), and hexadecimal
+tk.Label(root, text='Binary:', font=('Arial', 12)).pack()
+entry_bin = tk.Entry(root, font=('Arial', 14))
+entry_bin.pack()
 
-def orderMagicNumbers(data):
-    # Parsing the data into a dictionary
-    data_dict = {}
-    for line in data.strip().split('\n'):
-        key, value = line.split(':')
-        data_dict[int(key)] = int(value)
+tk.Label(root, text='Decimal:', font=('Arial', 12)).pack()
+entry_dec = tk.Entry(root, font=('Arial', 14))
+entry_dec.pack()
 
-    # Sorting the dictionary by key
-    sorted_data = sorted(data_dict.items())
+tk.Label(root, text='Hexadecimal:', font=('Arial', 12)).pack()
+entry_hex = tk.Entry(root, font=('Arial', 14))
+entry_hex.pack()
 
-    # Output the sorted data
-    sorted_data_str = "\n".join(
-        [f"{key}:{value}" for key, value in sorted_data])
-    print(sorted_data_str)
+# Create an Update Chessboard button
+create_update_button(root)
 
+# Chessboard display area
+labels = [[], [], [], [], [], [], [], []]
+chessboard_frame = create_chessboard_frame(root)
+chessboard_frame.pack()
 
-# Example usage with a hexadecimal input that represents pawns on file H
-# This should print pawns on file H
-print_chessboard_from_number("292728875076")
-
-bishopData = """
-    62:2342056532843430052
-    60:70506730491968
-    39:3500423360264544520
-    0:-9149053842547896303
-    63:-9149053842547896303
-    6:-9222241708818821043
-    4:3382235409548552
-    3:1139120088809744
-    17:513410366144284769
-    5:282579052404802
-    15:4760305222876794881
-    24:-8070133853303303919
-    31:1235114534441616388
-    50:2616872867606888456
-    61:132216290033920
-    52:6341640214708224034
-    47:290482730561437772
-    30:216244250369851436
-    14:198161716503380032
-    51:7164207038984
-    53:2286988508006402
-    49:2343280283043889412
-    1:2295784580186132
-    10:1152945696011224192
-    59:1152945696011224192
-    41:292813145003528196
-    16:182403619466018947
-    57:18089448776441856
-    7:18647863252787328
-    25:1729946314999071242
-    8:5764634048903258149
-    23:-9078693863385718520
-    58:2613223579526924288
-    2:22536141422034949
-    13:-9214362638037806078
-    55:2378199676999467035
-    22:585643874493401632
-    12:-9043223653175909373
-    9:-6620273859478155231
-    48:2522165337928302594
-    33:-9215490599931215743
-    32:18665584543139841
-    40:2461221637373042708
-    38:72094294534291465
-    46:1162074939587559736
-    56:648591000150872064
-    54:-4611615372641038335
-    37:18295890682871840
-    11:1441223641080529952
-    34:36037601704099844
-    42:-9223077298951929852
-    20:144119732152304128
-    29:1297108161107329104
-    21:144255925698445316
-    19:144123992767202564
-    28:-8926133774232582080
-    18:74309445393326113
-    43:306842926168672274
-    26:1229487097132353541
-    45:4902185789263708673
-    44:6378224075029873666
-    35:4503737603719177
-    27:2341889400582965249
-    36:2305930978734120965
-    """
-#orderMagicNumbers(bishopData)
+# Start the application
+root.mainloop()

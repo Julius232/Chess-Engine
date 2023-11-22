@@ -5,8 +5,6 @@ import julius.game.chessengine.engine.GameStateEnum;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
-import java.util.Random;
-
 import static julius.game.chessengine.helper.BishopHelper.BISHOP_POSITIONAL_VALUES;
 import static julius.game.chessengine.helper.KingHelper.*;
 import static julius.game.chessengine.helper.KnightHelper.KNIGHT_POSITIONAL_VALUES;
@@ -503,7 +501,7 @@ public class Score {
 
     public void updateStateValuesWhite(GameStateEnum state) {
         if(state.equals(GameStateEnum.BLACK_IN_CHECK)) {
-            whiteStateBonus = 100;
+            whiteStateBonus = 250;
         }
         else {
             whiteStateBonus = 0;
@@ -512,7 +510,7 @@ public class Score {
 
     public void updateStateValuesBlack(GameStateEnum state) {
         if(state.equals(GameStateEnum.BLACK_IN_CHECK)) {
-            blackStateBonus = 100;
+            blackStateBonus = 250;
         }
         else {
             blackStateBonus = 0;

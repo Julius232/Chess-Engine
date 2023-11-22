@@ -2,6 +2,7 @@ package julius.game.chessengine.board;
 
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.helper.BishopHelper;
+import julius.game.chessengine.helper.KnightHelper;
 import julius.game.chessengine.helper.RookHelper;
 import julius.game.chessengine.helper.ZobristTable;
 import julius.game.chessengine.utils.Color;
@@ -11,6 +12,8 @@ import lombok.extern.log4j.Log4j2;
 import java.util.Objects;
 
 import static julius.game.chessengine.helper.BitHelper.*;
+import static julius.game.chessengine.helper.BitboardHelper.lineBetweenIndices;
+import static julius.game.chessengine.helper.KingHelper.KING_ATTACKS;
 import static julius.game.chessengine.helper.KnightHelper.knightMoveTable;
 
 @Log4j2
@@ -273,13 +276,31 @@ public class BitBoard {
         allPieces = whitePieces | blackPieces;
     }
 
+    private long generatePawnAttacksLeft() {
+        long pawns = whitesTurn ? whitePawns : blackPawns;
+        return whitesTurn ? (pawns & ~FileMasks[0]) << 7 : (pawns & ~FileMasks[0]) >>> 9;
+    }
+
+    private long generatePawnAttacksRight() {
+        long pawns = whitesTurn ? whitePawns : blackPawns;
+        return whitesTurn ? (pawns & ~FileMasks[7]) << 9 : (pawns & ~FileMasks[7]) >>> 7;
+    }
+
+    private long generateAllPawnAttacks() {
+        return generatePawnAttacksLeft() | generatePawnAttacksRight();
+    }
+
     private void generatePawnMoves(boolean whitesTurn, MoveList moves) {
         long pawns = whitesTurn ? whitePawns : blackPawns;
+
         long opponentPieces = whitesTurn ? blackPieces : whitePieces;
         long emptySquares = ~(whitePieces | blackPieces);
 
         long singleStepForward = whitesTurn ? pawns << 8 : pawns >>> 8;
         singleStepForward &= emptySquares;
+
+        long attacksLeft = generatePawnAttacksLeft();
+        long attacksRight = generatePawnAttacksRight();
 
         long doubleStepForward;
         if (whitesTurn) {
@@ -288,8 +309,6 @@ public class BitBoard {
             doubleStepForward = ((pawns & RankMasks[6]) >>> 8 & emptySquares) >>> 8 & emptySquares;
         }
 
-        long attacksLeft = whitesTurn ? (pawns & ~FileMasks[0]) << 7 : (pawns & ~FileMasks[0]) >>> 9;
-        long attacksRight = whitesTurn ? (pawns & ~FileMasks[7]) << 9 : (pawns & ~FileMasks[7]) >>> 7;
         attacksLeft &= opponentPieces;
         attacksRight &= opponentPieces;
 
@@ -478,7 +497,7 @@ public class BitBoard {
 
             long attacks = (
                     bishopHelper.calculateMovesUsingBishopMagic(queenSquare, occupancyBishop) |
-                    rookHelper.calculateMovesUsingRookMagic(queenSquare, occupancyRook)
+                            rookHelper.calculateMovesUsingRookMagic(queenSquare, occupancyRook)
             ) & ~ownPieces;
             while (attacks != 0) {
                 int targetSquare = Long.numberOfTrailingZeros(attacks);
@@ -493,21 +512,22 @@ public class BitBoard {
         long kingBitboard = whitesTurn ? whiteKing : blackKing;
         int kingPositionIndex = Long.numberOfTrailingZeros(kingBitboard);
 
-        // Offsets for a king's normal moves
-        int[] offsets = {-9, -8, -7, -1, 1, 7, 8, 9};
+        // Get precomputed king attack bitmask
+        long kingAttacks = KING_ATTACKS[kingPositionIndex];
+
 
         boolean isFirstKingMove = hasKingNotMoved(whitesTurn);
 
-        for (int offset : offsets) {
-            int targetIndex = kingPositionIndex + offset;
-            // Check if the move is within board bounds and does not wrap around
-            if (targetIndex >= 0 && targetIndex < 64 && !doesMoveWrapAround(kingPositionIndex, targetIndex)) {
-                if (!isOccupiedByColor(targetIndex, whitesTurn)) {
-                    boolean isCapture = isOccupiedByOpponent(targetIndex, whitesTurn);
-                    PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(targetIndex) : null;
-                    moves.add(createMoveInt(kingPositionIndex, targetIndex, PieceType.KING, whitesTurn, isCapture, false, false, null, capturedPieceType, isFirstKingMove, false));
-                }
+        while (kingAttacks != 0) {
+            int targetIndex = Long.numberOfTrailingZeros(kingAttacks);
+            kingAttacks &= kingAttacks - 1; // Remove the least significant bit representing an attack
+
+            if (!isOccupiedByColor(targetIndex, whitesTurn)) {
+                boolean isCapture = isOccupiedByOpponent(targetIndex, whitesTurn);
+                PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(targetIndex) : null;
+                moves.add(createMoveInt(kingPositionIndex, targetIndex, PieceType.KING, whitesTurn, isCapture, false, false, null, capturedPieceType, isFirstKingMove, false));
             }
+
         }
 
         // Castling logic
@@ -625,7 +645,7 @@ public class BitBoard {
 
     private boolean canKingAttackIndex(int index, boolean colorWhite) {
         long kingsBitboard = colorWhite ? whiteKing : blackKing;
-        long kingAttacks = kingAttackBitmask(index);
+        long kingAttacks = KING_ATTACKS[index];
         return (kingAttacks & kingsBitboard) != 0;
     }
 
@@ -711,11 +731,9 @@ public class BitBoard {
             int capturedPawnIndex = isWhite ? toIndex - 8 : toIndex + 8;
             clearSquare(capturedPawnIndex, !isWhite);
         }
-
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
     }
-
 
     public void clearSquare(int index, boolean isWhite) {
         long mask = ~(1L << index);
@@ -866,6 +884,77 @@ public class BitBoard {
         return canKingAttackKing(kingPosition, whitesTurn);
     }
 
+/*    public boolean isInCheck(boolean whitesTurn) {
+        long kingPosition = whitesTurn ? whiteKing : blackKing;
+        long opponentAttacks = whitesTurn ? blackAttacks : whiteAttacks;
+
+        // Check direct attacks on the king
+        if ((opponentAttacks & kingPosition) != 0) {
+            return true;
+        }
+
+        return false;
+    }*/
+
+
+    public long generatePinMask(boolean whitesTurn) {
+        long kingPosition = whitesTurn ? whiteKing : blackKing;
+        long slidingPieces = whitesTurn ? (blackBishops | blackRooks | blackQueens) : (whiteBishops | whiteRooks | whiteQueens);
+
+        long pinMasks = 0L;
+
+        while (slidingPieces != 0) {
+            long slidingPiecePosition = Long.lowestOneBit(slidingPieces);
+            slidingPieces ^= slidingPiecePosition; // Remove the current sliding piece
+
+            long lineOfAttack = calculateLineOfAttack(slidingPiecePosition, kingPosition);
+            long piecesInBetween = lineOfAttack & (whitesTurn ? whitePieces : blackPieces);
+
+            if (Long.bitCount(piecesInBetween) == 1) {
+                long pinnedPiece = piecesInBetween & lineOfAttack;
+                long squaresBetweenPinnedAndKing = lineBetweenIndices(Long.numberOfTrailingZeros(pinnedPiece), Long.numberOfTrailingZeros(kingPosition));
+                long obstructingPieces = squaresBetweenPinnedAndKing & allPieces;
+
+                if (obstructingPieces == 0) {
+                    // There are no obstructing pieces (piece is pinned)
+                    pinMasks |= lineOfAttack;
+                    pinMasks &= whitesTurn ? whitePieces : blackPieces;
+                }
+            }
+        }
+
+        return pinMasks;
+    }
+
+
+    private long calculateLineOfAttack(long slidingPiecePosition, long kingPosition) {
+        long lineOfAttack = 0L;
+        int slidingPieceIndex = Long.numberOfTrailingZeros(slidingPiecePosition);
+        int kingIndex = Long.numberOfTrailingZeros(kingPosition);
+
+        // Determine the type of the sliding piece
+        if ((slidingPiecePosition & (whiteBishops | blackBishops)) != 0) {
+            // Bishop's line of attack
+            long occupancy = allPieces & bishopHelper.bishopMasks[slidingPieceIndex];
+            long attack = bishopHelper.calculateMovesUsingBishopMagic(slidingPieceIndex, occupancy);
+            lineOfAttack = attack & lineBetweenIndices(slidingPieceIndex, kingIndex);
+        } else if ((slidingPiecePosition & (whiteRooks | blackRooks)) != 0) {
+            // Rook's line of attack
+            long occupancy = allPieces & rookHelper.rookMasks[slidingPieceIndex];
+            long attack = rookHelper.calculateMovesUsingRookMagic(slidingPieceIndex, occupancy);
+            lineOfAttack = attack & lineBetweenIndices(slidingPieceIndex, kingIndex);
+        } else if ((slidingPiecePosition & (whiteQueens | blackQueens)) != 0) {
+            // Queen's line of attack (combination of rook and bishop)
+            long occupancyBishop = allPieces & bishopHelper.bishopMasks[slidingPieceIndex];
+            long occupancyRook = allPieces & rookHelper.rookMasks[slidingPieceIndex];
+            long attackDiagonal = bishopHelper.calculateMovesUsingBishopMagic(slidingPieceIndex, occupancyBishop);
+            long attackStraight = rookHelper.calculateMovesUsingRookMagic(slidingPieceIndex, occupancyRook);
+            lineOfAttack = (attackDiagonal | attackStraight) & lineBetweenIndices(slidingPieceIndex, kingIndex);
+        }
+
+        return lineOfAttack;
+    }
+
     private int findKingIndex(boolean whitesTurn) {
         // Use bit operations to find the king's position on the board
         // Assuming there's only one king per color on the board.
@@ -910,28 +999,7 @@ public class BitBoard {
     }
 
     private long knightAttackBitmask(int positionIndex) {
-        // Define knight move offsets
-        int[][] knightMoves = {
-                {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2},
-                {1, -2}, {1, 2}, {2, -1}, {2, 1}
-        };
-
-        long attacks = 0L;
-        int originalFile = positionIndex % 8;
-        int originalRank = positionIndex / 8;
-
-        for (int[] move : knightMoves) {
-            int file = originalFile + move[0];
-            int rank = originalRank + move[1];
-
-            // Check if the move is within the bounds of the chess board
-            if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
-                int targetIndex = rank * 8 + file;
-                attacks |= 1L << targetIndex;
-            }
-        }
-
-        return attacks;
+        return KnightHelper.knightMoveTable[positionIndex];
     }
 
     private boolean canBishopAttackKing(int kingIndex, boolean kingColorWhite) {
@@ -945,32 +1013,14 @@ public class BitBoard {
     }
 
     private long bishopAttackBitmask(int positionIndex) {
-        long attacks = 0L;
-        int originalFile = positionIndex % 8;
-        int originalRank = positionIndex / 8;
+        long mask = bishopHelper.bishopMasks[positionIndex];
+        long magic = bishopHelper.bishopMagics[positionIndex];
 
-        // Directions a bishop can move: top-left, top-right, bottom-left, bottom-right
-        int[][] directions = {{-1, 1}, {1, 1}, {-1, -1}, {1, -1}};
+        // Calculate the index for the current occupancy
+        long index = ((allPieces & mask) * magic) >>> (64 - bishopHelper.bishopBits[positionIndex]);
 
-        for (int[] direction : directions) {
-            int targetFile = originalFile + direction[0];
-            int targetRank = originalRank + direction[1];
-
-            while (targetFile >= 0 && targetFile < 8 && targetRank >= 0 && targetRank < 8) {
-                int targetIndex = targetRank * 8 + targetFile;
-                attacks |= 1L << targetIndex;
-
-                // Stop if a piece is encountered
-                if ((allPieces & (1L << targetIndex)) != 0) {
-                    break;
-                }
-
-                targetFile += direction[0];
-                targetRank += direction[1];
-            }
-        }
-
-        return attacks;
+        // Retrieve the attacks from the precomputed table
+        return bishopHelper.bishopAttacks[positionIndex][(int) index];
     }
 
 
@@ -986,31 +1036,14 @@ public class BitBoard {
     }
 
     private long rookAttackBitmask(int positionIndex) {
-        long attacks = 0L;
-        int originalFile = positionIndex % 8;
-        int originalRank = positionIndex / 8;
+        long mask = rookHelper.rookMasks[positionIndex];
+        long magic = rookHelper.rookMagics[positionIndex];
 
-        // Directions a rook can move: up, down, left, right
-        int[][] directions = {{0, 1}, {0, -1}, {-1, 0}, {1, 0}};
+        // Calculate the index for the current occupancy
+        long index = ((allPieces & mask) * magic) >>> (64 - rookHelper.rookBits[positionIndex]);
 
-        for (int[] direction : directions) {
-            int targetFile = originalFile + direction[0];
-            int targetRank = originalRank + direction[1];
-
-            while (targetFile >= 0 && targetFile < 8 && targetRank >= 0 && targetRank < 8) {
-                int targetIndex = targetRank * 8 + targetFile;
-                attacks |= 1L << targetIndex;
-
-                if ((allPieces & (1L << targetIndex)) != 0) {
-                    break; // Stop if a piece is encountered
-                }
-
-                targetFile += direction[0];
-                targetRank += direction[1];
-            }
-        }
-
-        return attacks;
+        // Retrieve the attacks from the precomputed table
+        return rookHelper.rookAttacks[positionIndex][(int) index];
     }
 
 
@@ -1034,44 +1067,13 @@ public class BitBoard {
     }
 
     private boolean canKingAttackKing(int kingIndex, boolean kingColorWhite) {
-        long kingAttacks = kingAttackBitmask(kingIndex);
+        long kingAttacks = KING_ATTACKS[kingIndex];
 
         // Determine the opponent's king bitboard based on the king's color
         long opponentKing = kingColorWhite ? blackKing : whiteKing;
 
         // Check if the opponent's king is on one of the squares that the current king can attack
         return (kingAttacks & opponentKing) != 0;
-    }
-
-    private long kingAttackBitmask(int positionIndex) {
-        // Define king move offsets (all the adjacent squares)
-        int[] kingMoves = {
-                -9, -8, -7, -1, 1, 7, 8, 9
-        };
-
-        long attacks = 0L;
-        for (int moveOffset : kingMoves) {
-            int targetIndex = positionIndex + moveOffset;
-
-            // Check if the target index is on the board
-            if (targetIndex >= 0 && targetIndex < 64) {
-                // Calculate the file and rank of the target index
-                int file = targetIndex % 8;
-                int rank = targetIndex / 8;
-
-                // Calculate the file and rank of the original position index
-                int originalFile = positionIndex % 8;
-                int originalRank = positionIndex / 8;
-
-                // Check if the move stays within the bounds of the chess board (kings cannot move off their own file or rank more than one square)
-                if (Math.abs(file - originalFile) <= 1 && Math.abs(rank - originalRank) <= 1) {
-                    // Set the bit at the target index
-                    attacks |= 1L << targetIndex;
-                }
-            }
-        }
-
-        return attacks;
     }
 
     public void logBoard() {

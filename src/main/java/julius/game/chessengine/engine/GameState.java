@@ -133,14 +133,18 @@ public class GameState {
 
         if (isWhite) {
             //TODO check if this could be done more efficient
+/*
             int agilityBlack = bitBoard.generateAllPossibleMoves(false).size();
             score.updateAgilityBonusBlack(agilityBlack);
+*/
 
             updateValuesForBlack(capturedPieceTypeBits, bitBoard); // Update black pieces if white is capturing
         } else {
             //TODO check if this could be done more efficient
+/*
             int agilityWhite = bitBoard.generateAllPossibleMoves(true).size();
             score.updateAgilityBonusBlack(agilityWhite);
+*/
 
             updateValuesForWhite(capturedPieceTypeBits, bitBoard); // Update white pieces if black is capturing
         }

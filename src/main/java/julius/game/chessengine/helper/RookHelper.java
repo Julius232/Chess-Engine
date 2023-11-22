@@ -13,6 +13,8 @@ public class RookHelper {
 
     public long[] rookMasks = new long[64];
     public long[][] rookAttacks = new long[64][];
+
+    public int[] rookBits = new int[64];
     public long[] rookMagics = new long[64]; // To store the found magic numbers
 
     boolean[] squareMagicFound = new boolean[64];
@@ -26,6 +28,7 @@ public class RookHelper {
             rookMasks[square] = generateOccupancyMask(square);
         }
         initializeRookAttacks();
+        initializeRookBits();
     }
 
     public static RookHelper getInstance() {
@@ -237,6 +240,12 @@ public class RookHelper {
                 int index = transform(occupancy, rookMagics[square], mask);
                 rookAttacks[square][index] = calculateRookMoves(square, occupancy);
             }
+        }
+    }
+
+    public void initializeRookBits() {
+        for (int square = 0; square < 64; square++) {
+            rookBits[square] = Long.bitCount(rookMasks[square]);
         }
     }
 

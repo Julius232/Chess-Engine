@@ -24,6 +24,8 @@ public class BishopHelper {
     public long[] bishopMasks = new long[64];
     public long[][] bishopAttacks = new long[64][];
 
+    public int[] bishopBits = new int[64];
+
     public long[] bishopMagics = new long[64]; // To store the found magic numbers
 
     boolean[] squareMagicFound = new boolean[64];
@@ -38,6 +40,7 @@ public class BishopHelper {
             bishopMasks[square] = generateOccupancyMask(square);
         }
         initializeBishopAttacks();
+        initializeBishopBits();
     }
 
     public static BishopHelper getInstance() {
@@ -254,6 +257,12 @@ public class BishopHelper {
                 int index = transform(occupancy, bishopMagics[square], mask);
                 bishopAttacks[square][index] = calculateBishopMoves(square, occupancy);
             }
+        }
+    }
+
+    public void initializeBishopBits() {
+        for (int square = 0; square < 64; square++) {
+            bishopBits[square] = Long.bitCount(bishopMasks[square]);
         }
     }
 
