@@ -50,7 +50,7 @@ public class BishopHelper {
         return instance;
     }
 
-    public void findMagicNumbersParallel() {
+    public void findMagicNumbersParallel(int time) {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         ConcurrentHashMap<Integer, Long> magicNumbers = new ConcurrentHashMap<>();
 
@@ -97,7 +97,7 @@ public class BishopHelper {
         // Shutdown executor and wait for termination
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(480, TimeUnit.MINUTES)) {
+            if (!executor.awaitTermination(time, TimeUnit.MINUTES)) {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {

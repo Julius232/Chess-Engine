@@ -10,13 +10,15 @@ import java.util.Set;
 @Log4j2
 public class MagicTest {
 
+    int totalTime = 480; //minutes
+
     @Test
     public void generateMagicMovesRook() {
         RookHelper rookHelper = RookHelper.getInstance();
 
         // Initialize and find magic numbers
         log.info("Rook Finding magic numbers...");
-        rookHelper.findMagicNumbersParallel();
+        rookHelper.findMagicNumbersParallel(totalTime / 2);
     }
 
     @Test
@@ -25,7 +27,7 @@ public class MagicTest {
 
         // Initialize and find magic numbers
         log.info("Bishop Finding magic numbers...");
-        bishopHelper.findMagicNumbersParallel();
+        bishopHelper.findMagicNumbersParallel(totalTime / 2);
     }
 
     @Test
