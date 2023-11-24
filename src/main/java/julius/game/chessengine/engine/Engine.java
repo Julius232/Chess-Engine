@@ -1,11 +1,8 @@
 package julius.game.chessengine.engine;
 
-import julius.game.chessengine.ai.AI;
-import julius.game.chessengine.ai.CaptureTranspositionTableEntry;
 import julius.game.chessengine.board.*;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
-import julius.game.chessengine.utils.Score;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -13,17 +10,11 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-import static julius.game.chessengine.utils.Score.CHECKMATE;
-import static julius.game.chessengine.utils.Score.DRAW;
 
 @Service
 @Log4j2
 public class Engine {
-
-    private static final ConcurrentHashMap<Long, CaptureTranspositionTableEntry> captureTranspositionTable = new ConcurrentHashMap<>();
 
     private boolean legalMovesNeedUpdate = true;
     private MoveList legalMoves;
@@ -63,16 +54,7 @@ public class Engine {
             if (isLegalMove(move)) {
                 bitBoard.performMove(move);
             } else {
-                log.warn("Move: {}", Move.convertIntToMove(move));
-                log.debug(gameState.toString());
-                MoveList moves = getAllLegalMoves();
-                for (int i = 0; i < moves.size(); i++) {
-                    int m = moves.getMove(i);
-                    if (isCapture(m)) {
-                        log.debug(Move.convertIntToMove(m));
-                    }
-                }
-                throw new IllegalStateException("Move not legal for AI");
+                throw new IllegalStateException(String.format("Move: %s not legal for AI", Move.convertIntToMove(move)));
             }
             generateLegalMoves();
             gameState.update(bitBoard, legalMoves, move);
@@ -125,7 +107,7 @@ public class Engine {
 
         for (int i = 0; i < legalMoves.size(); i++) {
             int m = legalMoves.getMove(i);
-            int from = m & 0x3F; // Extract the first 6 bits
+            int from = MoveHelper.deriveFromIndex(m); // Extract the first 6 bits
             if (from == fromIndex) {
                 movesFromIndex.add(Move.convertIntToMove(m));
             }
@@ -134,7 +116,7 @@ public class Engine {
         return movesFromIndex;
     }
 
-    public GameState moveRandomFigure(boolean isWhite) {
+    public void moveRandomFigure(boolean isWhite) {
         // Now, the color parameter is used to determine which moves to generate
         MoveList moves = getAllLegalMoves();
 
@@ -148,7 +130,6 @@ public class Engine {
         // Execute the move on the bitboard
         performMove(randomMove);
 
-        return gameState;
     }
 
     public GameState moveFigure(int fromIndex, int toIndex, int promotionPiece) {
@@ -156,8 +137,8 @@ public class Engine {
     }
 
     //always queen
-    public GameState moveFigure(int fromIndex, int toIndex) {
-        return moveFigure(bitBoard, fromIndex, toIndex, 5);
+    public void moveFigure(int fromIndex, int toIndex) {
+        moveFigure(bitBoard, fromIndex, toIndex, 5);
     }
 
     public GameState moveFigure(BitBoard bitBoard, int fromIndex, int toIndex, int promotionPiece) {
@@ -176,20 +157,7 @@ public class Engine {
             throw new IllegalStateException("It's not " + pieceColor + "'s turn");
         }
 
-        MoveList legalMoves = getAllLegalMoves();
-
-        int move = -1;
-
-        for (int i = 0; i < legalMoves.size(); i++) {
-            int m = legalMoves.getMove(i);
-            int from = m & 0x3F; // Extract the first 6 bits
-            int to = (m >> 6) & 0x3F; // Extract the next 6 bits
-            int promotionPieceTypeBits = (m >> 18) & 0x07;
-
-            if (from == fromIndex && to == toIndex && (promotionPieceTypeBits == 0 | promotionPieceTypeBits == promotionPiece)) {
-                move = m;
-            }
-        }
+        int move = getMove(fromIndex, toIndex, promotionPiece);
 
         if (move == -1) {
             log.warn("Move not legal!");
@@ -201,10 +169,28 @@ public class Engine {
         return gameState;
     }
 
+    private int getMove(int fromIndex, int toIndex, int promotionPiece) {
+        MoveList legalMoves = getAllLegalMoves();
+
+        int move = -1;
+
+        for (int i = 0; i < legalMoves.size(); i++) {
+            int m = legalMoves.getMove(i);
+            int from = MoveHelper.deriveFromIndex(m); // Extract the first 6 bits
+            int to = MoveHelper.deriveToIndex(m); // Extract the next 6 bits
+            int promotionPieceTypeBits = MoveHelper.derivePromotionPieceTypeBits(m);
+
+            if (from == fromIndex && to == toIndex && (promotionPieceTypeBits == 0 | promotionPieceTypeBits == promotionPiece)) {
+                move = m;
+            }
+        }
+        return move;
+    }
+
 
     private boolean isLegalMove(int move) {
         // Check if the move is within bounds of the board
-        boolean isWhite = (move & (1 << 15)) != 0;
+        boolean isWhite = MoveHelper.isWhitesMove(move);
 
         BitBoard testBoard = simulateMove(bitBoard, move);
         return !testBoard.isInCheck(isWhite);
@@ -256,98 +242,6 @@ public class Engine {
     public FEN translateBoardToFen() {
         return FEN.translateBoardToFEN(bitBoard);
     }
-
-
-    public double evaluateBoard(boolean isWhitesTurn, long startTime, long timeLimit) {
-        if (gameState.isInStateCheckMate()) {
-            log.debug(" -------------- CHECHMATE found -----------");
-            return CHECKMATE;
-        }
-
-        if (gameState.isInStateDraw()) {
-            return DRAW;
-        }
-
-        double alpha = Double.NEGATIVE_INFINITY;
-        double beta = Double.POSITIVE_INFINITY;
-
-        long boardStateHash = getBoardStateHash();
-        CaptureTranspositionTableEntry entry = captureTranspositionTable.get(boardStateHash);
-
-        // Check if the entry exists and is relevant for the current search
-        if (entry != null && entry.isWhite() == isWhitesTurn) {
-            return entry.getScore();
-        }
-
-        double score = quiescenceSearch(isWhitesTurn, alpha, beta, startTime, timeLimit);
-        captureTranspositionTable.put(boardStateHash, new CaptureTranspositionTableEntry(score, isWhitesTurn));
-
-        return score;
-    }
-
-    private double quiescenceSearch(boolean isWhitesTurn, double alpha, double beta, long startTime, long timeLimit) {
-        if (System.currentTimeMillis() - startTime > timeLimit) {
-            log.debug("timeout");
-            return AI.EXIT_FLAG; // Timeout
-        }
-
-        double standPat = evaluateStaticPosition(isWhitesTurn);
-        if (standPat >= beta) {
-            return beta; // Fail-hard beta cutoff
-        }
-        if (alpha < standPat) {
-            alpha = standPat; // Delta pruning
-        }
-
-        MoveList moves = getPossibleCaptures();
-        for (int i = 0; i < moves.size(); i++) {
-            performMove(moves.getMove(i));
-            double score = -quiescenceSearch(!isWhitesTurn, -beta, -alpha, startTime, timeLimit);
-            undoLastMove();
-
-            if (score >= beta) {
-                return beta; // Beta cutoff
-            }
-            if (score > alpha) {
-                alpha = score; // Found a better move
-            }
-        }
-        return alpha; // Best score in the subtree
-    }
-
-    private double evaluateStaticPosition(boolean isWhitesTurn) {
-        if (gameState.isInStateCheckMate()) {
-            log.debug("Checkmate found");
-            return CHECKMATE;
-        }
-        if (gameState.isInStateDraw()) {
-            log.info("DRAW");
-            return DRAW;
-        }
-        bitBoard.logBoard();
-        double scoreDifference = gameState.getScore().getScoreDifference() / 1000.0;
-
-        log.info("Evaluate static position score {}, {} ", isWhitesTurn ? scoreDifference : -scoreDifference, isWhitesTurn ? "WHITE" : "BLACK");
-        return isWhitesTurn ? scoreDifference : -scoreDifference;
-    }
-
-    private MoveList getPossibleCaptures() {
-        MoveList allLegalMoves = getAllLegalMoves();
-        MoveList captures = new MoveList();
-        for (int i = 0; i < allLegalMoves.size(); i++) {
-            int m = allLegalMoves.getMove(i);
-            if (isCapture(m)) {
-                captures.add(m);
-            }
-        }
-
-        return captures;
-    }
-
-    private boolean isCapture(int m) {
-        return (((m >> 16) & 0x03) & 0x01) != 0;
-    }
-
 
     public Long getBoardStateHashAfterMove(int move) {
         // Step 1: Create a deep copy of the current board state

@@ -3,11 +3,15 @@ package julius.game.chessengine.helper;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 
 @Log4j2
 public class RookHelper {
+
+    private static final String ROOK_MAGIC_NUMBERS_PATH = "/magic/rook_magic_numbers.txt";
+    private static final String ROOK_MAGIC_NUMBERS_PATH_write = "src/main/resources" + ROOK_MAGIC_NUMBERS_PATH;
 
     int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // Rook directions
 
@@ -141,95 +145,6 @@ public class RookHelper {
         return indices.size();
     }
 
-    private void writeMagicNumbersToFile(ConcurrentHashMap<Integer, Long> magicNumbers) {
-        File file = new File("src/main/resources/magic/rook_magic_numbers.txt");
-        Map<Integer, Long> existingNumbers = new HashMap<>();
-
-        // Load existing magic numbers from the file
-        if (file.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String[] parts = line.split(":");
-                    if (parts.length == 2) {
-                        int square = Integer.parseInt(parts[0]);
-                        long magicNumber = Long.parseLong(parts[1]);
-                        existingNumbers.put(square, magicNumber);
-                    }
-                }
-            } catch (IOException e) {
-                log.error("Error reading magic numbers from file", e);
-            }
-        }
-
-        // Update with new magic numbers
-        existingNumbers.putAll(magicNumbers);
-
-        // Write updated magic numbers back to the file
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, false))) { // false to overwrite the file
-            for (Map.Entry<Integer, Long> entry : existingNumbers.entrySet()) {
-                writer.write(entry.getKey() + ":" + entry.getValue() + "\n");
-            }
-        } catch (IOException e) {
-            log.error("Error writing magic numbers to file", e);
-        }
-    }
-
-
-
-    // ... [Rest of the class remains the same]
-    public void findMagicNumbers() {
-        // Then, find magic numbers
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("src/main/resources/magic/rook_magic_numbers.txt", true))) { // Append mode set to true
-
-            boolean allFound = false;
-            while (!allFound) {
-                long magicCandidate = randomMagicNumber();
-                allFound = true; // Assume all found, and set to false if any are missing
-
-                for (int square = 43; square < 44; square++) {
-                    if (squareMagicFound[square]) {
-                        continue; // Skip if magic number already found for this square
-                    }
-
-                    long mask = rookMasks[square]; // Use the pre-stored mask
-                    Set<Long> occupancies = generateAllOccupancies(mask);
-
-                    Map<Integer, Long> indexToOccupancy = new HashMap<>();
-                    boolean isMagic = true;
-
-                    for (long occupancy : occupancies) {
-                        int index = transform(occupancy, magicCandidate, mask);
-
-                        if (indexToOccupancy.containsKey(index) &&
-                                indexToOccupancy.get(index) != occupancy) {
-                            isMagic = false;
-                            break;
-                        }
-
-                        indexToOccupancy.put(index, occupancy);
-                    }
-
-                    if (!isMagic) {
-                        allFound = false; // If any magic number is not found, set allFound to false
-                    } else {
-                        squareMagicFound[square] = true;
-                        rookMagics[square] = magicCandidate;
-                        log.info("Magic number found for square " + square + ": " + magicCandidate);
-                        writer.write(square + ":" + magicCandidate + ":" + mask + "\n");
-                        writer.flush(); // Ensure it's written immediately
-                    }
-                }
-            }
-        } catch (IOException e) {
-            log.error("Error writing to file", e);
-        }
-
-        // Finally, initialize rook attacks using the found magic numbers
-        initializeRookAttacks();
-    }
-
-
     public void initializeRookAttacks() {
         for (int square = 0; square < 64; square++) {
             long mask = rookMasks[square];
@@ -318,20 +233,57 @@ public class RookHelper {
     }
 
     public void loadMagicNumbers() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("src/main/resources/magic/rook_magic_numbers.txt"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(":");
-                if (parts.length == 2) {
-                    int square = Integer.parseInt(parts[0]);
-                    squareMagicFound[square] = true;
+        try (InputStream is = getClass().getResourceAsStream(ROOK_MAGIC_NUMBERS_PATH)) {
+            assert is != null;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(":");
+                    if (parts.length == 2) {
+                        int square = Integer.parseInt(parts[0]);
+                        squareMagicFound[square] = true;
 
-                    long magicNumber = Long.parseLong(parts[1]);
-                    rookMagics[square] = magicNumber;
+                        long magicNumber = Long.parseLong(parts[1]);
+                        rookMagics[square] = magicNumber;
+                    }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | NullPointerException e) {
             log.error("Error reading magic numbers from file", e);
+        }
+    }
+
+    private void writeMagicNumbersToFile(ConcurrentHashMap<Integer, Long> magicNumbers) {
+        File file = new File(ROOK_MAGIC_NUMBERS_PATH_write);
+        Map<Integer, Long> existingNumbers = new HashMap<>();
+
+        // Load existing magic numbers from the file
+        if (file.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(":");
+                    if (parts.length == 2) {
+                        int square = Integer.parseInt(parts[0]);
+                        long magicNumber = Long.parseLong(parts[1]);
+                        existingNumbers.put(square, magicNumber);
+                    }
+                }
+            } catch (IOException e) {
+                log.error("Error reading magic numbers from file", e);
+            }
+        }
+
+        // Update with new magic numbers
+        existingNumbers.putAll(magicNumbers);
+
+        // Write updated magic numbers back to the file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, false))) { // false to overwrite the file
+            for (Map.Entry<Integer, Long> entry : existingNumbers.entrySet()) {
+                writer.write(entry.getKey() + ":" + entry.getValue() + "\n");
+            }
+        } catch (IOException e) {
+            log.error("Error writing magic numbers to file", e);
         }
     }
 

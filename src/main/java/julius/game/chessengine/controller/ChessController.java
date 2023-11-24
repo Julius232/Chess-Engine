@@ -71,8 +71,8 @@ public class ChessController {
     public ResponseEntity<ApiMove> getLastMove() {
         GameStateEnum state = ai.getMainEngine().getGameState().getState();
         int lastMove = ai.getMainEngine().getLine().getLast();
-        int fromIndex = MoveHelper.deriveLastMoveFromIndex(lastMove);
-        int toIndex = MoveHelper.deriveLastMovetoIndex(lastMove);
+        int fromIndex = MoveHelper.deriveFromIndex(lastMove);
+        int toIndex = MoveHelper.deriveToIndex(lastMove);
 
         ApiMove move = new ApiMove(state, convertIndexToString(fromIndex),convertIndexToString(toIndex));
         return ResponseEntity.ok(move);

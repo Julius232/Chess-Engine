@@ -115,7 +115,7 @@ public class FEN {
         boolean blackRookA8Moved = !parts[2].contains("q");
         boolean blackRookH8Moved = !parts[2].contains("k");
 
-        int lastMoveDoubleStepPawnIndex = -1;
+        int lastMoveDoubleStepPawnIndex = 0;
         if (!parts[3].equals("-")) {
             char fileChar = parts[3].charAt(0);
             int file = fileChar - 'a'; // Convert file to 0-7 range

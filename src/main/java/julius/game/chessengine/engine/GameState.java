@@ -1,6 +1,7 @@
 package julius.game.chessengine.engine;
 
 import julius.game.chessengine.board.BitBoard;
+import julius.game.chessengine.board.MoveHelper;
 import julius.game.chessengine.board.MoveList;
 import julius.game.chessengine.utils.Score;
 import lombok.Data;
@@ -60,13 +61,13 @@ public class GameState {
         }
     }
 
-    public void updateScore(BitBoard bitBoard, int moveInt) {
+    public void updateScore(BitBoard bitBoard, int move) {
         //reset cached score
         score.resetCachedStoreDifference();
 
-        boolean isWhite = (moveInt & (1 << 15)) != 0;
-        int pieceTypeBits = (moveInt >> 12) & 0x07;
-        int capturedPieceTypeBits = (moveInt >> 21) & 0x07;
+        boolean isWhite = MoveHelper.isWhitesMove(move);
+        int pieceTypeBits = MoveHelper.derivePieceTypeBits(move);
+        int capturedPieceTypeBits = MoveHelper.deriveCapturedPieceTypeBits(move);
 
         updatePieceValues(isWhite, pieceTypeBits, bitBoard, state);
         if (capturedPieceTypeBits != 0) {

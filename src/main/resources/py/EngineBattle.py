@@ -14,14 +14,17 @@ def get_file_name_without_extension(file_path):
     file_name_without_extension = os.path.splitext(base_name)[0]  # Remove the extension
     return file_name_without_extension
 
-# Function to start a Java process without stdout
+
+#def start_java_process(jar_path, jar_port):
+    #with open(os.devnull, 'w') as devnull:
+        #return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + jar_port], stdout=devnull, stderr=devnull)
+
 def start_java_process(jar_path, jar_port):
-    # Open a null device to dump the output
-    with open(os.devnull, 'w') as devnull:
-        return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + jar_port], stdout=devnull, stderr=devnull)
+    return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + str(jar_port)])
 
 # Function to make a move on a chess engine
 def make_move(engine_url, from_pos, to_pos):
+    #print(f"{engine_url}: {from_pos}:{to_pos}")
     response = requests.patch(f"{engine_url}/chess/figure/move/{from_pos}/{to_pos}")
     return response.json()  # Assuming the response is in JSON format
 
@@ -48,7 +51,8 @@ def start_autoplay(engine_url, ai_color):
 def get_last_move(engine_url):
     response = requests.get(f"{engine_url}/chess/autoplay/lastMove")
     if response.status_code == 200:
-        return response.json()
+        #print(f"{engine_url}: {response.json()}")
+        return response.json() 
     return None
 
 # Function to check game state
@@ -70,7 +74,7 @@ target_directory = "..\\..\\..\\..\\target"
 jar_file_name = find_latest_jar(target_directory)
 
 # Paths to the JAR files and ports
-jar1_path = "D:/engine/v2/chess-engine-2.0.0.jar"
+jar1_path = "D:/Chess-Engines/v2/chess-engine-2.0.0.jar"
 
 if jar_file_name:
     jar2_path = os.path.join(target_directory, jar_file_name)
@@ -78,8 +82,7 @@ if jar_file_name:
 else:
     print("No JAR file found in target directory")
 
-
-jar1_port = "8081"
+jar1_port = "8080"
 jar2_port = "8082"
 
 # Start the Java processes
@@ -101,7 +104,7 @@ last_move_made_by_engine1 = None
 last_move_made_by_engine2 = None
 
 # Time limit for making a move (in seconds)
-move_time_limit = 1
+move_time_limit = 3
 
 # Check if both servers are running
 if not is_server_running(engine1_url):
@@ -143,6 +146,7 @@ for game_number in range(1, 101):
                 last_move_time_engine1 = time.time()  # Reset the timer as engine 1 made a move
                 if last_move_engine1 and 'from' in last_move_engine1 and 'to' in last_move_engine1:
                     make_move(engine2_url, last_move_engine1['from'], last_move_engine1['to'])
+
 
             # Get move from engine 2
             last_move_engine2 = get_last_move(engine2_url)
