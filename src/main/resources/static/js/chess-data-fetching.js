@@ -194,7 +194,9 @@ const autoPlayColor = (color) => {
 };
 // Function for onDrop event
 const onDrop = (source, target) => {
-    makeRequest('PATCH', `http://localhost:8080/chess/figure/move/${source}/${target}`, reloadBoard);
+    const saveToOpeningBook = document.getElementById('recordOpeningMove').checked;
+    const url = `http://localhost:8080/chess/figure/move/${source}/${target}?saveToOpeningBook=${saveToOpeningBook}`;
+    makeRequest('PATCH', url, reloadBoard);
 };
 
 const onMouseoverSquare = (square) => {

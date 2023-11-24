@@ -15,12 +15,12 @@ def get_file_name_without_extension(file_path):
     return file_name_without_extension
 
 
-#def start_java_process(jar_path, jar_port):
-    #with open(os.devnull, 'w') as devnull:
-        #return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + jar_port], stdout=devnull, stderr=devnull)
-
 def start_java_process(jar_path, jar_port):
-    return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + str(jar_port)])
+    with open(os.devnull, 'w') as devnull:
+        return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + jar_port], stdout=devnull, stderr=devnull)
+
+#def start_java_process(jar_path, jar_port):
+#    return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + str(jar_port)])
 
 # Function to make a move on a chess engine
 def make_move(engine_url, from_pos, to_pos):
@@ -74,7 +74,7 @@ target_directory = "..\\..\\..\\..\\target"
 jar_file_name = find_latest_jar(target_directory)
 
 # Paths to the JAR files and ports
-jar1_path = "D:/Chess-Engines/v2/chess-engine-2.0.0.jar"
+jar1_path = "D:/Chess-Engines/v2/chess-engine-2.0.1.jar"
 
 if jar_file_name:
     jar2_path = os.path.join(target_directory, jar_file_name)

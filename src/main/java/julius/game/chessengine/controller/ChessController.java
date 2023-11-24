@@ -2,6 +2,7 @@ package julius.game.chessengine.controller;
 
 import julius.game.chessengine.ai.AI;
 import julius.game.chessengine.ai.MoveAndScore;
+import julius.game.chessengine.ai.OpeningBook;
 import julius.game.chessengine.board.*;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
@@ -28,6 +29,7 @@ public class ChessController {
 
     private final AI ai;
     private final Engine engine;
+    private final OpeningBook openingBook;
 
     @GetMapping(value = "/score")
     public ResponseEntity<Score> getScore() {
@@ -113,14 +115,32 @@ public class ChessController {
 
     @PatchMapping(value = "/figure/move/{from}/{to}")
     public ResponseEntity<GameState> moveFigure(@PathVariable("from") String from,
-                                                @PathVariable("to") String to) {
-        if (from != null && to != null) {
-            //TODO implement promotion
-            GameState state = engine.moveFigure(convertStringToIndex(from), convertStringToIndex(to), 5);
-            ai.updateBoardStateHash();
-            return ResponseEntity.ok(state);
-        } else return ResponseEntity.status(406).build();
+                                                @PathVariable("to") String to,
+                                                @RequestParam(value = "saveToOpeningBook", defaultValue = "false") boolean saveToOpeningBook) {
+        if (from == null || to == null) {
+            return ResponseEntity.status(406).build(); // Not Acceptable if from or to is null
+        }
+
+        long boardStateHash = -1;
+        if (saveToOpeningBook) {
+            // Capture the board state hash before the move
+            boardStateHash = engine.getBoardStateHash();
+        }
+
+        // Perform the move on the engine
+        int fromIndex = convertStringToIndex(from);
+        int toIndex = convertStringToIndex(to);
+        GameState state = engine.moveFigure(fromIndex, toIndex, 5); // Replace 5 with the actual promotion piece type, if applicable
+
+        if (saveToOpeningBook && boardStateHash != -1) {
+            // Save the opening if required
+            openingBook.addOpening(engine.getLastMove(), boardStateHash);
+        }
+
+        ai.updateBoardStateHash(); // Update AI's board state hash
+        return ResponseEntity.ok(state);
     }
+
     @GetMapping(value = "/figure/move/possible/{from}")
     public ResponseEntity<List<Position>> getPossibleToPositions(@PathVariable("from") String from) {
         if (from != null) {
@@ -150,5 +170,6 @@ public class ChessController {
 
         return ResponseEntity.ok(boardState);
     }
+
 
 }

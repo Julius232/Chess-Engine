@@ -239,6 +239,14 @@ public class Engine {
         }
     }
 
+    public Integer getLastMove() {
+        if (!line.isEmpty()) {
+            return line.getLast();
+        } else {
+            throw new IllegalStateException("undoLastMoveWasNotPossible, line is empty");
+        }
+    }
+
     public FEN translateBoardToFen() {
         return FEN.translateBoardToFEN(bitBoard);
     }

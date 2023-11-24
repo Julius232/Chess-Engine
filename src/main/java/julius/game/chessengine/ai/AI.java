@@ -27,6 +27,8 @@ public class AI {
     @Getter
     private final Engine mainEngine;
 
+    private final OpeningBook openingBook;
+
     public static final double EXIT_FLAG = Double.MAX_VALUE;
     private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Long, CaptureTranspositionTableEntry> captureTranspositionTable = new ConcurrentHashMap<>();
@@ -42,6 +44,8 @@ public class AI {
     private volatile long currentBoardState = -1;
     private volatile long beforeCalculationBoardState = -2;
 
+    private int currentBestMove = -1;
+
     @Getter
     private List<MoveAndScore> calculatedLine = Collections.synchronizedList(new ArrayList<>());
 
@@ -53,8 +57,9 @@ public class AI {
     private long timeLimit; // milliseconds
 
 
-    public AI(Engine mainEngine) {
+    public AI(Engine mainEngine, OpeningBook openingBook) {
         this.mainEngine = mainEngine;
+        this.openingBook = openingBook;
         this.timeLimit = 50;
 
         // Initialize the array for killer moves
@@ -117,26 +122,25 @@ public class AI {
     }
 
     public void performMove() {
-        if (calculatedLine.isEmpty()) {
+        if (currentBestMove == -1) {
             mainEngine.logBoard();
-            // If the calculatedLine is empty, log an error and return the current game state without making a move.
-            log.error("Calculated line is empty. Unable to perform a move.");
+            // Log an error if no valid current best move is available.
+            log.error("No current best move available. Unable to perform a move.");
             log.error("boardStateBeforeCalculation {}, currentBoardHash {}", beforeCalculationBoardState, currentBoardState);
             log.error("WhitesTurn = " + mainEngine.whitesTurn());
             log.error("Gamestate = " + mainEngine.getGameState());
             return; // Return the current state without making a move
         }
 
-        MoveAndScore aiMove = calculatedLine.remove(0); // Retrieve and remove the move from the list
-        if (aiMove == null || aiMove.getMove() == -1 || !MoveHelper.isWhitesMove(aiMove.getMove()) == mainEngine.whitesTurn()) {
-            // If the move is null or invalid, log an error and return the current game state without making a move.
-            log.error("Calculated move {}.", aiMove != null ? Move.convertIntToMove(aiMove.getMove()) : null);
-            log.error("");
+        if (!MoveHelper.isWhitesMove(currentBestMove) == mainEngine.whitesTurn()) {
+            // If the current best move is not valid for the current turn, log an error and return.
+            log.error("Current best move {} is not valid for the current turn.", Move.convertIntToMove(currentBestMove));
             return; // Return the current state without making a move
         }
 
-        mainEngine.performMove(aiMove.getMove());
+        mainEngine.performMove(currentBestMove);
         currentBoardState = mainEngine.getBoardStateHash();
+        currentBestMove = -1; // Reset currentBestMove after performing it
     }
 
     private void calculateLine() {
@@ -166,8 +170,11 @@ public class AI {
 
     private void calculateBestMove(Engine simulatorEngine, long boardStateHash, boolean isWhite, long startTime) {
         double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-        int bestMove = -1;
-
+        int bestMove = openingBook.getRandomMoveForBoardStateHash(currentBoardState); //if none found returns -1
+        if(bestMove != -1) {
+            currentBestMove = bestMove;
+            return;
+        }
         try {
             for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
                 if (!keepCalculating || positionChanged()) {
@@ -196,6 +203,7 @@ public class AI {
                     break;
                 }
             }
+            currentBestMove = bestMove;
         } finally {
             // Ensure fillCalculatedLine is called even if the loop is broken
             fillCalculatedLine(simulatorEngine);
