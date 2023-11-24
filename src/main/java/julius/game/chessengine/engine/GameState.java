@@ -37,12 +37,12 @@ public class GameState {
         score.initializeScore(bitBoard);
     }
 
-    public void update(BitBoard bitBoard, MoveList legalMoves, int move) {
-        updateState(bitBoard, legalMoves);
+    public void update(BitBoard bitBoard, MoveList legalMoves, int move, boolean isOpeningMove) {
+        updateState(bitBoard, legalMoves, isOpeningMove);
         updateScore(bitBoard, move);
     }
 
-    public void updateState(BitBoard bitBoard, MoveList legalMoves) {
+    public void updateState(BitBoard bitBoard, MoveList legalMoves, boolean isOpeningMove) {
         if (whiteInCheck(bitBoard)) {
             state = GameStateEnum.WHITE_IN_CHECK;
             if (whiteLost(legalMoves)) {
@@ -56,7 +56,12 @@ public class GameState {
         } else if (isDraw(bitBoard, legalMoves)) {
             state = GameStateEnum.DRAW;
         } else {
-            state = GameStateEnum.PLAY;
+            if(isOpeningMove) {
+                state = GameStateEnum.PLAY_OPENING;
+            }
+            else {
+                state = GameStateEnum.PLAY;
+            }
             incrementHashCount(bitBoard.getBoardStateHash());
         }
     }

@@ -1,5 +1,7 @@
 package julius.game.chessengine.ai;
 
+import julius.game.chessengine.board.Move;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -7,12 +9,22 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Component
+@Log4j2
 public class OpeningBook {
     private static final String OPENINGS_FILE_PATH = "/opening/openings.txt";
     private final Map<Long, List<Integer>> openings = new HashMap<>();
 
-    public OpeningBook() {
+    private static OpeningBook instance;
+    
+    private OpeningBook() {
         loadOpenings();
+    }
+
+    public static synchronized OpeningBook getInstance() {
+        if (instance == null) {
+            instance = new OpeningBook();
+        }
+        return instance;
     }
 
     private void loadOpenings() {
@@ -63,6 +75,16 @@ public class OpeningBook {
             return -1; // or a default move, depending on how you want to handle this scenario
         }
         Random random = new Random();
-        return moves.get(random.nextInt(moves.size()));
+        int randomMove = moves.get(random.nextInt(moves.size()));
+        log.info("Performing Opening Move: {}, BoardStateHash: {}", Move.convertIntToMove(randomMove), boardStateHash);
+        return randomMove;
+    }
+
+    public boolean containsMoveAndBoardStateHash(long boardStateHashBeforeMove, int move) {
+        List<Integer> moves = openings.get(boardStateHashBeforeMove);
+        if (moves == null) {
+            return false;
+        }
+        return moves.contains(move);
     }
 }

@@ -1,5 +1,6 @@
 package julius.game.chessengine.engine;
 
+import julius.game.chessengine.ai.OpeningBook;
 import julius.game.chessengine.board.*;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
@@ -15,6 +16,9 @@ import java.util.stream.Collectors;
 @Service
 @Log4j2
 public class Engine {
+
+    @Getter
+    private OpeningBook openingBook;
 
     private boolean legalMovesNeedUpdate = true;
     private MoveList legalMoves;
@@ -36,6 +40,7 @@ public class Engine {
         //this.legalMoves = new MoveList(other.legalMoves);
         this.legalMoves = other.legalMoves;
         this.legalMovesNeedUpdate = other.legalMovesNeedUpdate;
+        this.openingBook = other.openingBook;
     }
 
     public MoveList getAllLegalMoves() {
@@ -49,15 +54,19 @@ public class Engine {
     }
 
     public void performMove(int move) {
+        boolean isOpeningMove = false;
         if (!gameState.isGameOver()) {
-            //TODO remove in the future should be already legal
+            long boardStateHashBeforeMove = getBoardStateHash();
             if (isLegalMove(move)) {
                 bitBoard.performMove(move);
             } else {
                 throw new IllegalStateException(String.format("Move: %s not legal for AI", Move.convertIntToMove(move)));
             }
+            if(openingBook.containsMoveAndBoardStateHash(boardStateHashBeforeMove, move)) {
+                isOpeningMove = true;
+            }
             generateLegalMoves();
-            gameState.update(bitBoard, legalMoves, move);
+            gameState.update(bitBoard, legalMoves, move, isOpeningMove);
             line.add(move);
         }
     }
@@ -66,7 +75,7 @@ public class Engine {
         this.bitBoard = FEN.translateFENtoBitBoard(fen);
         this.gameState = new GameState(bitBoard);
         generateLegalMoves();
-        gameState.updateState(bitBoard, legalMoves);
+        gameState.updateState(bitBoard, legalMoves, false);
     }
 
     public synchronized Engine createSimulation() {
@@ -79,6 +88,7 @@ public class Engine {
         gameState = new GameState(bitBoard);
         legalMovesNeedUpdate = true;
         line = new ArrayList<>();
+        this.openingBook = OpeningBook.getInstance();
     }
 
     private void generateLegalMoves() {
@@ -243,7 +253,7 @@ public class Engine {
         if (!line.isEmpty()) {
             return line.getLast();
         } else {
-            throw new IllegalStateException("undoLastMoveWasNotPossible, line is empty");
+            return -1;
         }
     }
 

@@ -27,8 +27,6 @@ public class AI {
     @Getter
     private final Engine mainEngine;
 
-    private final OpeningBook openingBook;
-
     public static final double EXIT_FLAG = Double.MAX_VALUE;
     private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Long, CaptureTranspositionTableEntry> captureTranspositionTable = new ConcurrentHashMap<>();
@@ -57,9 +55,8 @@ public class AI {
     private long timeLimit; // milliseconds
 
 
-    public AI(Engine mainEngine, OpeningBook openingBook) {
+    public AI(Engine mainEngine) {
         this.mainEngine = mainEngine;
-        this.openingBook = openingBook;
         this.timeLimit = 50;
 
         // Initialize the array for killer moves
@@ -170,7 +167,7 @@ public class AI {
 
     private void calculateBestMove(Engine simulatorEngine, long boardStateHash, boolean isWhite, long startTime) {
         double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-        int bestMove = openingBook.getRandomMoveForBoardStateHash(currentBoardState); //if none found returns -1
+        int bestMove = mainEngine.getOpeningBook().getRandomMoveForBoardStateHash(currentBoardState); //if none found returns -1
         if(bestMove != -1) {
             currentBestMove = bestMove;
             return;
@@ -567,16 +564,16 @@ public class AI {
     private double evaluateStaticPosition(GameState gameState, boolean isWhitesTurn, int depth) {
 
         if (gameState.isInStateCheckMate()) {
-            log.info("Checkmate found");
+            log.debug("Checkmate found");
             return CHECKMATE - depth; // -depth to allow faster checkmates
         }
         if (gameState.isInStateDraw()) {
-            log.info("DRAW");
+            log.debug("DRAW");
             return DRAW;
         }
         double scoreDifference = gameState.getScore().getScoreDifference() / 1000.0;
 
-        log.info("Evaluate static position score {}, {} ", isWhitesTurn ? scoreDifference : -scoreDifference, isWhitesTurn ? "WHITE" : "BLACK");
+        log.debug("Evaluate static position score {}, {} ", isWhitesTurn ? scoreDifference : -scoreDifference, isWhitesTurn ? "WHITE" : "BLACK");
         return isWhitesTurn ? scoreDifference : -scoreDifference;
     }
 

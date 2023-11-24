@@ -12,8 +12,7 @@ public class EvalTest {
     @Test
     public void quiencesearch() {
         Engine engine = new Engine();
-        OpeningBook openingBook = new OpeningBook();
-        AI ai = new AI(engine, openingBook);
+        AI ai = new AI(engine);
         engine.importBoardFromFen("b4rk1/5ppR/3N4/8/3n4/4B3/5P2/4K3 w - - 0 1");
         log.info(ai.evaluateBoard(engine, true, System.currentTimeMillis(), 10000000));
     }

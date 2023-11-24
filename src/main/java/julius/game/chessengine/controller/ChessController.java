@@ -134,7 +134,10 @@ public class ChessController {
 
         if (saveToOpeningBook && boardStateHash != -1) {
             // Save the opening if required
-            openingBook.addOpening(engine.getLastMove(), boardStateHash);
+            int lastMove = engine.getLastMove();
+            if(lastMove != -1) {
+                openingBook.addOpening(lastMove, boardStateHash);
+            }
         }
 
         ai.updateBoardStateHash(); // Update AI's board state hash
@@ -157,6 +160,10 @@ public class ChessController {
 
         BoardState boardState = new BoardState();
         boardState.setGameState(gameState);
+        int lastMove = ai.getMainEngine().getLastMove();
+        if(lastMove != -1) {
+            boardState.setLastMove(Move.convertIntToMove(lastMove).getTo().toString());
+        }
 
         if (!moveAndScores.isEmpty()) {
             String moves = moveAndScores.stream()

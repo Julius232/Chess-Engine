@@ -9,5 +9,6 @@ public class BoardState {
     GameState gameState;
     String move;
     double score;
+    String lastMove;
 
 }
