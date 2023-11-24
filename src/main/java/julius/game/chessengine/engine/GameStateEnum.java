@@ -6,5 +6,6 @@ public enum GameStateEnum {
     BLACK_IN_CHECK,
     WHITE_WON,
     BLACK_WON,
+    PLAY_OPENING,
     DRAW
 }

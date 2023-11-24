@@ -3,19 +3,24 @@ package julius.game.chessengine.helper;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 
 @Log4j2
 public class BishopHelper {
+
+    private static final String BISHOP_MAGIC_NUMBERS_PATH = "/magic/bishop_magic_numbers.txt";
+
+    private static final String BISHOP_MAGIC_NUMBERS_PATH_write = "src/main/resources" + BISHOP_MAGIC_NUMBERS_PATH;
     public static final int[] BISHOP_POSITIONAL_VALUES = {
             -20, -10, -10, -10, -10, -10, -10, -20,
-            -10,   5,   0,   0,   0,   0,   5, -10,
-            -10,  10,  10,  10,  10,  10,  10, -10,
-            -10,   0,  10,  20,  20,  10,   0, -10,
-            -10,   5,   5,  20,  20,   5,   5, -10,
-            -10,   0,  10,  10,  10,  10,   0, -10,
-            -10,  10,  10,  10,  10,  10,  10, -10,
+            -10, 5, 0, 0, 0, 0, 5, -10,
+            -10, 10, 10, 10, 10, 10, 10, -10,
+            -10, 0, 10, 20, 20, 10, 0, -10,
+            -10, 5, 5, 20, 20, 5, 5, -10,
+            -10, 0, 10, 10, 10, 10, 0, -10,
+            -10, 10, 10, 10, 10, 10, 10, -10,
             -20, -10, -10, -10, -10, -10, -10, -20
     };
 
@@ -88,8 +93,7 @@ public class BishopHelper {
             if (duplicatesFound) {
                 // Submit the task only if duplicates are found, indicating a need for optimization
                 executor.submit(() -> findMagicNumberForSquare(square, magicNumbers));
-            }
-            else {
+            } else {
                 log.info("Bishop square {} is fully optimized size {}", square, squareIndexCounts.get(square));
             }
         }
@@ -113,7 +117,6 @@ public class BishopHelper {
         Set<Long> occupancies = generateAllOccupancies(mask);
         int minIndices = calculateIndexCount(bishopMagics[square], square, mask);
         log.info("Bishop Square: {}, has a size of {}", square, minIndices);
-
 
 
         while (true) {
@@ -158,7 +161,7 @@ public class BishopHelper {
 
 
     private void writeMagicNumbersToFile(ConcurrentHashMap<Integer, Long> magicNumbers) {
-        File file = new File("src/main/resources/magic/bishop_magic_numbers.txt");
+        File file = new File(BISHOP_MAGIC_NUMBERS_PATH_write);
         Map<Integer, Long> existingNumbers = new HashMap<>();
 
         // Load existing magic numbers from the file
@@ -191,61 +194,6 @@ public class BishopHelper {
         }
     }
 
-
-
-    public void findMagicNumbers() {
-
-
-        // Then, find magic numbers
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("src/main/resources/magic/bishop_magic_numbers.txt", true))) {
-
-            boolean allFound = false;
-            while (!allFound) {
-                long magicCandidate = randomMagicNumber();
-                allFound = true; // Assume all found, and set to false if any are missing
-
-                for (int square = 0; square < 64; square++) {
-                    if (squareMagicFound[square]) {
-                        continue; // Skip if magic number already found for this square
-                    }
-
-                    long mask = bishopMasks[square]; // Use the pre-stored mask
-                    Set<Long> occupancies = generateAllOccupancies(mask);
-
-                    Map<Integer, Long> indexToOccupancy = new HashMap<>();
-                    boolean isMagic = true;
-
-                    for (long occupancy : occupancies) {
-                        int index = transform(occupancy, magicCandidate, mask);
-
-                        if (indexToOccupancy.containsKey(index) &&
-                                indexToOccupancy.get(index) != occupancy) {
-                            isMagic = false;
-                            break;
-                        }
-
-                        indexToOccupancy.put(index, occupancy);
-                    }
-
-                    if (!isMagic) {
-                        allFound = false; // If any magic number is not found, set allFound to false
-                    } else {
-                        squareMagicFound[square] = true;
-                        bishopMagics[square] = magicCandidate;
-                        squareMagicFound[square] = true;
-                        log.info("Magic number found for square " + square + ": " + magicCandidate);
-                        writer.write(square + ":" + magicCandidate + ":" + mask + "\n");
-                        writer.flush(); // Ensure it's written immediately
-                    }
-                }
-            }
-        } catch (IOException e) {
-            log.error("Error writing to file", e);
-        }
-
-        // Finally, initialize bishop attacks using the found magic numbers
-        initializeBishopAttacks();
-    }
 
     public void initializeBishopAttacks() {
         for (int square = 0; square < 64; square++) {
@@ -325,23 +273,26 @@ public class BishopHelper {
     }
 
     public int transform(long occupancy, long magicNumber, long mask) {
-        return (int)((occupancy * magicNumber) >>> (64 - Long.bitCount(mask)));
+        return (int) ((occupancy * magicNumber) >>> (64 - Long.bitCount(mask)));
     }
 
     public void loadMagicNumbers() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("src/main/resources/magic/bishop_magic_numbers.txt"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(":");
-                if (parts.length == 2) {
-                    int square = Integer.parseInt(parts[0]);
-                    squareMagicFound[square] = true;
+        try (InputStream is = getClass().getResourceAsStream(BISHOP_MAGIC_NUMBERS_PATH)) {
+            assert is != null;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(":");
+                    if (parts.length == 2) {
+                        int square = Integer.parseInt(parts[0]);
+                        squareMagicFound[square] = true;
 
-                    long magicNumber = Long.parseLong(parts[1]);
-                    bishopMagics[square] = magicNumber;
+                        long magicNumber = Long.parseLong(parts[1]);
+                        bishopMagics[square] = magicNumber;
+                    }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | NullPointerException e) {
             log.error("Error reading magic numbers from file", e);
         }
     }

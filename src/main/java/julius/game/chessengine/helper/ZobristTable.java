@@ -1,5 +1,7 @@
 package julius.game.chessengine.helper;
 
+import lombok.Getter;
+
 import java.util.Random;
 
 public class ZobristTable {
@@ -7,10 +9,11 @@ public class ZobristTable {
     private static final int PIECE_TYPES = 12;
     private static final int SQUARES = 64;
     private static final int CASTLING_RIGHTS = 4; // Two for each player (kingside, queenside)
-    private static final int FILE_COUNT = 8; // For en passant (one for each file)
     private static final long[][] pieceSquareTable = new long[PIECE_TYPES][SQUARES];
     private static final long[] castlingRightsHash = new long[CASTLING_RIGHTS];
-    private static final long[] enPassantSquareHash = new long[FILE_COUNT];
+    private static final long[] enPassantSquareHash = new long[SQUARES];
+    // Method to get the hash value indicating it's Black's turn
+    @Getter
     private static final long blackTurnHash;
 
     static {
@@ -30,7 +33,7 @@ public class ZobristTable {
         }
 
         // Initialize en passant square hash values
-        for (int i = 0; i < FILE_COUNT; i++) {
+        for (int i = 0; i < SQUARES; i++) {
             enPassantSquareHash[i] = rand.nextLong();
         }
 
@@ -47,13 +50,8 @@ public class ZobristTable {
     }
 
     // Method to get the hash value for a specific en passant file
-    public static long getEnPassantSquareHash(int file) {
-        return enPassantSquareHash[file];
-    }
-
-    // Method to get the hash value indicating it's Black's turn
-    public static long getBlackTurnHash() {
-        return blackTurnHash;
+    public static long getEnPassantSquareHash(int squareIndex) {
+        return enPassantSquareHash[squareIndex];
     }
 
 }

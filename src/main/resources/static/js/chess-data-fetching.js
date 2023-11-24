@@ -1,4 +1,12 @@
 let latestGameData = null;
+let latestStateData = null;
+
+// Object to store highlighted square changes
+let highlightedSquares = {};
+let lastHoveredSquare = null;
+let lastPossibleMoves = [];
+
+let previousPiecesData = null;
 
 // Function to make API requests
 const makeRequest = async (method, url, callback) => {
@@ -15,7 +23,7 @@ const makeRequest = async (method, url, callback) => {
 // Update the calculated line and game details
 const updateCalculatedLine = () => {
     makeRequest('GET', 'http://localhost:8080/chess/state', (data) => {
-        latestGameData = data;
+        latestStateData = data;
         const lineText = data.move || "No moves yet";
         const gameState = data.gameState.state;
         const score = data.score;
@@ -194,7 +202,9 @@ const autoPlayColor = (color) => {
 };
 // Function for onDrop event
 const onDrop = (source, target) => {
-    makeRequest('PATCH', `http://localhost:8080/chess/figure/move/${source}/${target}`, reloadBoard);
+    const saveToOpeningBook = document.getElementById('recordOpeningMove').checked;
+    const url = `http://localhost:8080/chess/figure/move/${source}/${target}?saveToOpeningBook=${saveToOpeningBook}`;
+    makeRequest('PATCH', url, reloadBoard);
 };
 
 const onMouseoverSquare = (square) => {
@@ -202,18 +212,37 @@ const onMouseoverSquare = (square) => {
         if (moves.length === 0) return;
         highlightSquare(square, true);
         moves.forEach(move => highlightSquare(move.x + move.y, true));
+
+        // Store the last hovered square and its possible moves
+        lastHoveredSquare = square;
+        lastPossibleMoves = moves;
     });
 };
 
 const onMouseoutSquare = () => {
-    $('#board .square-55d63').css('background', '');
+    // Iterate over all highlighted squares and remove the highlight
+    Object.keys(highlightedSquares).forEach(square => {
+        const $square = $(`#board .square-${square}`);
+        $square.css('background', '');
+    });
+
+    // Clear the highlightedSquares object
+    highlightedSquares = {};
 };
 
 const highlightSquare = (square, highlight) => {
     const $square = $(`#board .square-${square}`);
     const background = $square.hasClass('black-3c85d') ? 'lightskyblue' : 'blue';
-    $square.css('background', highlight ? background : '');
+
+    if (highlight) {
+        $square.css('background', background);
+        highlightedSquares[square] = background; // Store the change
+    } else {
+        $square.css('background', '');
+        delete highlightedSquares[square]; // Remove the entry from the object
+    }
 };
+
 
 let board; // Declare the board object at a scope accessible by all functions
 
@@ -231,15 +260,53 @@ const initBoard = () => {
 };
 
 const reloadBoard = () => {
-    makeRequest('GET', 'http://localhost:8080/chess/figure/frontend', (data) => {
+    makeRequest('GET', 'http://localhost:8080/chess/figure/frontend', (newData) => {
         if (board) {
-            board.position(data.renderBoard);
+            // Compare new data with previous data
+
+
+            board.position(newData.renderBoard);
             updateCalculatedLine(); // Update the calculated line
+
+            // Update latestGameData with the new data
+            latestGameData = newData;
+
+            // Check if the game state is PLAY_OPENING
+            if (latestStateData && latestStateData.gameState.state === 'PLAY_OPENING') {
+                highlightOpeningSquare(latestStateData.lastMove);
+            }
+
+            if (JSON.stringify(newData) !== JSON.stringify(previousPiecesData)) {
+                $('#board .square-55d63').css('background', '');
+                previousPiecesData = newData; // Update the previousData with the new data
+            }
         } else {
             console.error('Board not initialized');
         }
     });
 };
+
+// Function to highlight the opening square
+const highlightOpeningSquare = (square) => {
+    console.log(`Highlighting opening square: ${square}`); // Debugging log
+
+    if (!square) {
+        console.log("No square provided for highlighting.");
+        return;
+    }
+
+    const $square = $(`#board .square-${square}`);
+    const highlightColor = 'yellow'; // Choose a distinct color for highlighting
+
+    if ($square.length === 0) {
+        console.log(`Square element not found: ${square}`);
+        return;
+    }
+
+    $square.css('background', highlightColor);
+};
+
+
 
 // Function to start the auto-refresh interval
 const startAutoRefresh = (intervalMs) => {

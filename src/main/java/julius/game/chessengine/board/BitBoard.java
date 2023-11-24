@@ -11,6 +11,7 @@ import lombok.extern.log4j.Log4j2;
 
 import java.util.Objects;
 
+import static julius.game.chessengine.board.MoveHelper.createMoveInt;
 import static julius.game.chessengine.helper.BitHelper.*;
 import static julius.game.chessengine.helper.BitboardHelper.lineBetweenIndices;
 import static julius.game.chessengine.helper.KingHelper.KING_ATTACKS;
@@ -189,7 +190,7 @@ public class BitBoard {
         // Setting all pieces on the board
         allPieces = whitePieces | blackPieces;
 
-        lastMoveDoubleStepPawnIndex = -1;
+        lastMoveDoubleStepPawnIndex = 0;
     }
 
     // Method to get the bitboard for a specific piece type and color
@@ -317,7 +318,7 @@ public class BitBoard {
         addPawnMoves(moves, attacksLeft, whitesTurn ? 7 : 9, true, whitesTurn);
         addPawnMoves(moves, attacksRight, whitesTurn ? 9 : 7, true, whitesTurn);
 
-        if (lastMoveDoubleStepPawnIndex != -1) {
+        if (lastMoveDoubleStepPawnIndex != 0) {
             generateEnPassantMoves(moves, pawns, whitesTurn);
         }
 
@@ -352,7 +353,7 @@ public class BitBoard {
 
     private void addEnPassantMove(MoveList moves, int fromIndex, int toIndex, boolean whitesTurn) {
         moves.add(
-                createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, true, false, true, null, PieceType.PAWN, false, false));
+                createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, true, false, true, null, PieceType.PAWN, false, false, lastMoveDoubleStepPawnIndex));
     }
 
     private void addPawnMoves(MoveList moves, long bitboard, int shift, boolean isCapture, boolean whitesTurn) {
@@ -369,12 +370,12 @@ public class BitBoard {
             // Check for initial double square move
             if (checkForInitialDoubleSquareMove(fromIndex, toIndex, direction)) {
                 if (isPromotion) {
-                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.QUEEN, capturedType, false, false));
-                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.ROOK, capturedType, false, false));
-                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.BISHOP, capturedType, false, false));
-                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.KNIGHT, capturedType, false, false));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.QUEEN, capturedType, false, false, lastMoveDoubleStepPawnIndex));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.ROOK, capturedType, false, false, lastMoveDoubleStepPawnIndex));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.BISHOP, capturedType, false, false, lastMoveDoubleStepPawnIndex));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, PieceType.KNIGHT, capturedType, false, false, lastMoveDoubleStepPawnIndex));
                 } else {
-                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, null, capturedType, false, false));
+                    moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, null, capturedType, false, false, lastMoveDoubleStepPawnIndex));
                 }
             }
 
@@ -426,7 +427,7 @@ public class BitBoard {
                 // Proceed if the target position is not occupied by own piece
                 if (!isOwnPiece) {
                     PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(targetIndex) : null;
-                    moves.add(createMoveInt(knightIndex, targetIndex, PieceType.KNIGHT, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false));
+                    moves.add(createMoveInt(knightIndex, targetIndex, PieceType.KNIGHT, whitesTurn, isCapture, false, false, null, capturedPieceType, false, false, lastMoveDoubleStepPawnIndex));
                 }
 
                 potentialMoves &= potentialMoves - 1; // Clear the lowest set bit
@@ -455,7 +456,7 @@ public class BitBoard {
 
 
                 boolean isCapture = (opponentPieces & (1L << targetSquare)) != 0;
-                moves.add(createMoveInt(bishopSquare, targetSquare, PieceType.BISHOP, isWhite, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, false));
+                moves.add(createMoveInt(bishopSquare, targetSquare, PieceType.BISHOP, isWhite, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, false, lastMoveDoubleStepPawnIndex));
             }
         }
     }
@@ -479,7 +480,7 @@ public class BitBoard {
                 attacks &= attacks - 1; // Remove the least significant bit representing an attack
                 boolean isFirstRookMove = !hasRookMoved(rookSquare);
                 boolean isCapture = (opponentPieces & (1L << targetSquare)) != 0;
-                moves.add(createMoveInt(rookSquare, targetSquare, PieceType.ROOK, whitesTurn, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, isFirstRookMove));
+                moves.add(createMoveInt(rookSquare, targetSquare, PieceType.ROOK, whitesTurn, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, isFirstRookMove, lastMoveDoubleStepPawnIndex));
             }
         }
     }
@@ -503,7 +504,7 @@ public class BitBoard {
                 int targetSquare = Long.numberOfTrailingZeros(attacks);
                 attacks &= attacks - 1; // Remove the least significant bit representing an attack
                 boolean isCapture = (opponentPieces & (1L << targetSquare)) != 0;
-                moves.add(createMoveInt(queenSquare, targetSquare, PieceType.QUEEN, whitesTurn, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, false));
+                moves.add(createMoveInt(queenSquare, targetSquare, PieceType.QUEEN, whitesTurn, isCapture, false, false, null, isCapture ? getPieceTypeAtIndex(targetSquare) : null, false, false, lastMoveDoubleStepPawnIndex));
             }
         }
     }
@@ -525,7 +526,7 @@ public class BitBoard {
             if (!isOccupiedByColor(targetIndex, whitesTurn)) {
                 boolean isCapture = isOccupiedByOpponent(targetIndex, whitesTurn);
                 PieceType capturedPieceType = isCapture ? getPieceTypeAtIndex(targetIndex) : null;
-                moves.add(createMoveInt(kingPositionIndex, targetIndex, PieceType.KING, whitesTurn, isCapture, false, false, null, capturedPieceType, isFirstKingMove, false));
+                moves.add(createMoveInt(kingPositionIndex, targetIndex, PieceType.KING, whitesTurn, isCapture, false, false, null, capturedPieceType, isFirstKingMove, false, lastMoveDoubleStepPawnIndex));
             }
 
         }
@@ -535,11 +536,11 @@ public class BitBoard {
         if (canKingCastle(whitesTurn)) {
             // Kingside castling
             if (canCastleKingside(whitesTurn, kingPositionIndex)) {
-                moves.add(createMoveInt(kingPositionIndex, kingPositionIndex + 2, PieceType.KING, whitesTurn, false, true, false, null, null, true, true));
+                moves.add(createMoveInt(kingPositionIndex, kingPositionIndex + 2, PieceType.KING, whitesTurn, false, true, false, null, null, true, true, lastMoveDoubleStepPawnIndex));
             }
             // Queenside castling
             if (canCastleQueenside(whitesTurn, kingPositionIndex)) {
-                moves.add(createMoveInt(kingPositionIndex, kingPositionIndex - 2, PieceType.KING, whitesTurn, false, true, false, null, null, true, true));
+                moves.add(createMoveInt(kingPositionIndex, kingPositionIndex - 2, PieceType.KING, whitesTurn, false, true, false, null, null, true, true, lastMoveDoubleStepPawnIndex));
             }
         }
     }
@@ -653,16 +654,15 @@ public class BitBoard {
     // The above-mentioned bishopAttackBitmask, rookAttackBitmask, queenAttackBitmask, and kingAttackBitmask methods
 // would generate all potential squares each piece can attack from a given position and compare it to the current
 // bitboard of that piece type to see if there's an overlap.
-    public void performMove(int moveInt) {
-        int fromIndex = moveInt & 0x3F; // Extract the first 6 bits
-        int toIndex = (moveInt >> 6) & 0x3F; // Extract the next 6 bits
-        int pieceTypeBits = (moveInt >> 12) & 0x07; // Extract the next 3 bits
-        boolean isWhite = (moveInt & (1 << 15)) != 0; // Extract the color bit
-        int specialProperty = (moveInt >> 16) & 0x03; // Extract the next 2 bits
-        boolean isCapture = (specialProperty & 0x01) != 0;
-        boolean isEnPassantMove = specialProperty == 3;
-        boolean isCastlingMove = specialProperty == 2;
-        int promotionPieceTypeBits = (moveInt >> 18) & 0x07; // Extract the next 3 bits
+    public void performMove(int move) {
+        int fromIndex = MoveHelper.deriveFromIndex(move); // Extract the first 6 bits
+        int toIndex = MoveHelper.deriveToIndex(move); // Extract the next 6 bits
+        int pieceTypeBits = MoveHelper.derivePieceTypeBits(move); // Extract the next 3 bits
+        boolean isWhite = MoveHelper.isWhitesMove(move); // Extract the color bit
+        boolean isCapture = MoveHelper.isCapture(move);
+        boolean isEnPassantMove = MoveHelper.isEnPassantMove(move);
+        boolean isCastlingMove = MoveHelper.isCastlingMove(move);
+        int promotionPieceTypeBits = MoveHelper.derivePromotionPieceTypeBits(move); // Extract the next 3 bits
 
         long pieceBitboard = intToPiecesBitboard(pieceTypeBits, isWhite);
 
@@ -722,7 +722,7 @@ public class BitBoard {
         if (pieceTypeBits == 1 && Math.abs(fromIndex / 8 - toIndex / 8) == 2) {
             lastMoveDoubleStepPawnIndex = toIndex;
         } else {
-            lastMoveDoubleStepPawnIndex = -1;
+            lastMoveDoubleStepPawnIndex = 0;
         }
 
         // Handle en passant capture
@@ -1130,20 +1130,19 @@ public class BitBoard {
         return Math.abs(fromFile - toFile) > 1 || toRank < 0 || toRank > 7;
     }
 
-    public void undoMove(int moveInt) {
-        int fromIndex = moveInt & 0x3F; // Extract the first 6 bits
-        int toIndex = (moveInt >> 6) & 0x3F; // Extract the next 6 bits
-        int pieceTypeBits = (moveInt >> 12) & 0x07; // Extract the next 3 bits
-        boolean isWhite = (moveInt & (1 << 15)) != 0; // Extract the color bit
-        int specialProperty = (moveInt >> 16) & 0x03; // Extract the next 2 bits
-        boolean isCapture = (specialProperty & 0x01) != 0;
-        boolean isEnPassantMove = specialProperty == 3;
-        boolean isCastlingMove = specialProperty == 2;
-
-        int promotionPieceTypeBits = (moveInt >> 18) & 0x07; // Extract the next 3 bits
-        int capturedPieceTypeBits = (moveInt >> 21) & 0x07; // Extract the next 3 bits
-        boolean isKingFirstMove = (moveInt & (1 << 24)) != 0; // Extract the king's first move bit
-        boolean isRookFirstMove = (moveInt & (1 << 25)) != 0; // Extract the rook's first move bit
+    public void undoMove(int move) {
+        int fromIndex = MoveHelper.deriveFromIndex(move); // Extract the first 6 bits
+        int toIndex = MoveHelper.deriveToIndex(move); // Extract the next 6 bits
+        int pieceTypeBits = MoveHelper.derivePieceTypeBits(move); // Extract the next 3 bits
+        boolean isWhite = MoveHelper.isWhitesMove(move); // Extract the color bit
+        boolean isCapture = MoveHelper.isCapture(move);
+        boolean isEnPassantMove = MoveHelper.isEnPassantMove(move);
+        boolean isCastlingMove = MoveHelper.isCastlingMove(move);
+        int promotionPieceTypeBits = MoveHelper.derivePromotionPieceTypeBits(move); // Extract the next 3 bits
+        int capturedPieceTypeBits = MoveHelper.deriveCapturedPieceTypeBits(move); // Extract the next 3 bits
+        boolean isKingFirstMove = MoveHelper.isKingFirstMove(move); // Extract the king's first move bit
+        boolean isRookFirstMove = MoveHelper.isRookFirstMove(move); // Extract the rook's first move bit
+        int doubleStepPawnIndex = MoveHelper.deriveLastMoveDoubleStepPawnIndex(move);
 
         // 1. Handle Captured Piece Restoration
         undoCapture(toIndex, capturedPieceTypeBits, isCapture, isWhite, isEnPassantMove);
@@ -1159,18 +1158,16 @@ public class BitBoard {
         undoCastling(fromIndex, toIndex, isCastlingMove, isWhite);
 
         // If the move was a double pawn push, remove the last move double step pawn position
-        undoGameState(fromIndex, toIndex, pieceTypeBits, isKingFirstMove, isRookFirstMove, isWhite);
+        undoGameState(fromIndex, toIndex, pieceTypeBits, isKingFirstMove, isRookFirstMove, isWhite, doubleStepPawnIndex);
 
         // Update the aggregated bitboards
         updateAggregatedBitboards();
         whitesTurn = !whitesTurn;
     }
 
-    private void undoGameState(int fromIndex, int toIndex, int pieceTypeBits, boolean isKingFirstMove, boolean isRookFirstMove, boolean isWhite) {
+    private void undoGameState(int fromIndex, int toIndex, int pieceTypeBits, boolean isKingFirstMove, boolean isRookFirstMove, boolean isWhite, int doubleStepPawnIndex) {
 
-        if (pieceTypeBits == 1 && Math.abs(fromIndex / 8 - toIndex / 8) == 2) {
-            lastMoveDoubleStepPawnIndex = -1;
-        }
+        lastMoveDoubleStepPawnIndex = doubleStepPawnIndex;
 
         if (pieceTypeBits == 6 && isKingFirstMove) {
             if (isWhite) {
@@ -1274,55 +1271,6 @@ public class BitBoard {
         }
     }
 
-    private int createMoveInt(int fromIndex, int toIndex, PieceType pieceType, boolean isWhite, boolean isCapture, boolean isCastlingMove, boolean isEnPassantMove, PieceType promotionPieceType, PieceType capturedPieceType, boolean isKingFirstMove, boolean isRookFirstMove) {
-        int moveInt = 0;
-        moveInt |= fromIndex; // 6 bits for 'from' position
-        moveInt |= toIndex << 6; // 6 bits for 'to' position, shifted by 6 bits
-
-        int pieceTypeBits = pieceTypeToInt(pieceType); // 3 bits for piece type
-        moveInt |= pieceTypeBits << 12; // Shifted by 12 bits
-
-        if (isWhite) {
-            moveInt |= 1 << 15; // 1 bit for color, shifted by 15 bits
-        }
-
-        int specialProperty = (isCapture ? 1 : 0) | (isCastlingMove ? 2 : 0) | (isEnPassantMove ? 3 : 0);
-        moveInt |= specialProperty << 16; // Shifted by 16 bits
-
-        if (promotionPieceType != null) {
-            moveInt |= pieceTypeToInt(promotionPieceType) << 18; // 3 bits for promotion piece type, shifted by 18 bits
-        } else {
-            moveInt &= ~(0x07 << 18); // Ensure promotion bits are set to 000 if no promotion
-        }
-
-        if (capturedPieceType != null) {
-            moveInt |= pieceTypeToInt(capturedPieceType) << 21; // 3 bits for captured piece type, shifted by 21 bits
-        } else {
-            moveInt &= ~(0x07 << 21); // Ensure captured piece bits are set to 000 if no piece is captured
-        }
-
-        if (isKingFirstMove) {
-            moveInt |= 1 << 24; // 1 bit for king's first move, shifted by 24 bits
-        }
-
-        if (isRookFirstMove) {
-            moveInt |= 1 << 25; // 1 bit for rook's first move, shifted by 25 bits
-        }
-
-        return moveInt;
-    }
-
-    private int pieceTypeToInt(PieceType pieceType) {
-        return switch (pieceType) {
-            case PAWN -> 1;
-            case KNIGHT -> 2;
-            case BISHOP -> 3;
-            case ROOK -> 4;
-            case QUEEN -> 5;
-            case KING -> 6;
-        };
-    }
-
     public boolean isEndgame() {
         // Check if both queens are off the board
         if (blackQueens == 0 && whiteQueens == 0) {
@@ -1424,12 +1372,10 @@ public class BitBoard {
                 hash ^= ZobristTable.getCastlingRightsHash(3); // Black Queenside
             }
         }
-        //Commented because led to an error check uncomment and start Test checkForEngine() in BitBoardTest.java
-        /*        // Include en passant square in the hash
-        if (lastMoveDoubleStepPawnPosition != null) {
-            int file = lastMoveDoubleStepPawnPosition.getX() - 'a';
-            hash ^= ZobristTable.getEnPassantSquareHash(file);
-        }*/
+
+        if (lastMoveDoubleStepPawnIndex != 0) {
+            hash ^= ZobristTable.getEnPassantSquareHash(lastMoveDoubleStepPawnIndex);
+        }
 
         // Include the player's turn in the hash
         if (whitesTurn) {
