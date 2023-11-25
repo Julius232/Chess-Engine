@@ -8,14 +8,14 @@ import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @Log4j2
 public class Engine {
+
+    private final Map<Long, MoveList> legalMovesCache = new HashMap<>();
 
     @Getter
     private OpeningBook openingBook;
@@ -91,6 +91,14 @@ public class Engine {
     }
 
     private void generateLegalMoves() {
+        long boardStateHash = getBoardStateHash();
+
+        if (legalMovesCache.containsKey(boardStateHash)) {
+            // Use the cached moves
+            this.legalMoves = legalMovesCache.get(boardStateHash);
+            return;
+        }
+
         if (gameState.isGameOver()) {
             this.legalMoves = new MoveList();
             legalMovesNeedUpdate = false;
@@ -110,6 +118,8 @@ public class Engine {
             simulation.undoMove(move); // Revert to original state after checking
         }
         legalMovesNeedUpdate = false;
+        legalMovesCache.put(boardStateHash, this.legalMoves);
+
     }
 
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
@@ -199,27 +209,6 @@ public class Engine {
             }
         }
         return move;
-    }
-
-
-    private boolean isLegalMove(BitBoard simulation, int move) {
-        // Check if the move is within bounds of the board
-        boolean isWhite = MoveHelper.isWhitesMove(move);
-        simulation.performMove(move);
-        boolean isNotInCheckAfterMove = !simulation.isInCheck(isWhite);
-        simulation.undoMove(move);
-        return isNotInCheckAfterMove;
-    }
-
-    private BitBoard simulateMove(BitBoard bitBoard, int move) {
-        // Create a deep copy of the BitBoard object to avoid mutating the original board.
-        BitBoard boardCopy = new BitBoard(bitBoard);
-
-        // Perform the move on the copied board.
-        boardCopy.performMove(move);
-
-        // Return the new board state.
-        return boardCopy;
     }
 
     public List<Position> getPossibleMovesForPosition(int fromIndex) {

@@ -20,6 +20,8 @@ Starting POS --> PERFT
 22.11.23 Time taken for move calculation: 736.7081 ms
 -- after changing the simulate board strategy when checking for move legality
 25.11.23 Time taken for move calculation: 706.9718 ms
+-- after caching legal Moves
+25.11.23 Time taken for move calculation: 566.8795 ms
 
 POS_2 --> PERFTPos_2
 12.11.23 Time taken for move calculation: 275747.8732 ms
@@ -43,3 +45,5 @@ POS_2 --> PERFTPos_2
 22.11.23 Time taken for move calculation: 23597.4693 ms
 -- after changing the simulate board strategy when checking for move legality
 25.11.23 Time taken for move calculation: 21709.5729 ms
+-- after caching legal Moves
+25.11.23 Time taken for move calculation: 11469.72 ms
