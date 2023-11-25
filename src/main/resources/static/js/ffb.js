@@ -198,18 +198,6 @@ $(document).ready(function () {
         });
     };
 
-    const updateSliderValue = (value) => {
-        $('#sliderValue').text(value);
-    };
-
-    const handleSliderChange = () => {
-        const sliderValue = $('#autoplaySlider').val();
-        updateSliderValue(sliderValue);
-        makeRequest('GET', `http://localhost:8080/chess/autoplay/${sliderValue}`, reloadBoard);
-    };
-
-    // Initialize slider event listener
-    $('#autoplaySlider').on('input change', handleSliderChange);
 
     const setBoardOrientation = (color) => {
         board.orientation(color); // Set board orientation to chosen color

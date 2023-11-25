@@ -45,23 +45,22 @@ public class Engine {
 
     public MoveList getAllLegalMoves() {
         if (gameState.isGameOver()) {
-            return new MoveList();
-        }
-        if (legalMovesNeedUpdate) {
+            if (legalMoves == null) {
+                legalMoves = new MoveList();  // Create only if null
+            } else {
+                legalMoves.clear();  // Clear existing list instead of creating a new one
+            }
+        } else if (legalMovesNeedUpdate) {
             generateLegalMoves();
         }
-        return this.legalMoves;
+        return legalMoves;
     }
 
     public void performMove(int move) {
         boolean isOpeningMove = false;
         if (!gameState.isGameOver()) {
             long boardStateHashBeforeMove = getBoardStateHash();
-            if (isLegalMove(move)) {
-                bitBoard.performMove(move);
-            } else {
-                throw new IllegalStateException(String.format("Move: %s not legal for AI", Move.convertIntToMove(move)));
-            }
+            bitBoard.performMove(move);
             if(openingBook.containsMoveAndBoardStateHash(boardStateHashBeforeMove, move)) {
                 isOpeningMove = true;
             }
@@ -92,20 +91,25 @@ public class Engine {
     }
 
     private void generateLegalMoves() {
-        this.legalMoves = new MoveList();
-        legalMovesNeedUpdate = false; // Reset flag after generating
         if (gameState.isGameOver()) {
+            this.legalMoves = new MoveList();
+            legalMovesNeedUpdate = false;
             return;
         }
 
+        BitBoard simulation = new BitBoard(bitBoard); // Only one instance
         MoveList moves = bitBoard.getAllCurrentPossibleMoves();
 
+        this.legalMoves = new MoveList();
         for (int i = 0; i < moves.size(); i++) {
-            int m = moves.getMove(i);
-            if (isLegalMove(m)) {
-                this.legalMoves.add(m);
+            int move = moves.getMove(i);
+            simulation.performMove(move);
+            if (!simulation.isInCheck(MoveHelper.isWhitesMove(move))) {
+                this.legalMoves.add(move);
             }
+            simulation.undoMove(move); // Revert to original state after checking
         }
+        legalMovesNeedUpdate = false;
     }
 
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
@@ -198,12 +202,13 @@ public class Engine {
     }
 
 
-    private boolean isLegalMove(int move) {
+    private boolean isLegalMove(BitBoard simulation, int move) {
         // Check if the move is within bounds of the board
         boolean isWhite = MoveHelper.isWhitesMove(move);
-
-        BitBoard testBoard = simulateMove(bitBoard, move);
-        return !testBoard.isInCheck(isWhite);
+        simulation.performMove(move);
+        boolean isNotInCheckAfterMove = !simulation.isInCheck(isWhite);
+        simulation.undoMove(move);
+        return isNotInCheckAfterMove;
     }
 
     private BitBoard simulateMove(BitBoard bitBoard, int move) {

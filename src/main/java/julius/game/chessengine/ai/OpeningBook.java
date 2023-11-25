@@ -46,9 +46,9 @@ public class OpeningBook {
     }
 
     public void addOpening(int move, long boardStateHash) {
-        List<Integer> existingMoves = openings.getOrDefault(boardStateHash, Collections.emptyList());
+        List<Integer> existingMoves = openings.computeIfAbsent(boardStateHash, k -> new ArrayList<>());
         if (!existingMoves.contains(move)) {
-            openings.computeIfAbsent(boardStateHash, k -> new ArrayList<>()).add(move);
+            existingMoves.add(move);
             writeOpening(move, boardStateHash); // Writes to the file
         }
     }
@@ -81,6 +81,7 @@ public class OpeningBook {
     }
 
     public boolean containsMoveAndBoardStateHash(long boardStateHashBeforeMove, int move) {
+
         List<Integer> moves = openings.get(boardStateHashBeforeMove);
         if (moves == null) {
             return false;
