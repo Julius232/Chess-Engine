@@ -10,7 +10,7 @@ import java.util.Set;
 @Log4j2
 public class MagicTest {
 
-    int totalTime = 1; //minutes
+    int totalTime = 420; //minutes
 
     @Test
     public void generateMagicMovesRook() {
