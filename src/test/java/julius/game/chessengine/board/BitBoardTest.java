@@ -159,6 +159,7 @@ public class BitBoardTest {
         assertEquals(757163, d4.getCaptures());
         assertEquals(4085603, d4.getNodes());
 
+
         long endTime = System.nanoTime();
         log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
     }

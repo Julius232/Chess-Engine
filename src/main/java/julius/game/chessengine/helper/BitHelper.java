@@ -26,26 +26,6 @@ public class BitHelper {
             0x8080808080808080L  // File H
     };
 
-    private static final boolean[][] validPositions = {
-            {true, true, true, true, true, true, true, true},
-            {true, true, true, true, true, true, true, true},
-            {true, true, true, true, true, true, true, true},
-            {true, true, true, true, true, true, true, true},
-            {true, true, true, true, true, true, true, true},
-            {true, true, true, true, true, true, true, true},
-            {true, true, true, true, true, true, true, true},
-            {true, true, true, true, true, true, true, true}
-    };
-
-    public static boolean isValidBoardPosition(Position position) {
-        int fileIndex = position.getX() - 'a';
-        int rankIndex = position.getY() - 1;
-        return fileIndex >= 0 && fileIndex < 8 && rankIndex >= 0 && rankIndex < 8
-                && validPositions[fileIndex][rankIndex];
-    }
-
-
-
     public static int bitIndex(char file, int rank) {
         return (rank - 1) * 8 + (file - 'a');
     }

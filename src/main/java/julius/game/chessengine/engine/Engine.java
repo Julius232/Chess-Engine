@@ -8,14 +8,14 @@ import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @Log4j2
 public class Engine {
+
+    private final Map<Long, MoveList> legalMovesCache = new HashMap<>();
 
     @Getter
     private OpeningBook openingBook;
@@ -45,23 +45,22 @@ public class Engine {
 
     public MoveList getAllLegalMoves() {
         if (gameState.isGameOver()) {
-            return new MoveList();
-        }
-        if (legalMovesNeedUpdate) {
+            if (legalMoves == null) {
+                legalMoves = new MoveList();  // Create only if null
+            } else {
+                legalMoves.clear();  // Clear existing list instead of creating a new one
+            }
+        } else if (legalMovesNeedUpdate) {
             generateLegalMoves();
         }
-        return this.legalMoves;
+        return legalMoves;
     }
 
     public void performMove(int move) {
         boolean isOpeningMove = false;
         if (!gameState.isGameOver()) {
             long boardStateHashBeforeMove = getBoardStateHash();
-            if (isLegalMove(move)) {
-                bitBoard.performMove(move);
-            } else {
-                throw new IllegalStateException(String.format("Move: %s not legal for AI", Move.convertIntToMove(move)));
-            }
+            bitBoard.performMove(move);
             if(openingBook.containsMoveAndBoardStateHash(boardStateHashBeforeMove, move)) {
                 isOpeningMove = true;
             }
@@ -92,20 +91,35 @@ public class Engine {
     }
 
     private void generateLegalMoves() {
-        this.legalMoves = new MoveList();
-        legalMovesNeedUpdate = false; // Reset flag after generating
-        if (gameState.isGameOver()) {
+        long boardStateHash = getBoardStateHash();
+
+        if (legalMovesCache.containsKey(boardStateHash)) {
+            // Use the cached moves
+            this.legalMoves = legalMovesCache.get(boardStateHash);
             return;
         }
 
+        if (gameState.isGameOver()) {
+            this.legalMoves = new MoveList();
+            legalMovesNeedUpdate = false;
+            return;
+        }
+
+        BitBoard simulation = new BitBoard(bitBoard); // Only one instance
         MoveList moves = bitBoard.getAllCurrentPossibleMoves();
 
+        this.legalMoves = new MoveList();
         for (int i = 0; i < moves.size(); i++) {
-            int m = moves.getMove(i);
-            if (isLegalMove(m)) {
-                this.legalMoves.add(m);
+            int move = moves.getMove(i);
+            simulation.performMove(move);
+            if (!simulation.isInCheck(MoveHelper.isWhitesMove(move))) {
+                this.legalMoves.add(move);
             }
+            simulation.undoMove(move); // Revert to original state after checking
         }
+        legalMovesNeedUpdate = false;
+        legalMovesCache.put(boardStateHash, this.legalMoves);
+
     }
 
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.
@@ -195,26 +209,6 @@ public class Engine {
             }
         }
         return move;
-    }
-
-
-    private boolean isLegalMove(int move) {
-        // Check if the move is within bounds of the board
-        boolean isWhite = MoveHelper.isWhitesMove(move);
-
-        BitBoard testBoard = simulateMove(bitBoard, move);
-        return !testBoard.isInCheck(isWhite);
-    }
-
-    private BitBoard simulateMove(BitBoard bitBoard, int move) {
-        // Create a deep copy of the BitBoard object to avoid mutating the original board.
-        BitBoard boardCopy = new BitBoard(bitBoard);
-
-        // Perform the move on the copied board.
-        boardCopy.performMove(move);
-
-        // Return the new board state.
-        return boardCopy;
     }
 
     public List<Position> getPossibleMovesForPosition(int fromIndex) {

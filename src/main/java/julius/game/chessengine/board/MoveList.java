@@ -11,6 +11,10 @@ public class MoveList {
     private static final int INITIAL_SIZE = 30;
     private static final int MAX_SIZE = 218; // Maximum number of legal moves
 
+    private String stringRepresentation;
+    private boolean isStringRepresentationStale = true;
+
+
     public MoveList() {
         this.moves = new int[INITIAL_SIZE];
         this.moveCount = 0;
@@ -31,16 +35,16 @@ public class MoveList {
             moves[moveCount] = move;
             moveCount++;
         }
+        isStringRepresentationStale = true;
     }
 
     private void resizeArray() {
         if (moves.length >= MAX_SIZE) {
             return; // Do not resize beyond the maximum size
         }
-        int newSize = Math.min(moves.length * 2, MAX_SIZE); // Ensure the new size does not exceed the maximum
-
+        int newSize = Math.min(moves.length * 2, MAX_SIZE);
         int[] newArray = new int[newSize];
-        System.arraycopy(moves, 0, newArray, 0, moves.length);
+        System.arraycopy(moves, 0, newArray, 0, moveCount); // Copy only used elements
         moves = newArray;
     }
 
@@ -63,14 +67,22 @@ public class MoveList {
         return this.moves;
     }
 
+    public void clear() {
+        moveCount = 0;
+        isStringRepresentationStale = true;
+    }
+
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < size(); i++) {
-            sb.append("[").append(getMove(i)).append("]:");
-            sb.append(Move.convertIntToMove(getMove(i)));
-            sb.append(" "); // Add a newline for readability
+        if (isStringRepresentationStale) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < size(); i++) {
+                sb.append("[").append(getMove(i)).append("]:");
+                sb.append(Move.convertIntToMove(getMove(i))).append(" ");
+            }
+            stringRepresentation = sb.toString();
+            isStringRepresentationStale = false;
         }
-        return sb.toString();
+        return stringRepresentation;
     }
 }
