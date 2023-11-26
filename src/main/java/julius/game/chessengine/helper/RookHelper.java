@@ -282,7 +282,7 @@ public class RookHelper {
     }
 
     private long randomMagicNumber() {
-        return ThreadLocalRandom.current().nextLong();
+        return new Random().nextLong();
     }
 
     public int transform(long occupancy, long magicNumber, long mask) {
