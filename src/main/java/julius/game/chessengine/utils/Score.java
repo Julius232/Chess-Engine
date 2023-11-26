@@ -229,6 +229,7 @@ public class Score {
         if (cachedScoreDifference == null) {
             cachedScoreDifference = calculateTotalWhiteScore() - calculateTotalBlackScore();
         }
+
         return cachedScoreDifference;
     }
 
@@ -617,7 +618,7 @@ public class Score {
     public void updateStateValuesWhite(GameStateEnum state) {
         if (state.equals(GameStateEnum.BLACK_IN_CHECK)) {
             whiteStateBonus = CHECK;
-        } else if (state.equals(GameStateEnum.WHITE_IN_CHECK)) {
+        } else if (state.equals(GameStateEnum.WHITE_WON)) {
             whiteStateBonus = CHECKMATE;
         } else {
             whiteStateBonus = 0;
