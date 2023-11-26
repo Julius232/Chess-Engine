@@ -4,7 +4,6 @@ import julius.game.chessengine.ai.AI;
 import julius.game.chessengine.ai.MoveAndScore;
 import julius.game.chessengine.ai.OpeningBook;
 import julius.game.chessengine.board.*;
-import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
 import julius.game.chessengine.engine.GameStateEnum;
 import julius.game.chessengine.utils.Score;
@@ -28,12 +27,11 @@ import static julius.game.chessengine.board.MoveHelper.convertStringToIndex;
 public class ChessController {
 
     private final AI ai;
-    private final Engine engine;
     private final OpeningBook openingBook;
 
     @GetMapping(value = "/score")
     public ResponseEntity<Score> getScore() {
-        return ResponseEntity.ok(engine.getGameState().getScore());
+        return ResponseEntity.ok( ai.getMainEngine().getGameState().getScore());
     }
 
     @PutMapping(value = "/reset")
@@ -44,7 +42,7 @@ public class ChessController {
 
     @PatchMapping(value = "/fen")
     public ResponseEntity<?> setBoardToFEN(@RequestParam("fen") String fen) {
-        engine.importBoardFromFen(fen);
+        ai.getMainEngine().importBoardFromFen(fen);
         return ResponseEntity.ok().build();
     }
 
@@ -82,13 +80,13 @@ public class ChessController {
 
     @GetMapping(value = "/undo")
     public ResponseEntity<?> undoLastMove() {
-        engine.undoLastMove();
+        ai.getMainEngine().undoLastMove();
         return ResponseEntity.ok().build();
     }
 
     @GetMapping(value = "/field/possible/white")
     public ResponseEntity<List<Move>> getAllPossibleFieldsWhite() {
-        MoveList moves = engine.getAllLegalMoves();
+        MoveList moves =  ai.getMainEngine().getAllLegalMoves();
         List<Move> restApiMoves = new ArrayList<>();
         for (int i = 0; i < moves.size(); i++) {
             restApiMoves.add(Move.convertIntToMove(moves.getMove(i)));
@@ -99,7 +97,7 @@ public class ChessController {
 
     @GetMapping(value = "/field/possible/black")
     public ResponseEntity<List<Move>> getAllPossibleFieldsBlack() {
-        MoveList moves = engine.getAllLegalMoves();
+        MoveList moves = ai.getMainEngine().getAllLegalMoves();
         List<Move> restApiMoves = new ArrayList<>();
         for (int i = 0; i < moves.size(); i++) {
             restApiMoves.add(Move.convertIntToMove(moves.getMove(i)));
@@ -110,7 +108,7 @@ public class ChessController {
 
     @GetMapping(value = "/figure/frontend")
     public ResponseEntity<FEN> getFiguresFrontend() {
-        return ResponseEntity.ok(engine.translateBoardToFen());
+        return ResponseEntity.ok( ai.getMainEngine().translateBoardToFen());
     }
 
     @PatchMapping(value = "/figure/move/{from}/{to}")
@@ -124,17 +122,17 @@ public class ChessController {
         long boardStateHash = -1;
         if (saveToOpeningBook) {
             // Capture the board state hash before the move
-            boardStateHash = engine.getBoardStateHash();
+            boardStateHash =  ai.getMainEngine().getBoardStateHash();
         }
 
         // Perform the move on the engine
         int fromIndex = convertStringToIndex(from);
         int toIndex = convertStringToIndex(to);
-        GameState state = engine.moveFigure(fromIndex, toIndex, 5); // Replace 5 with the actual promotion piece type, if applicable
+        GameState state =  ai.getMainEngine().moveFigure(fromIndex, toIndex, 5); // Replace 5 with the actual promotion piece type, if applicable
 
         if (saveToOpeningBook && boardStateHash != -1) {
             // Save the opening if required
-            int lastMove = engine.getLastMove();
+            int lastMove =  ai.getMainEngine().getLastMove();
             if(lastMove != -1) {
                 openingBook.addOpening(lastMove, boardStateHash);
             }
@@ -147,7 +145,7 @@ public class ChessController {
     @GetMapping(value = "/figure/move/possible/{from}")
     public ResponseEntity<List<Position>> getPossibleToPositions(@PathVariable("from") String from) {
         if (from != null) {
-            return ResponseEntity.ok(engine.getPossibleMovesForPosition(convertStringToIndex(from)));
+            return ResponseEntity.ok(ai.getMainEngine().getPossibleMovesForPosition(convertStringToIndex(from)));
         } else return ResponseEntity
                 .status(406)
                 .build();

@@ -8,46 +8,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static julius.game.chessengine.helper.BitHelper.bitIndex;
+import static julius.game.chessengine.helper.BitHelper.fileBitboard;
 
 @Log4j2
 public class PawnHelper {
 
     public final static int[] WHITE_PAWN_POSITIONAL_VALUES = {
-            // Rank 1 - Base rank for white, no pawns should be here
-            0, 0, 0, 0, 0, 0, 0, 0,
-            // Rank 2 - Initial rank for white pawns
-            5, 10, 10, -10, -10, 10, 10, 5,
-            // Rank 3 - Pawns have moved one square
-            5, -5, -10, 0, 0, -10, -5, 5,
-            // Rank 4 - Pawns have moved two squares
-            10, 0, 0, 20, 20, 0, 0, 10,
-            // Rank 5 - Pawns are advancing and potentially supporting attack
-            15, 10, 10, 25, 25, 10, 10, 15,
-            // Rank 6 - Pawns are far advanced and can become very dangerous
-            20, 20, 20, 30, 30, 20, 20, 20,
-            // Rank 7 - Pawns are very close to promotion
-            25, 25, 25, 40, 40, 25, 25, 25,
-            // Rank 8 - Pawns should never be here (promotion should have occurred)
-            0, 0, 0, 0, 0, 0, 0, 0
+            0, 0, 0, 0, 0, 0, 0, 0, // Rank 1
+            5, 5, 5, 10, 10, 5, 5, 5, // Rank 2
+            10, 10, 10, 15, 15, 10, 10, 10, // Rank 3
+            15, 15, 15, 20, 20, 15, 15, 15, // Rank 4
+            20, 20, 20, 25, 25, 20, 20, 20, // Rank 5
+            25, 25, 30, 35, 35, 30, 25, 25, // Rank 6
+            30, 30, 35, 40, 40, 35, 30, 30, // Rank 7 -- close to promotion
+            0, 0, 0, 0, 0, 0, 0, 0 // Rank 8
     };
 
     public final static int[] BLACK_PAWN_POSITIONAL_VALUES = {
-            // Rank 1 - Base rank for white, no pawns should be here
-            0, 0, 0, 0, 0, 0, 0, 0,
-            // Rank 2 - Initial rank for white pawns
-            25, 25, 25, 40, 40, 25, 25, 25,
-            // Rank 3 - Pawns have moved one square
-            20, 20, 20, 30, 30, 20, 20, 20,
-            // Rank 4 - Pawns have moved two squares
-            15, 10, 10, 25, 25, 10, 10, 15,
-            // Rank 5 - Pawns are advancing and potentially supporting attack
-            10, 0, 0, 20, 20, 0, 0, 10,
-            // Rank 6 - Pawns are far advanced and can become very dangerous
-            5, -5, -10, 0, 0, -10, -5, 5,
-            // Rank 7 - Pawns are very close to promotion
-            5, 10, 10, -10, -10, 10, 10, 5,
-            // Rank 8 - Pawns should never be here (promotion should have occurred)
-            0, 0, 0, 0, 0, 0, 0, 0
+            0, 0, 0, 0, 0, 0, 0, 0, // Rank 1
+            30, 30, 35, 40, 40, 35, 30, 30,// Rank 2 -- close to promotion
+            25, 25, 30, 35, 35, 30, 25, 25,// Rank 3
+            20, 20, 20, 25, 25, 20, 20, 20, // Rank 4
+            15, 15, 15, 20, 20, 15, 15, 15,  // Rank 5
+            10, 10, 10, 15, 15, 10, 10, 10,// Rank 6
+            5, 5, 5, 10, 10, 5, 5, 5, // Rank 7
+            0, 0, 0, 0, 0, 0, 0, 0 // Rank 8
     };
 
     // Method to count pawns in the center (e4, d4, e5, d5 squares)
@@ -86,13 +71,6 @@ public class PawnHelper {
     }
 
     // Helper method to get a bitboard representing a file
-    private static long fileBitboard(char file) {
-        long fileBitboard = 0L;
-        for (int rank = 1; rank <= 8; rank++) {
-            fileBitboard |= 1L << bitIndex(file, rank);
-        }
-        return fileBitboard;
-    }
 
 
 }

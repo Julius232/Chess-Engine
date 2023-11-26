@@ -26,6 +26,11 @@ public class BitHelper {
             0x8080808080808080L  // File H
     };
 
+    public static long fileBitboard(char file) {
+        int fileIndex = file - 'a'; // Convert file character to an index (0 for 'a', 1 for 'b', etc.)
+        return FileMasks[fileIndex];
+    }
+
     public static int bitIndex(char file, int rank) {
         return (rank - 1) * 8 + (file - 'a');
     }

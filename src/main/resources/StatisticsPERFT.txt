@@ -1,4 +1,4 @@
-Starting POS --> PERFT
+Starting POS --> PERFT depth (1-4)
 12.11.23 Time taken for move calculation: 7032.143599 m
 15.11.23 Time taken for move calculation: 3771.4069 ms
 -- after Bishops with Bitboard
@@ -23,7 +23,7 @@ Starting POS --> PERFT
 -- after caching legal Moves
 25.11.23 Time taken for move calculation: 566.8795 ms
 
-POS_2 --> PERFTPos_2
+POS_2 --> PERFTPos_2 depth (1-4)
 12.11.23 Time taken for move calculation: 275747.8732 ms
 15.11.23 Time taken for move calculation: 136994.5455 ms
 -- after Bishops with Bitboard
@@ -47,3 +47,10 @@ POS_2 --> PERFTPos_2
 25.11.23 Time taken for move calculation: 21709.5729 ms
 -- after caching legal Moves
 25.11.23 Time taken for move calculation: 11469.72 ms
+
+------------------------------------------------------------------------------------------------------------------------
+PERFT
+    25.11.23
+        (1-4) Time taken for move calculation: 924.8749 ms
+        (1-5) Time taken for move calculation: 11663.5057 ms
+        (1-6) Time taken for move calculation: 272329.9402 ms

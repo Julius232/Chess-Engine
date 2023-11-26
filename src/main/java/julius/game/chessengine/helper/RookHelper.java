@@ -7,6 +7,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static julius.game.chessengine.helper.BitHelper.FileMasks;
+import static julius.game.chessengine.helper.BitHelper.fileBitboard;
+
 @Log4j2
 public class RookHelper {
 
@@ -25,6 +28,29 @@ public class RookHelper {
 
     private static RookHelper instance = null;
 
+    public final static int[] WHITE_ROOK_POSITIONAL_VALUES = {
+            // Ranks 1 to 8 (for a White Rook)
+            0, 0, 0, 0, 0, 0, 0, 0,     // Rank 1 (Back rank, initial position)
+            5, 10, 10, 10, 10, 10, 10, 5, // Rank 2
+            5, 10, 10, 10, 10, 10, 10, 5, // Rank 3
+            5, 10, 15, 15, 15, 15, 10, 5, // Rank 4
+            5, 10, 15, 20, 20, 15, 10, 5, // Rank 5
+            10, 15, 20, 25, 25, 20, 15, 10, // Rank 6
+            10, 20, 25, 30, 30, 25, 20, 10, // Rank 7
+            15, 25, 30, 35, 35, 30, 25, 15  // Rank 8 (Advanced position)
+    };
+
+    public final static int[] BLACK_ROOK_POSITIONAL_VALUES = {
+            15, 25, 30, 35, 35, 30, 25, 15, // Rank 1 (Advanced position)
+            10, 20, 25, 30, 30, 25, 20, 10, // Rank 2
+            10, 15, 20, 25, 25, 20, 15, 10, // Rank 3
+            5, 10, 15, 20, 20, 15, 10, 5,   // Rank 4
+            5, 10, 15, 15, 15, 15, 10, 5,   // Rank 5
+            5, 10, 10, 10, 10, 10, 10, 5,   // Rank 6
+            5, 10, 10, 10, 10, 10, 10, 5,   // Rank 7
+            0, 0, 0, 0, 0, 0, 0, 0          // Rank 8 (Back rank, initial position)
+    };
+
     public RookHelper() {
         loadMagicNumbers();
         // First, generate and store occupancy masks
@@ -42,6 +68,37 @@ public class RookHelper {
         return instance;
     }
 
+    public static int countRooksOnOpenFiles(long rooksBitboard, long allPawns) {
+        int count = 0;
+        for (char file = 'a'; file <= 'h'; file++) {
+            if (isRookOnOpenFile(rooksBitboard, allPawns, file)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static int countRooksOnHalfOpenFiles(long rooksBitboard, long ownPawnsBitboard, long opponentPawnsBitboard) {
+        int count = 0;
+        for (char file = 'a'; file <= 'h'; file++) {
+            if (isRookOnHalfOpenFile(rooksBitboard, ownPawnsBitboard, opponentPawnsBitboard, file)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static boolean isRookOnOpenFile(long rooksBitboard, long allPawns, char file) {
+        long fileBitboard = FileMasks[file - 'a'];
+        // Check if the file has no pawns and if the rook is on this file
+        return (allPawns & fileBitboard) == 0 && (rooksBitboard & fileBitboard) != 0;
+    }
+
+    private static boolean isRookOnHalfOpenFile(long rooksBitboard, long ownPawnsBitboard, long opponentPawnsBitboard, char file) {
+        long fileBitboard = FileMasks[file - 'a'];
+        // Check if the file has opponent's pawns but not own pawns, and if the rook is on this file
+        return (ownPawnsBitboard & fileBitboard) == 0 && (opponentPawnsBitboard & fileBitboard) != 0 && (rooksBitboard & fileBitboard) != 0;
+    }
 
     public void findMagicNumbersParallel(int time) {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());

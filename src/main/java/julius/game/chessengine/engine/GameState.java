@@ -68,7 +68,7 @@ public class GameState {
 
     public void updateScore(BitBoard bitBoard, int move) {
         //reset cached score
-        score.resetCachedStoreDifference();
+        score.resetCachedScoreDifference();
 
         boolean isWhite = MoveHelper.isWhitesMove(move);
         int pieceTypeBits = MoveHelper.derivePieceTypeBits(move);
@@ -107,12 +107,12 @@ public class GameState {
     private void updateValuesForWhite(int pieceTypeBits, BitBoard bitBoard) {
         boolean isEndgame = bitBoard.isEndgame();
         switch (pieceTypeBits) {
-            case 1: score.updateWhitePawnValues(bitBoard.getWhitePawns()); break;
+            case 1: score.updateWhitePawnValues(bitBoard); break;
             case 2: score.updateWhiteKnightValues(bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteRooks()); break;
             case 3: score.updateWhiteBishopValues(bitBoard.getWhiteBishops(), bitBoard.getWhiteKnights(), bitBoard.getWhiteRooks()); break;
-            case 4: score.updateWhiteRookValues(bitBoard.getWhiteRooks(), bitBoard.getWhiteKnights(), bitBoard.getWhiteBishops(), bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteKingMoved(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), isEndgame); break;
+            case 4: score.updateWhiteRookValues(bitBoard); break;
             case 5: score.updateWhiteQueenValues(bitBoard.getWhiteQueens()); break;
-            case 6: score.updateWhiteKingValues(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteKingMoved(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), isEndgame); break;
+            case 6: score.updateKingValuesWhite(bitBoard.getWhiteKing(), bitBoard.isWhiteKingHasCastled(), bitBoard.isWhiteKingMoved(), bitBoard.isWhiteRookA1Moved(), bitBoard.isWhiteRookH1Moved(), isEndgame); break;
             default: break; // Optionally handle default case
         }
     }
@@ -120,12 +120,12 @@ public class GameState {
     private void updateValuesForBlack(int pieceTypeBits, BitBoard bitBoard) {
         boolean isEndgame = bitBoard.isEndgame();
         switch (pieceTypeBits) {
-            case 1: score.updateBlackPawnValues(bitBoard.getBlackPawns()); break;
+            case 1: score.updateBlackPawnValues(bitBoard); break;
             case 2: score.updateBlackKnightValues(bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackRooks()); break;
             case 3: score.updateBlackBishopValues(bitBoard.getBlackBishops(), bitBoard.getBlackKnights(), bitBoard.getBlackRooks()); break;
-            case 4: score.updateBlackRookValues(bitBoard.getBlackRooks(), bitBoard.getBlackKnights(), bitBoard.getBlackBishops(), bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackKingMoved(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
+            case 4: score.updateBlackRookValues(bitBoard); break;
             case 5: score.updateBlackQueenValues(bitBoard.getBlackQueens()); break;
-            case 6: score.updateBlackKingValues(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackKingMoved(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
+            case 6: score.updateKingValuesBlack(bitBoard.getBlackKing(), bitBoard.isBlackKingHasCastled(), bitBoard.isBlackKingMoved(), bitBoard.isBlackRookA8Moved(), bitBoard.isBlackRookH8Moved(), isEndgame); break;
             default: break; // Optionally handle default case
         }
     }

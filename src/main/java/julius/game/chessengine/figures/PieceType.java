@@ -1,5 +1,8 @@
 package julius.game.chessengine.figures;
 
+import lombok.Getter;
+
+@Getter
 public enum PieceType {
     PAWN('P'), KNIGHT('N'), BISHOP('B'), ROOK('R'), QUEEN('Q'), KING('K');
 
@@ -9,7 +12,4 @@ public enum PieceType {
         this.notation = notation;
     }
 
-    public char getNotation() {
-        return notation;
-    }
 }

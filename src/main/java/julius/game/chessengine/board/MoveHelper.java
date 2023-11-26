@@ -137,4 +137,21 @@ public class MoveHelper {
             case KING -> 6;
         };
     }
+
+    public static PieceType intToPieceType(int pieceTypeInt) {
+        return switch (pieceTypeInt) {
+            case 1 -> PieceType.PAWN;
+            case 2 -> PieceType.KNIGHT;
+            case 3 -> PieceType.BISHOP;
+            case 4 -> PieceType.ROOK;
+            case 5 -> PieceType.QUEEN;
+            case 6 -> PieceType.KING;
+            default -> throw new IllegalArgumentException("Invalid piece type integer: " + pieceTypeInt);
+        };
+    }
+
+    public static boolean isPawnPromotionMove(Integer moveInt) {
+        int promotionPieceTypeBits = derivePromotionPieceTypeBits(moveInt);
+        return promotionPieceTypeBits != 0;
+    }
 }

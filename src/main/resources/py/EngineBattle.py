@@ -70,11 +70,11 @@ def reset_board(engine_url):
     response = requests.put(f"{engine_url}/chess/reset")
     return response.status_code == 200
 
-target_directory = "..\\..\\..\\..\\target"
+target_directory = "target"
 jar_file_name = find_latest_jar(target_directory)
 
 # Paths to the JAR files and ports
-jar1_path = "D:/Chess-Engines/v2/chess-engine-2.0.1.jar"
+jar1_path = "D:/Chess-Engines/v2/chess-engine-2.5.0.jar"
 
 if jar_file_name:
     jar2_path = os.path.join(target_directory, jar_file_name)

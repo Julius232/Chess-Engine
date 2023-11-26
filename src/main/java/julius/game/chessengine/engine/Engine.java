@@ -2,6 +2,7 @@ package julius.game.chessengine.engine;
 
 import julius.game.chessengine.ai.OpeningBook;
 import julius.game.chessengine.board.*;
+import julius.game.chessengine.cache.TimedLRUCache;
 import julius.game.chessengine.figures.PieceType;
 import julius.game.chessengine.utils.Color;
 import lombok.Getter;
@@ -15,7 +16,10 @@ import java.util.stream.Collectors;
 @Log4j2
 public class Engine {
 
-    private final Map<Long, MoveList> legalMovesCache = new HashMap<>();
+    private static final int MAX_SIZE = 5_000_000;
+    private static final int MAX_AGE = 10_000;
+
+    private TimedLRUCache<Long, MoveList> legalMovesCache = new TimedLRUCache<>(MAX_SIZE, MAX_AGE);
 
     @Getter
     private OpeningBook openingBook;
@@ -41,6 +45,7 @@ public class Engine {
         this.legalMoves = other.legalMoves;
         this.legalMovesNeedUpdate = other.legalMovesNeedUpdate;
         this.openingBook = other.openingBook;
+        this.legalMovesCache = other.legalMovesCache;
     }
 
     public MoveList getAllLegalMoves() {
@@ -88,9 +93,11 @@ public class Engine {
         legalMovesNeedUpdate = true;
         line = new ArrayList<>();
         this.openingBook = OpeningBook.getInstance();
+        legalMovesCache = new TimedLRUCache<>(MAX_SIZE, MAX_AGE);
     }
 
     private void generateLegalMoves() {
+
         long boardStateHash = getBoardStateHash();
 
         if (legalMovesCache.containsKey(boardStateHash)) {
@@ -120,6 +127,10 @@ public class Engine {
         legalMovesNeedUpdate = false;
         legalMovesCache.put(boardStateHash, this.legalMoves);
 
+        int size = legalMovesCache.size();
+        if(size > MAX_SIZE) {
+            throw new RuntimeException(String.format("LegalMovesCache size %s is larger then MAX_SIZE %s", size, MAX_SIZE));
+        }
     }
 
     // Each of these methods would need to be implemented to handle the specific move generation for each piece type.

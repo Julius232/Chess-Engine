@@ -95,10 +95,34 @@ public class BitBoardTest {
         assertEquals(0, d4.getCastles());
         assertEquals(0, d4.getPromotions());
 
-        engine.importBoardFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
-
         long endTime = System.nanoTime();
-        log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
+        log.info("(1-4) Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
+
+        // Depth 5
+        PerftNode d5 = perft(5, engine);
+        assertEquals(4865609, d5.getNodes());
+        assertEquals(347, d5.getCheckmates());
+        assertEquals(27351, d5.getChecks());
+        assertEquals(82719, d5.getCaptures());
+        assertEquals(258, d5.getEnPassant());
+        assertEquals(0, d5.getCastles());
+        assertEquals(0, d5.getPromotions());
+
+        endTime = System.nanoTime();
+        log.info("(1-5) Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
+
+        // Depth 6
+        PerftNode d6 = perft(6, engine);
+        assertEquals(119060324, d6.getNodes());
+        assertEquals(10828, d6.getCheckmates());
+        assertEquals(809099, d6.getChecks());
+        assertEquals(2812008, d6.getCaptures());
+        assertEquals(5248, d6.getEnPassant());
+        assertEquals(0, d6.getCastles());
+        assertEquals(0, d6.getPromotions());
+
+        endTime = System.nanoTime();
+        log.info("(1-6) Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
     }
 
     @Test
@@ -159,9 +183,21 @@ public class BitBoardTest {
         assertEquals(757163, d4.getCaptures());
         assertEquals(4085603, d4.getNodes());
 
-
         long endTime = System.nanoTime();
-        log.info("Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
+        log.info("(1-4) Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);
+
+/*        PerftNode d5 = perft(5, engine);
+        assertEquals(30171, d5.getCheckmates());
+        assertEquals(73365, d5.getEnPassant());
+        assertEquals(8392, d5.getPromotions());
+        assertEquals(3309887, d5.getChecks());
+        assertEquals(4993637, d5.getCastles());
+        assertEquals(35043416, d5.getCaptures());
+        assertEquals(193690690, d5.getNodes());
+
+        endTime = System.nanoTime();
+        log.info("(1-5) Time taken for move calculation: {} ms", (endTime - startTime) / 1e6);*/
+
     }
 
     @Test

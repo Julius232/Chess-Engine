@@ -155,7 +155,7 @@ public class AI {
         log.debug(" --- TranspositionTable[{}] --- ", transpositionTable.size());
         Engine simulatorEngine = mainEngine.createSimulation();
         long boardStateHash = simulatorEngine.getBoardStateHash();
-        log.error("boardStateBeforeCalculation {}, currentBoardState {}", beforeCalculationBoardState, currentBoardState);
+        log.debug("boardStateBeforeCalculation {}, currentBoardState {}", beforeCalculationBoardState, currentBoardState);
 
         // Perform calculation only if the board state has actually changed
         boolean isWhite = simulatorEngine.whitesTurn();
@@ -382,6 +382,8 @@ public class AI {
             alpha = Math.max(alpha, eval);
             if (beta <= alpha) {
                 updateKillerMoves(depth, move);
+                simulatorEngine.logBoard();
+                log.info(" Maxi New Killer Move is {}", Move.convertIntToMove(move));
                 break; // Alpha-beta pruning
             }
         }
@@ -442,6 +444,8 @@ public class AI {
             beta = Math.min(beta, eval);
             if (alpha >= beta) {
                 updateKillerMoves(depth, move);
+                simulatorEngine.logBoard();
+                log.info("Mini New Killer Move is {}", Move.convertIntToMove(move));
                 break;
             }
         }
@@ -545,7 +549,7 @@ public class AI {
             alpha = standPat; // Delta pruning
         }
 
-        MoveList moves = getPossibleCaptures(simulatorEngine);
+        MoveList moves = getPossibleCapturesOrPromotions(simulatorEngine);
         for (int i = 0; i < moves.size(); i++) {
             simulatorEngine.performMove(moves.getMove(i));
             double score = -quiescenceSearch(simulatorEngine, !isWhitesTurn, -beta, -alpha, startTime, timeLimit, depth++);
@@ -577,17 +581,17 @@ public class AI {
         return isWhitesTurn ? scoreDifference : -scoreDifference;
     }
 
-    private MoveList getPossibleCaptures(Engine simulatorEngine) {
+    private MoveList getPossibleCapturesOrPromotions(Engine simulatorEngine) {
         MoveList allLegalMoves = simulatorEngine.getAllLegalMoves();
-        MoveList captures = new MoveList();
+        MoveList capturesAndPromotions = new MoveList();
         for (int i = 0; i < allLegalMoves.size(); i++) {
             int m = allLegalMoves.getMove(i);
-            if (MoveHelper.isCapture(m)) {
-                captures.add(m);
+            if (MoveHelper.isCapture(m) || MoveHelper.isPawnPromotionMove(m)) {
+                capturesAndPromotions.add(m);
             }
         }
 
-        return captures;
+        return capturesAndPromotions;
     }
 
 
