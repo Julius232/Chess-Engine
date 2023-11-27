@@ -48,6 +48,9 @@ public class AI {
     private List<MoveAndScore> calculatedLine = Collections.synchronizedList(new ArrayList<>());
 
     // Game configuration parameters
+
+    private int depthThreshold = 1;
+    private long lastDepthThresholdAdjustmentTime = 0;
     private final int maxDepth = 18; // Adjust the level of depth according to your requirements
 
     @Getter
@@ -77,10 +80,13 @@ public class AI {
 
     public void reset() {
         stopCalculation();
-        calculatedLine = Collections.synchronizedList(new ArrayList<>());
-        mainEngine.startNewGame();
+        currentBestMove = -1;
         currentBoardState = -1;
         beforeCalculationBoardState = -2;
+        calculatedLine = Collections.synchronizedList(new ArrayList<>());
+        mainEngine.startNewGame();
+        depthThreshold = 1;
+        lastDepthThresholdAdjustmentTime = 0;
     }
 
     public void stopCalculation() {
@@ -115,16 +121,25 @@ public class AI {
             if ((aiIsWhite && mainEngine.whitesTurn()) || (aiIsBlack && !mainEngine.whitesTurn())) {
                 performMove();
             }
-        }, 0, timeLimit, TimeUnit.MILLISECONDS);
+        }, 0, 50, TimeUnit.MILLISECONDS);
     }
 
     public void performMove() {
+        log.debug("DepthThreshold = {}", depthThreshold);
         if (currentBestMove == -1) {
-            mainEngine.logBoard();
-            // Log an error if no valid current best move is available.
-            log.error("No current best move available. Unable to perform a move.");
+            // Check if the timeLimit has elapsed since the last depth adjustment
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastDepthThresholdAdjustmentTime > timeLimit) {
+                // Decrease the depthThreshold if it hasn't been decreased recently
+                if (depthThreshold > 1) {
+                    depthThreshold--;
+                    lastDepthThresholdAdjustmentTime = currentTime; // Update the time of the last adjustment
+                }
+                // Log an error if no valid current best move is available.
+                log.error("No current best move available. Unable to perform a move.");
+            }
             log.error("boardStateBeforeCalculation {}, currentBoardHash {}", beforeCalculationBoardState, currentBoardState);
-            log.error("WhitesTurn = " + mainEngine.whitesTurn());
+            log.error("WhitesTurn = {}, isEndgame = {}", mainEngine.whitesTurn(), mainEngine.isEndgame());
             log.error("Gamestate = " + mainEngine.getGameState());
             return; // Return the current state without making a move
         }
@@ -134,10 +149,10 @@ public class AI {
             log.error("Current best move {} is not valid for the current turn.", Move.convertIntToMove(currentBestMove));
             return; // Return the current state without making a move
         }
-
+        log.info("Perform Move");
         mainEngine.performMove(currentBestMove);
         currentBoardState = mainEngine.getBoardStateHash();
-        currentBestMove = -1; // Reset currentBestMove after performing it
+        //currentBestMove = -1; // Reset currentBestMove after performing it
     }
 
     private void calculateLine() {
@@ -169,12 +184,15 @@ public class AI {
         double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
         int bestMove = mainEngine.getOpeningBook().getRandomMoveForBoardStateHash(currentBoardState); //if none found returns -1
         if(bestMove != -1) {
+            //Play Opening Book
             currentBestMove = bestMove;
             return;
         }
         try {
-            for (int currentDepth = 1; currentDepth <= maxDepth; currentDepth++) {
+            for (int currentDepth = depthThreshold; currentDepth <= maxDepth; currentDepth++) {
+                log.info("CurrentDepth: " + currentDepth);
                 if (!keepCalculating || positionChanged()) {
+                    log.info("Position changed main");
                     log.debug("Calculation stopped or position changed");
                     break;
                 }
@@ -188,10 +206,11 @@ public class AI {
 
                     // Update the transposition table if necessary
                     updateTranspositionTable(boardStateHash, moveAndScore, currentDepth);
+
                 }
 
                 if (timeLimitExceeded(startTime)) {
-                    log.debug("Time limit exceeded, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
+                    log.info("Time limit exceeded, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
                     break;
                 }
 
@@ -199,10 +218,19 @@ public class AI {
                     log.debug("Thread interrupted, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
                     break;
                 }
+                depthThreshold = currentDepth;
             }
-            currentBestMove = bestMove;
         } finally {
             // Ensure fillCalculatedLine is called even if the loop is broken
+
+            if(bestMove != -1) {
+                currentBestMove = bestMove;
+            }
+            else {
+                log.warn("BestMove was -1 in finally block");
+                beforeCalculationBoardState = -2;
+                depthThreshold--;
+            }
             fillCalculatedLine(simulatorEngine);
         }
     }
@@ -269,6 +297,7 @@ public class AI {
                 score = alphaBeta(simulatorEngine, depth - 1, alpha, beta, !isWhitesTurn, startTime, timeLimit);
                 // Check for time limit exceeded after alphaBeta call
                 if (score == EXIT_FLAG || positionChanged()) {
+                    log.info("best Position changed");
                     simulatorEngine.undoLastMove(); // Undo move using its integer representation
                     break;
                 }
@@ -362,7 +391,7 @@ public class AI {
                 if (eval == EXIT_FLAG || positionChanged()) {
                     // If time limit exceeded, exit the loop
                     simulatorEngine.undoLastMove();
-                    log.debug("EXITFLAG {} ---------- exitMaxi ---------- positionChanged {}", eval == EXIT_FLAG, positionChanged());
+                    log.info("maxi Position changed");
                     return EXIT_FLAG;
                 }
             }
@@ -382,8 +411,7 @@ public class AI {
             alpha = Math.max(alpha, eval);
             if (beta <= alpha) {
                 updateKillerMoves(depth, move);
-                simulatorEngine.logBoard();
-                log.info(" Maxi New Killer Move is {}", Move.convertIntToMove(move));
+                log.debug(" Maxi New Killer Move is {}", Move.convertIntToMove(move));
                 break; // Alpha-beta pruning
             }
         }
@@ -424,7 +452,7 @@ public class AI {
                 eval = alphaBeta(simulatorEngine, depth - 1, alpha, beta, !isWhite, startTime, timeLimit);
 
                 if (eval == EXIT_FLAG || positionChanged()) {
-                    log.debug("EXITFLAG {} ---------- exit mini ---------- positionChanged {}", eval == EXIT_FLAG, positionChanged());
+                    log.info("mini Position changed");
                     simulatorEngine.undoLastMove();
                     return EXIT_FLAG;
                 }
@@ -444,8 +472,7 @@ public class AI {
             beta = Math.min(beta, eval);
             if (alpha >= beta) {
                 updateKillerMoves(depth, move);
-                simulatorEngine.logBoard();
-                log.info("Mini New Killer Move is {}", Move.convertIntToMove(move));
+                log.debug("Mini New Killer Move is {}", Move.convertIntToMove(move));
                 break;
             }
         }
@@ -597,7 +624,7 @@ public class AI {
 
     private boolean isNewBestMove(MoveAndScore moveAndScore, double currentBestScore, boolean isWhite) {
         double score = moveAndScore.score;
-        return (isWhite ? score > currentBestScore : score < currentBestScore);
+        return moveAndScore.move != -1 && (isWhite ? score > currentBestScore : score < currentBestScore);
     }
 
     private boolean timeLimitExceeded(long startTime) {

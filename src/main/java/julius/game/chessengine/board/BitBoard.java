@@ -378,7 +378,7 @@ public class BitBoard {
     }
 
     private void addPromotionMoves(MoveList moves, int fromIndex, int toIndex, boolean whitesTurn, boolean isCapture, PieceType capturedType) {
-        PieceType[] promotionPieces = { PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT };
+        PieceType[] promotionPieces = {PieceType.ROOK, PieceType.QUEEN, PieceType.BISHOP, PieceType.KNIGHT};
         for (PieceType promotionPiece : promotionPieces) {
             moves.add(createMoveInt(fromIndex, toIndex, PieceType.PAWN, whitesTurn, isCapture, false, false, promotionPiece, capturedType, false, false, lastMoveDoubleStepPawnIndex));
         }
@@ -432,7 +432,6 @@ public class BitBoard {
             knights &= knights - 1; // Clear the lowest set bit
         }
     }
-
 
 
     private void generateBishopMoves(boolean isWhite, MoveList moves) {
@@ -1242,7 +1241,7 @@ public class BitBoard {
 
     public boolean isEndgame() {
         // Check if both queens are off the board
-        if (blackQueens == 0 && whiteQueens == 0) {
+        if (blackQueens == 0 && whiteQueens == 0 && blackRooks == 0 && whiteRooks == 0) {
             return true;
         }
 
@@ -1253,7 +1252,7 @@ public class BitBoard {
                 Long.bitCount(whiteQueens) + Long.bitCount(blackQueens);
 
         // Consider it endgame if there are fewer than a certain number of pieces
-        final int ENDGAME_PIECE_THRESHOLD = 6;
+        final int ENDGAME_PIECE_THRESHOLD = 5;
         return totalPieces <= ENDGAME_PIECE_THRESHOLD;
     }
 

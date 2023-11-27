@@ -277,4 +277,8 @@ public class Engine {
         return boardCopy.getBoardStateHash();
     }
 
+    public boolean isEndgame() {
+        return bitBoard.isEndgame();
+    }
+
 }

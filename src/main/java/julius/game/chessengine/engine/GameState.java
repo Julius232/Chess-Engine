@@ -73,10 +73,15 @@ public class GameState {
         boolean isWhite = MoveHelper.isWhitesMove(move);
         int pieceTypeBits = MoveHelper.derivePieceTypeBits(move);
         int capturedPieceTypeBits = MoveHelper.deriveCapturedPieceTypeBits(move);
+        int promotionPieceTypeBits = MoveHelper.derivePromotionPieceTypeBits(move);
 
         updatePieceValues(isWhite, pieceTypeBits, bitBoard, state);
+
         if (capturedPieceTypeBits != 0) {
             updateCapturedPieceValues(isWhite, capturedPieceTypeBits, bitBoard);
+        }
+        if (promotionPieceTypeBits != 0) {
+            updatePromotionPieceValues(isWhite, promotionPieceTypeBits, bitBoard);
         }
 
         log.debug("Piecetype: {}, CapturedType: {}, ScoreWhite: {}, ScoreBlack: {}",
@@ -149,6 +154,15 @@ public class GameState {
 */
 
             updateValuesForWhite(capturedPieceTypeBits, bitBoard); // Update white pieces if black is capturing
+        }
+    }
+
+    private void updatePromotionPieceValues(boolean isWhite, int promotionPieceTypeBits, BitBoard bitBoard) {
+        if (isWhite) {
+            updateValuesForWhite(promotionPieceTypeBits, bitBoard); // Update white pieces if black is capturing
+
+        } else {
+            updateValuesForBlack(promotionPieceTypeBits, bitBoard); // Update black pieces if white is capturing
         }
     }
 

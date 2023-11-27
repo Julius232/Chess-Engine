@@ -14,13 +14,12 @@ def get_file_name_without_extension(file_path):
     file_name_without_extension = os.path.splitext(base_name)[0]  # Remove the extension
     return file_name_without_extension
 
-
 def start_java_process(jar_path, jar_port):
-    with open(os.devnull, 'w') as devnull:
-        return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + jar_port], stdout=devnull, stderr=devnull)
+   with open(os.devnull, 'w') as devnull:
+      return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + jar_port], stdout=devnull, stderr=devnull)
 
 #def start_java_process(jar_path, jar_port):
-#    return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + str(jar_port)])
+    #return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + str(jar_port)])
 
 # Function to make a move on a chess engine
 def make_move(engine_url, from_pos, to_pos):
@@ -74,7 +73,7 @@ target_directory = "target"
 jar_file_name = find_latest_jar(target_directory)
 
 # Paths to the JAR files and ports
-jar1_path = "D:/Chess-Engines/v2/chess-engine-2.5.0.jar"
+jar1_path = "D:/Chess-Engines/v2/chess-engine-2.7.0.jar"
 
 if jar_file_name:
     jar2_path = os.path.join(target_directory, jar_file_name)
@@ -118,7 +117,7 @@ if not is_server_running(engine2_url):
 print("Both servers are running. Ready to play.")
 
 # Main loop to play 100 games
-for game_number in range(1, 101):
+for game_number in range(1, 1001):
     print(f"Starting game {game_number}")
 
     # Resetting last move time for each engine at the start of the game
