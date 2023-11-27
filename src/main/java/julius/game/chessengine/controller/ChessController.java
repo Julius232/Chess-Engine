@@ -84,6 +84,12 @@ public class ChessController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping(value = "/redo")
+    public ResponseEntity<?> redoLastMove() {
+        ai.getMainEngine().redoMove();
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping(value = "/field/possible/white")
     public ResponseEntity<List<Move>> getAllPossibleFieldsWhite() {
         MoveList moves =  ai.getMainEngine().getAllLegalMoves();

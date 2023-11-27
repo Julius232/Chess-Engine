@@ -29,6 +29,7 @@ public class Engine {
 
     @Getter
     private ArrayList<Integer> line = new ArrayList<>();
+    private ArrayList<Integer> redoLine = new ArrayList<>();
     private BitBoard bitBoard = new BitBoard();
     @Getter
     private GameState gameState = new GameState(bitBoard);
@@ -41,6 +42,7 @@ public class Engine {
         this.bitBoard = new BitBoard(other.bitBoard); // Assuming BitBoard's constructor is a deep copy constructor
         this.gameState = new GameState(other.gameState); // Assuming GameState's constructor is a deep copy constructor
         this.line = new ArrayList<>(other.line);
+        this.redoLine = new ArrayList<>(other.redoLine);
         //this.legalMoves = new MoveList(other.legalMoves);
         this.legalMoves = other.legalMoves;
         this.legalMovesNeedUpdate = other.legalMovesNeedUpdate;
@@ -92,6 +94,7 @@ public class Engine {
         gameState = new GameState(bitBoard);
         legalMovesNeedUpdate = true;
         line = new ArrayList<>();
+        redoLine = new ArrayList<>();
         this.openingBook = OpeningBook.getInstance();
         legalMovesCache = new TimedLRUCache<>(MAX_SIZE, MAX_AGE);
     }
@@ -245,12 +248,23 @@ public class Engine {
     public void undoLastMove() {
         if (!line.isEmpty()) {
             gameState.undo(bitBoard.getBoardStateHash());
-            this.bitBoard.undoMove(line.getLast());
-            gameState.updateScore(bitBoard, line.getLast());
+            Integer undoMove = line.getLast();
+            this.bitBoard.undoMove(undoMove);
+            gameState.updateScore(bitBoard, undoMove);
             generateLegalMoves();
+            redoLine.add(undoMove);
             line.removeLast();
         } else {
             throw new IllegalStateException("undoLastMoveWasNotPossible, line is empty");
+        }
+    }
+
+    public void redoMove() {
+        if (!redoLine.isEmpty()) {
+            performMove(redoLine.getLast());
+            redoLine.removeLast();
+        } else {
+            throw new IllegalStateException("redoLastMoveWasNotPossible, redoLine is empty");
         }
     }
 

@@ -22,6 +22,9 @@ $(document).ready(function () {
         $('#undoMove').on('click', () => {
             makeRequest('GET', 'http://localhost:8080/chess/undo', reloadBoard); // Assuming makeRequest and reloadBoard are defined in chess-data-fetching.js
         });
+        $('#redoMove').on('click', () => {
+            makeRequest('GET', 'http://localhost:8080/chess/redo', reloadBoard); 
+        });
         $('#autoPlay').on('click', () => {
             makeRequest('GET', 'http://localhost:8080/chess/autoplay', reloadBoard); // Assuming makeRequest and reloadBoard are defined in chess-data-fetching.js
         });
