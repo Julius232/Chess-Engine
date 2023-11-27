@@ -2,6 +2,7 @@ package julius.game.chessengine.utils;
 
 import julius.game.chessengine.board.BitBoard;
 import julius.game.chessengine.engine.GameStateEnum;
+import julius.game.chessengine.figures.PieceType;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
@@ -159,6 +160,7 @@ public class Score {
 
         this.cachedScoreDifference = other.cachedScoreDifference;
     }
+
 
     /**
      * Score mechanisms of the Game
@@ -638,4 +640,18 @@ public class Score {
     public void resetCachedScoreDifference() {
         this.cachedScoreDifference = null;
     }
+
+    public static int getPieceValue(int pieceTypeBits) {
+        return switch (pieceTypeBits) {
+            case 1 -> PAWN_VALUE / 1000;
+            case 2 -> KNIGHT_VALUE / 1000;
+            case 3 -> BISHOP_VALUE / 1000;
+            case 4 -> ROOK_VALUE / 1000;
+            case 5 -> QUEEN_VALUE / 1000;
+            case 6 -> 1000;
+            default -> throw new IllegalStateException("Unexpected value: " + pieceTypeBits);
+        };
+    }
+
+
 }

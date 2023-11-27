@@ -5,6 +5,7 @@ import julius.game.chessengine.board.MoveHelper;
 import julius.game.chessengine.board.MoveList;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
+import julius.game.chessengine.utils.Score;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
@@ -146,7 +147,7 @@ public class AI {
 
         if (!MoveHelper.isWhitesMove(currentBestMove) == mainEngine.whitesTurn()) {
             // If the current best move is not valid for the current turn, log an error and return.
-            log.error("Current best move {} is not valid for the current turn.", Move.convertIntToMove(currentBestMove));
+            log.debug("Current best move {} is not valid for the current turn.", Move.convertIntToMove(currentBestMove));
             return; // Return the current state without making a move
         }
         log.info("Perform Move");
@@ -485,6 +486,11 @@ public class AI {
                         }
                     }
 
+                    int mvvLvaScore = calculateMvvLvaScore(moveInt);
+                    if (mvvLvaScore != 0) {
+                        return mvvLvaScore; // Prioritize based on MVV-LVA score
+                    }
+
                     if (scoreCache.containsKey(moveInt)) {
                         return scoreCache.get(moveInt);
                     }
@@ -559,7 +565,7 @@ public class AI {
         MoveList moves = getPossibleCapturesOrPromotions(simulatorEngine);
         for (int i = 0; i < moves.size(); i++) {
             simulatorEngine.performMove(moves.getMove(i));
-            double score = -quiescenceSearch(simulatorEngine, !isWhitesTurn, -beta, -alpha, startTime, timeLimit, depth++);
+            double score = -quiescenceSearch(simulatorEngine, !isWhitesTurn, -beta, -alpha, startTime, timeLimit, ++depth);
             simulatorEngine.undoLastMove();
 
             if (score >= beta) {
@@ -648,5 +654,14 @@ public class AI {
             killerMoves[depth][i] = killerMoves[depth][i - 1];
         }
         killerMoves[depth][0] = move; // Insert new killer move at the top
+    }
+
+    private int calculateMvvLvaScore(int move) {
+        if (!MoveHelper.isCapture(move)) {
+            return 0; // Not a capture move
+        }
+        int victimValue = Score.getPieceValue(MoveHelper.deriveCapturedPieceTypeBits(move));
+        int attackerValue = Score.getPieceValue(MoveHelper.derivePieceTypeBits(move));
+        return victimValue - attackerValue;
     }
 }

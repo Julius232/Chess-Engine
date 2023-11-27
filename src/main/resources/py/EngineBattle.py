@@ -73,7 +73,7 @@ target_directory = "target"
 jar_file_name = find_latest_jar(target_directory)
 
 # Paths to the JAR files and ports
-jar1_path = "D:/Chess-Engines/v2/chess-engine-2.7.0.jar"
+jar1_path = "D:/Chess-Engines/v2/chess-engine-2.8.0.jar"
 
 if jar_file_name:
     jar2_path = os.path.join(target_directory, jar_file_name)
