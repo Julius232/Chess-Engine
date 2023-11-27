@@ -37,6 +37,22 @@ const updateCalculatedLine = () => {
     });
 };
 
+// Add an event listener to the "View Details" button
+document.getElementById('PGN').addEventListener('click', async function(event) {
+    event.preventDefault();
+    try {
+        const response = await fetch('http://localhost:8080/chess/pgn', { method: 'GET' });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const pgnData = await response.json();
+
+        // Open a new window and display the PGN
+        const pgnWindow = window.open("", "PGNWindow", "width=600,height=400");
+        pgnWindow.document.write("<pre>" + pgnData.pgn + "</pre>");
+    } catch (error) {
+        console.error('Failed to fetch PGN:', error);
+    }
+});
+
 const updateSliderValue = (value) => {
     $('#sliderValue').text(value);
 };

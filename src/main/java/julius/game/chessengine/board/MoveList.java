@@ -63,7 +63,7 @@ public class MoveList {
         return Arrays.copyOf(moves, moveCount);
     }
 
-    public int[]get() {
+    public int[] get() {
         return this.moves;
     }
 

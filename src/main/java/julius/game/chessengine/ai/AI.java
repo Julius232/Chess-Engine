@@ -182,57 +182,37 @@ public class AI {
 
     private void calculateBestMove(Engine simulatorEngine, long boardStateHash, boolean isWhite, long startTime) {
         double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-        int bestMove = mainEngine.getOpeningBook().getRandomMoveForBoardStateHash(currentBoardState); //if none found returns -1
-        if(bestMove != -1) {
-            //Play Opening Book
+        int bestMove = mainEngine.getOpeningBook().getRandomMoveForBoardStateHash(boardStateHash); // if none found returns -1
+        if (bestMove != -1) {
             currentBestMove = bestMove;
             return;
         }
+
         try {
             for (int currentDepth = depthThreshold; currentDepth <= maxDepth; currentDepth++) {
-                log.info("CurrentDepth: " + currentDepth);
-                if (!keepCalculating || positionChanged()) {
-                    log.info("Position changed main");
-                    log.debug("Calculation stopped or position changed");
+                if (shouldStopCalculating(startTime)) {
                     break;
                 }
 
                 MoveAndScore moveAndScore = getBestMove(simulatorEngine, isWhite, currentDepth, startTime, timeLimit);
-
                 if (moveAndScore != null && isNewBestMove(moveAndScore, bestScore, isWhite)) {
                     bestScore = moveAndScore.score;
                     bestMove = moveAndScore.move;
-                    log.debug("New best move found: {}, currentDepth: {}, boardStateHash {}", Move.convertIntToMove(bestMove), currentDepth, boardStateHash);
-
-                    // Update the transposition table if necessary
                     updateTranspositionTable(boardStateHash, moveAndScore, currentDepth);
-
                 }
-
-                if (timeLimitExceeded(startTime)) {
-                    log.info("Time limit exceeded, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
-                    break;
-                }
-
-                if (Thread.interrupted()) {
-                    log.debug("Thread interrupted, best Move: {}", bestMove == -1 ? "None" : Move.convertIntToMove(bestMove));
-                    break;
-                }
-                depthThreshold = currentDepth;
             }
         } finally {
-            // Ensure fillCalculatedLine is called even if the loop is broken
-
-            if(bestMove != -1) {
+            if (bestMove != -1) {
                 currentBestMove = bestMove;
-            }
-            else {
-                log.warn("BestMove was -1 in finally block");
-                beforeCalculationBoardState = -2;
+            } else {
                 depthThreshold--;
             }
-            fillCalculatedLine(simulatorEngine);
+            fillCalculatedLine(simulatorEngine); // Ensure this is always called at the end
         }
+    }
+
+    private boolean shouldStopCalculating(long startTime) {
+        return positionChanged() || timeLimitExceeded(startTime) || Thread.interrupted();
     }
 
     private void fillCalculatedLine(Engine simulation) {

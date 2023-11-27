@@ -6,6 +6,8 @@ import julius.game.chessengine.ai.OpeningBook;
 import julius.game.chessengine.board.*;
 import julius.game.chessengine.engine.GameState;
 import julius.game.chessengine.engine.GameStateEnum;
+import julius.game.chessengine.pgn.PGN;
+import julius.game.chessengine.pgn.PgnParser;
 import julius.game.chessengine.utils.Score;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -88,6 +90,12 @@ public class ChessController {
     public ResponseEntity<?> redoLastMove() {
         ai.getMainEngine().redoMove();
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping(value = "/pgn")
+    public ResponseEntity<PGN> getPGN() {
+        PgnParser pgnParser = new PgnParser(ai.getMainEngine().getLine());
+        return ResponseEntity.ok(pgnParser.parseToPgn());
     }
 
     @GetMapping(value = "/field/possible/white")

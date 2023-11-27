@@ -1252,7 +1252,7 @@ public class BitBoard {
                 Long.bitCount(whiteQueens) + Long.bitCount(blackQueens);
 
         // Consider it endgame if there are fewer than a certain number of pieces
-        final int ENDGAME_PIECE_THRESHOLD = 5;
+        final int ENDGAME_PIECE_THRESHOLD = 6;
         return totalPieces <= ENDGAME_PIECE_THRESHOLD;
     }
 

@@ -1,85 +1,178 @@
 package julius.game.chessengine.pgn;
 
-import julius.game.chessengine.board.Move;
-import julius.game.chessengine.board.Position;
+import julius.game.chessengine.board.MoveHelper;
+import julius.game.chessengine.board.MoveList;
+import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.figures.PieceType;
 
-import java.util.LinkedList;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 
 public class PgnParser {
 
-    String pgn = """
-            
-            """;
+    private enum AmbiguityType {
+        NONE, // No ambiguity
+        NONE_BUT_SAME_TO_SQUARE,
+        FILE, // Ambiguity in file
+        RANK, // Ambiguity in rank
+        BOTH  // Ambiguity in both file and rank
+    }
+    private final Engine engine = new Engine();
+    private final ArrayList<Integer> line;
 
-    public LinkedList<Move> parsePgn(String pgn) {
-        LinkedList<Move> moves = new LinkedList<>();
-        String[] moveStrings = pgn.split("\\s+"); // Split the PGN string by whitespace
+    private String event = "Alieknek testing";
+    private String site = "Neulengbach";
+    private String date = ZonedDateTime.now().toString();
+    private String round = "1";
+    private String whitePlayer = "Alieknek";
+    private String blackPlayer = "Alieknek";
+    private String result = "-";
 
-        boolean isWhite = true;
 
-        for (String moveStr : moveStrings) {
-            // Ignore non-move text such as move numbers or game result indicators
-            if (!moveStr.matches("^[a-h1-8O\\-\\+\\#]+$")) {
-                continue;
-            }
+    boolean sameFile = false;
+    boolean sameRank = false;
 
-            Move move = parseMoveString(moveStr, true);
-            if (move != null) {
-                moves.add(move);
-                isWhite = !isWhite;
-            }
-        }
-
-        return moves;
+    public PgnParser(ArrayList<Integer> line) {
+        this.line = line;
     }
 
-    private Move parseMoveString(String moveStr, boolean isWhite) {
-        // Implement logic to interpret the move string and create a Move object
-        // This can get complex as you need to handle different types of moves (e.g., pawn moves, captures, castling, promotions, etc.)
-        // Example: e4, Nf3, exd5, O-O, e8=Q+
+    public PGN parseToPgn() {
+        StringBuilder pgn = new StringBuilder();
+        addMetadata(pgn);
 
-        // This is a placeholder - you'll need to expand this to handle various move types
-        if (moveStr.equals("O-O")) {
-            return parseCastlingMove(isWhite, true); // Kingside castling
-        } else if (moveStr.equals("O-O-O")) {
-            return parseCastlingMove(isWhite, false); // Queenside castling
+        engine.startNewGame();
+        int moveCounter = 1;
+
+        for (int i = 0; i < line.size(); i++) {
+            engine.performMove(line.get(i)); // Update the engine's state for the next move
+            if (i % 2 == 0) {
+                pgn.append(moveCounter++).append(". ");
+            }
+            String movePgn = convertMoveToPgn(line.get(i));
+            pgn.append(movePgn).append(" ");
+
+        }
+
+        return new PGN(pgn.toString().trim());
+    }
+
+    private void addMetadata(StringBuilder pgn) {
+        pgn.append("[Event \"").append(event).append("\"]\n");
+        pgn.append("[Site \"").append(site).append("\"]\n");
+        pgn.append("[Date \"").append(date).append("\"]\n");
+        pgn.append("[Round \"").append(round).append("\"]\n");
+        pgn.append("[White \"").append(whitePlayer).append("\"]\n");
+        pgn.append("[Black \"").append(blackPlayer).append("\"]\n");
+        pgn.append("[Result \"").append(result).append("\"]\n\n");
+    }
+
+    private AmbiguityType isMoveAmbiguous(PieceType pieceType, int fromIndex, int toIndex) {
+        engine.undoLastMove();
+        MoveList allMoves = engine.getAllLegalMoves();
+        boolean ambiguityInFile = false;
+        boolean ambiguityInRank = false;
+        boolean otherPieceCanMoveToSameSquare = false;
+
+        for (int i = 0; i < allMoves.size(); i++) {
+            int move = allMoves.getMove(i);
+            int moveFromIndex = MoveHelper.deriveFromIndex(move);
+            int moveToIndex = MoveHelper.deriveToIndex(move);
+
+            if (MoveHelper.derivePieceTypeBits(move) == MoveHelper.pieceTypeToInt(pieceType)
+                    && moveToIndex == toIndex
+                    && moveFromIndex != fromIndex) {
+
+                otherPieceCanMoveToSameSquare = true;
+                ambiguityInFile |= (moveFromIndex % 8 == fromIndex % 8); // Check file ambiguity
+                ambiguityInRank |= (moveFromIndex / 8 == fromIndex / 8); // Check rank ambiguity
+            }
+        }
+        engine.redoMove();
+        // Determine the type of ambiguity
+        if (otherPieceCanMoveToSameSquare) {
+            if (ambiguityInFile && ambiguityInRank) {
+                return AmbiguityType.BOTH;
+            } else if (ambiguityInFile) {
+                return AmbiguityType.FILE;
+            } else if (ambiguityInRank) {
+                return AmbiguityType.RANK;
+            } else {
+                return AmbiguityType.NONE_BUT_SAME_TO_SQUARE;
+            }
+        }
+        return AmbiguityType.NONE;
+    }
+
+
+
+
+    private String convertMoveToPgn(int moveInt) {
+        int fromIndex = MoveHelper.deriveFromIndex(moveInt);
+        int toIndex = MoveHelper.deriveToIndex(moveInt);
+        String movePgn = "";
+
+        // If the move is a castling move, handle it first
+        if (MoveHelper.isCastlingMove(moveInt)) {
+            if (Math.abs(fromIndex - toIndex) == 2) {
+                movePgn = "O-O"; // Kingside castling
+            } else {
+                movePgn = "O-O-O"; // Queenside castling
+            }
         } else {
-            // Parse standard moves (e.g., e4, Nf3, exd5)
-            return parseStandardMove(moveStr, isWhite);
+            // Handle other types of moves (non-castling)
+            PieceType pieceType = MoveHelper.intToPieceType(MoveHelper.derivePieceTypeBits(moveInt));
+            PieceType promotionPieceType = MoveHelper.derivePromotionPieceTypeBits(moveInt) == 0 ? null : MoveHelper.intToPieceType(MoveHelper.derivePromotionPieceTypeBits(moveInt));
+            String from = MoveHelper.convertIndexToString(fromIndex);
+            String to = MoveHelper.convertIndexToString(toIndex);
+
+            if (pieceType == PieceType.PAWN) {
+                if (MoveHelper.isCapture(moveInt)) {
+                    movePgn += from.charAt(0) + "x"; // Pawn captures
+                }
+            } else {
+                movePgn = getPieceAbbreviation(pieceType);
+                AmbiguityType ambiguityType = isMoveAmbiguous(pieceType, fromIndex, toIndex);
+
+                if (ambiguityType != AmbiguityType.NONE) {
+                    if (ambiguityType == AmbiguityType.BOTH) {
+                        movePgn += from; // Include full 'from' position
+                    } else if (ambiguityType == AmbiguityType.FILE || ambiguityType == AmbiguityType.NONE_BUT_SAME_TO_SQUARE) {
+                        movePgn += from.charAt(1); // Include only 'from' rank
+                    } else if (ambiguityType == AmbiguityType.RANK) {
+                        movePgn += from.charAt(0); // Include only 'from' file
+                    }
+                }
+                if (MoveHelper.isCapture(moveInt)) {
+                    movePgn += "x";
+                }
+            }
+            movePgn += to;
+
+            // Handle pawn promotion
+            if (promotionPieceType != null && pieceType == PieceType.PAWN && promotionPieceType != PieceType.PAWN) {
+                movePgn += "=" + getPieceAbbreviation(promotionPieceType);
+            }
         }
+
+        // Check for check and checkmate after making the move in the engine, applicable for all moves
+        if (engine.getGameState().isInStateCheck()) {
+            movePgn += "+";
+        }
+        if (engine.getGameState().isInStateCheckMate()) {
+            movePgn += "#";
+        }
+
+        return movePgn;
     }
 
-    private Move parseStandardMove(String moveStr, boolean isWhite) {
-        // Logic to parse standard moves
-        // You'll need to determine the 'from' and 'to' positions and other details of the move
-        // This might involve keeping track of the board state to know where each piece is
-
-        // Placeholder for demonstration
-        // Example implementation for pawn moves like e4 or captures like exd5
-        Position from = null; // Determine 'from' based on moveStr and board state
-        Position to = null;   // Determine 'to' based on moveStr
-        boolean isCapture = moveStr.contains("x");
-        PieceType pieceType = determinePieceType(moveStr, isWhite); // Implement this method
-
-        return new Move(from, to, pieceType, isWhite, isCapture, false, false, null, null, false, false);
+    private String getPieceAbbreviation(PieceType pieceType) {
+        return switch (pieceType) {
+            case PAWN -> "";
+            case KNIGHT -> "N";
+            case BISHOP -> "B";
+            case ROOK -> "R";
+            case QUEEN -> "Q";
+            case KING -> "K";
+        };
     }
-
-    private Move parseCastlingMove(boolean isWhite, boolean isKingside) {
-        // Logic to create a Move object for castling
-        Position from = new Position(isWhite? 'e' : 'e', isWhite ? 1 : 8);
-        Position to = new Position(isKingside ? 'g' : 'c', isWhite ? 1 : 8);
-
-        return new Move(from, to, PieceType.KING, isWhite, false, true, false, null, null, false, false);
-    }
-
-    private PieceType determinePieceType(String moveStr, boolean isWhite) {
-        // Implement logic to determine the piece type based on the move string
-        // Example: 'N' for knight, 'Q' for queen, etc.
-        // If no piece is specified, it's assumed to be a pawn
-
-        return PieceType.PAWN; // Placeholder
-    }
-
-    // Additional helper methods as needed...
 }
