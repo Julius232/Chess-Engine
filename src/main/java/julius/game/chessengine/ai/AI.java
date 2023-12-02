@@ -5,6 +5,7 @@ import julius.game.chessengine.board.MoveHelper;
 import julius.game.chessengine.board.MoveList;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameState;
+import julius.game.chessengine.rl.RLModel;
 import julius.game.chessengine.utils.Score;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,7 +19,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static julius.game.chessengine.utils.Score.*;
+import static julius.game.chessengine.utils.Score.CHECKMATE;
 import static julius.game.chessengine.utils.Score.DRAW;
 
 @Log4j2
@@ -27,6 +28,8 @@ public class AI {
 
     @Getter
     private final Engine mainEngine;
+
+    private final RLModel rlModel;
 
     public static final double EXIT_FLAG = Double.MAX_VALUE;
     private static final ConcurrentHashMap<Long, TranspositionTableEntry> transpositionTable = new ConcurrentHashMap<>();
@@ -61,6 +64,10 @@ public class AI {
 
     public AI(Engine mainEngine) {
         this.mainEngine = mainEngine;
+        this.rlModel = new RLModel();
+        rlModel.loadModel();
+
+
         this.timeLimit = 50;
 
         // Initialize the array for killer moves
@@ -102,6 +109,38 @@ public class AI {
             }
         }
         calculatedLine = Collections.synchronizedList(new ArrayList<>());
+    }
+
+    public void train() {
+        int numberOfGames = 1000;
+        timeLimit = 413;
+        for (int i = 0; i < numberOfGames; i++) {
+            log.info("Starting Game {}", i + 1);
+
+            // Play a game of chess, AI vs AI
+            startAutoPlay(true, true);
+
+            GameState gameState = mainEngine.getGameState();
+
+            while (!gameState.isGameOver()) {
+                if (!keepCalculating) {
+                    return;
+                }
+                gameState = mainEngine.getGameState();
+            }
+
+            rlModel.train(mainEngine);
+
+            try {
+                rlModel.saveModel();
+            } catch (Exception e) {
+                log.error("Error saving model", e);
+            }
+            reset();
+            timeLimit += 7;
+            transpositionTable.clear();
+            captureTranspositionTable.clear();
+        }
     }
 
     public void startAutoPlay(boolean aiIsWhite, boolean aiIsBlack) {
@@ -150,10 +189,9 @@ public class AI {
             log.debug("Current best move {} is not valid for the current turn.", Move.convertIntToMove(currentBestMove));
             return; // Return the current state without making a move
         }
-        log.info("Perform Move");
+        log.debug("Perform Move");
         mainEngine.performMove(currentBestMove);
         currentBoardState = mainEngine.getBoardStateHash();
-        //currentBestMove = -1; // Reset currentBestMove after performing it
     }
 
     private void calculateLine() {
@@ -183,7 +221,8 @@ public class AI {
 
     private void calculateBestMove(Engine simulatorEngine, long boardStateHash, boolean isWhite, long startTime) {
         double bestScore = isWhite ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-        int bestMove = mainEngine.getOpeningBook().getRandomMoveForBoardStateHash(boardStateHash); // if none found returns -1
+        //int bestMove = mainEngine.getOpeningBook().getRandomMoveForBoardStateHash(boardStateHash); // if none found returns -1
+        int bestMove = -1; // just for training
         if (bestMove != -1) {
             currentBestMove = bestMove;
             return;
@@ -206,7 +245,9 @@ public class AI {
             if (bestMove != -1) {
                 currentBestMove = bestMove;
             } else {
-                depthThreshold--;
+                if(depthThreshold > 1) {
+                    --depthThreshold;
+                }
             }
             fillCalculatedLine(simulatorEngine); // Ensure this is always called at the end
         }
@@ -278,7 +319,7 @@ public class AI {
                 score = alphaBeta(simulatorEngine, depth - 1, alpha, beta, !isWhitesTurn, startTime, timeLimit);
                 // Check for time limit exceeded after alphaBeta call
                 if (score == EXIT_FLAG || positionChanged()) {
-                    log.info("best Position changed");
+                    log.debug("best Position changed");
                     simulatorEngine.undoLastMove(); // Undo move using its integer representation
                     break;
                 }
@@ -372,7 +413,7 @@ public class AI {
                 if (eval == EXIT_FLAG || positionChanged()) {
                     // If time limit exceeded, exit the loop
                     simulatorEngine.undoLastMove();
-                    log.info("maxi Position changed");
+                    log.debug("maxi Position changed");
                     return EXIT_FLAG;
                 }
             }
@@ -433,7 +474,7 @@ public class AI {
                 eval = alphaBeta(simulatorEngine, depth - 1, alpha, beta, !isWhite, startTime, timeLimit);
 
                 if (eval == EXIT_FLAG || positionChanged()) {
-                    log.info("mini Position changed");
+                    log.debug("mini Position changed");
                     simulatorEngine.undoLastMove();
                     return EXIT_FLAG;
                 }
@@ -473,7 +514,7 @@ public class AI {
     }
 
 
-    private ArrayList<Integer> sortMovesByEfficiency(MoveList moves, Engine simulatorEngine, boolean isWhite, int currentDepth, long startTime, long timeLimit) {
+/*    private ArrayList<Integer> sortMovesByEfficiency(MoveList moves, Engine simulatorEngine, boolean isWhite, int currentDepth, long startTime, long timeLimit) {
         Map<Integer, Double> scoreCache = new HashMap<>();
         PriorityQueue<Integer> sortedMoves = new PriorityQueue<>(
                 Comparator.comparingDouble((Integer moveInt) -> {
@@ -520,7 +561,47 @@ public class AI {
         }
 
         return sortedMoveList;
+    }*/
+
+    private ArrayList<Integer> sortMovesByEfficiency(MoveList moves, Engine simulatorEngine, boolean isWhite, int currentDepth, long startTime, long timeLimit) {
+        Map<Integer, Double> scoreCache = new HashMap<>();
+        Comparator<Integer> comparator = Comparator.comparingDouble((Integer moveInt) -> {
+            // Check if the score for this move is already cached
+            if (scoreCache.containsKey(moveInt)) {
+                return scoreCache.get(moveInt);
+            }
+
+            // Evaluate move using the RLModel
+            double modelScore = rlModel.predictMove(simulatorEngine.getBitBoard(), moveInt);
+            log.debug("Move {} got Score {} from RL Model", Move.convertIntToMove(moveInt), modelScore);
+
+            // Cache the score for reuse
+            scoreCache.put(moveInt, modelScore);
+            return modelScore;
+        });
+
+        // If it's black's turn, reverse the comparator to prioritize negative scores
+        if (!isWhite) {
+            comparator = comparator.reversed();
+        }
+
+        PriorityQueue<Integer> sortedMoves = new PriorityQueue<>(comparator);
+
+        // Add all moves to the priority queue
+        for (int i = 0; i < moves.size(); i++) {
+            sortedMoves.add(moves.getMove(i));
+        }
+
+        // Extract the sorted moves
+        ArrayList<Integer> sortedMoveList = new ArrayList<>();
+        while (!sortedMoves.isEmpty()) {
+            sortedMoveList.add(sortedMoves.poll());
+        }
+
+        return sortedMoveList;
     }
+
+
 
     public double evaluateBoard(Engine simulatorEngine, boolean isWhitesTurn, long startTime, long timeLimit) {
         if (simulatorEngine.getGameState().isInStateCheckMate()) {

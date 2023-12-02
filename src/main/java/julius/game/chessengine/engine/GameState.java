@@ -5,6 +5,7 @@ import julius.game.chessengine.board.MoveHelper;
 import julius.game.chessengine.board.MoveList;
 import julius.game.chessengine.utils.Score;
 import lombok.Data;
+import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +16,7 @@ public class GameState {
 
     private ConcurrentHashMap<Long, Integer> repetitionCounter;
 
+    @Getter
     private GameStateEnum state;
 
     private Score score;

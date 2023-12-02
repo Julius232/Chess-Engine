@@ -30,7 +30,10 @@ public class Engine {
     @Getter
     private ArrayList<Integer> line = new ArrayList<>();
     private ArrayList<Integer> redoLine = new ArrayList<>();
+
+    @Getter
     private BitBoard bitBoard = new BitBoard();
+
     @Getter
     private GameState gameState = new GameState(bitBoard);
 
@@ -131,8 +134,9 @@ public class Engine {
         legalMovesCache.put(boardStateHash, this.legalMoves);
 
         int size = legalMovesCache.size();
-        if(size > MAX_SIZE + 100) {
-            throw new RuntimeException(String.format("LegalMovesCache size %s is larger then MAX_SIZE %s", size, MAX_SIZE));
+        if(size > MAX_SIZE) {
+            legalMovesCache.cleanup();
+            log.warn("LegalMove size is bigger than MAX size, before cleanup {}, after cleanup {}", size, legalMovesCache.size());
         }
     }
 

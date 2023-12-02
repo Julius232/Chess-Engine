@@ -50,7 +50,7 @@ public class ChessController {
 
     @GetMapping(value = "/autoplay")
     public ResponseEntity<?> autoplay() {
-        ai.startAutoPlay(true, true);
+        ai.train();
         return ResponseEntity.ok().build();
     }
 

@@ -21,6 +21,43 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>org.nd4j</groupId>
+			<artifactId>nd4j-native-platform</artifactId>
+			<version>1.0.0-M2.1</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>org.deeplearning4j</groupId>
+			<artifactId>deeplearning4j-nn</artifactId>
+			<version>1.0.0-M2.1</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.deeplearning4j/deeplearning4j-ui -->
+		<dependency>
+			<groupId>org.deeplearning4j</groupId>
+			<artifactId>deeplearning4j-ui</artifactId>
+			<version>1.0.0-M2.1</version>
+		</dependency>
+
+		<!-- needed for deeplearning4j-ui -->
+		<dependency>
+			<groupId>io.vertx</groupId>
+			<artifactId>vertx-core</artifactId>
+			<version>3.9.13</version>
+		</dependency>
+
+		<!-- needed for deeplearning4j-ui -->
+		<dependency>
+			<groupId>io.vertx</groupId>
+			<artifactId>vertx-web</artifactId>
+			<version>3.9.13</version>
+		</dependency>
+
+
+
+
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
 			<version>${spring.boot.version}</version>
@@ -91,6 +128,7 @@
 			<artifactId>aspectjtools</artifactId>
 			<version>1.9.20.1</version>
 		</dependency>
+
 	</dependencies>
 
 	<build>
