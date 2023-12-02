@@ -5,10 +5,12 @@ import lombok.extern.log4j.Log4j2;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static julius.game.chessengine.helper.BitHelper.FileMasks;
-import static julius.game.chessengine.helper.BitHelper.fileBitboard;
 
 @Log4j2
 public class RookHelper {
@@ -35,7 +37,7 @@ public class RookHelper {
             5, 10, 10, 10, 10, 10, 10, 5, // Rank 3
             5, 10, 15, 15, 15, 15, 10, 5, // Rank 4
             5, 10, 15, 20, 20, 15, 10, 5, // Rank 5
-            10, 15, 20, 25, 25, 20, 15, 10, // Rank 6
+            5, 10, 15, 20, 20, 15, 10, 5, // Rank 6
             10, 20, 25, 30, 30, 25, 20, 10, // Rank 7
             15, 25, 30, 35, 35, 30, 25, 15  // Rank 8 (Advanced position)
     };
@@ -43,7 +45,7 @@ public class RookHelper {
     public final static int[] BLACK_ROOK_POSITIONAL_VALUES = {
             15, 25, 30, 35, 35, 30, 25, 15, // Rank 1 (Advanced position)
             10, 20, 25, 30, 30, 25, 20, 10, // Rank 2
-            10, 15, 20, 25, 25, 20, 15, 10, // Rank 3
+            5, 10, 15, 20, 20, 15, 10, 5, // Rank 3
             5, 10, 15, 20, 20, 15, 10, 5,   // Rank 4
             5, 10, 15, 15, 15, 15, 10, 5,   // Rank 5
             5, 10, 10, 10, 10, 10, 10, 5,   // Rank 6

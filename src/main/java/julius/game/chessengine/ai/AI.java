@@ -588,7 +588,7 @@ public class AI {
             log.debug("DRAW");
             return DRAW;
         }
-        double scoreDifference = gameState.getScore().getScoreDifference() / 1000.0;
+        double scoreDifference = gameState.getScore().getScoreDifference();
 
         log.debug("Evaluate static position score {}, {} ", isWhitesTurn ? scoreDifference : -scoreDifference, isWhitesTurn ? "WHITE" : "BLACK");
         return isWhitesTurn ? scoreDifference : -scoreDifference;

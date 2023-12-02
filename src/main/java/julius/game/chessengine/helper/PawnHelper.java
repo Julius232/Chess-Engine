@@ -1,11 +1,6 @@
 package julius.game.chessengine.helper;
 
-import julius.game.chessengine.board.Move;
-import julius.game.chessengine.utils.Color;
 import lombok.extern.log4j.Log4j2;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static julius.game.chessengine.helper.BitHelper.bitIndex;
 import static julius.game.chessengine.helper.BitHelper.fileBitboard;
@@ -14,24 +9,24 @@ import static julius.game.chessengine.helper.BitHelper.fileBitboard;
 public class PawnHelper {
 
     public final static int[] WHITE_PAWN_POSITIONAL_VALUES = {
-            0, 0, 0, 0, 0, 0, 0, 0, // Rank 1
-            5, 5, 5, 10, 10, 5, 5, 5, // Rank 2
-            10, 10, 10, 15, 15, 10, 10, 10, // Rank 3
-            15, 15, 15, 20, 20, 15, 15, 15, // Rank 4
-            20, 20, 20, 25, 25, 20, 20, 20, // Rank 5
-            25, 25, 30, 35, 35, 30, 25, 25, // Rank 6
-            30, 30, 35, 40, 40, 35, 30, 30, // Rank 7 -- close to promotion
-            0, 0, 0, 0, 0, 0, 0, 0 // Rank 8
+            0, 0, 0, 0, 0, 0, 0, 0, //Rank 1
+            0, 2, 4, -12, -12, 4, 2, 0, //Rank 2
+            0, 2, 4, 4, 4, 4, 2, 0, //Rank 3
+            0, 2, 4, 8, 8, 4, 2, 0, //Rank 4
+            0, 2, 4, 8, 8, 4, 2, 0, //Rank 5
+            4, 8, 10, 16, 16, 10, 8, 4, //Rank 6
+            100, 100, 100, 100, 100, 100, 100, 100, //Rank 7
+            0, 0, 0, 0, 0, 0, 0, 0 //Rank 8
     };
 
     public final static int[] BLACK_PAWN_POSITIONAL_VALUES = {
             0, 0, 0, 0, 0, 0, 0, 0, // Rank 1
-            30, 30, 35, 40, 40, 35, 30, 30,// Rank 2 -- close to promotion
-            25, 25, 30, 35, 35, 30, 25, 25,// Rank 3
-            20, 20, 20, 25, 25, 20, 20, 20, // Rank 4
-            15, 15, 15, 20, 20, 15, 15, 15,  // Rank 5
-            10, 10, 10, 15, 15, 10, 10, 10,// Rank 6
-            5, 5, 5, 10, 10, 5, 5, 5, // Rank 7
+            100, 100, 100, 100, 100, 100, 100, 100,// Rank 2 -- close to promotion
+            4, 8, 10, 16, 16, 10, 8, 4,// Rank 3
+            0, 2, 4, 8, 8, 4, 2, 0, // Rank 4
+            0, 2, 4, 8, 8, 4, 2, 0,  // Rank 5
+            0, 2, 4, 4, 4, 4, 2, 0,// Rank 6
+            0, 2, 4, -12, -12, 4, 2, 0, // Rank 7
             0, 0, 0, 0, 0, 0, 0, 0 // Rank 8
     };
 

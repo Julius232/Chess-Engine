@@ -73,7 +73,7 @@ target_directory = "target"
 jar_file_name = find_latest_jar(target_directory)
 
 # Paths to the JAR files and ports
-jar1_path = "D:/Chess-Engines/v2/chess-engine-2.8.0.jar"
+jar1_path = "D:/Chess-Engines/v2/chess-engine-2.9.0.jar"
 
 if jar_file_name:
     jar2_path = os.path.join(target_directory, jar_file_name)
@@ -116,8 +116,8 @@ if not is_server_running(engine2_url):
 
 print("Both servers are running. Ready to play.")
 
-# Main loop to play 100 games
-for game_number in range(1, 1001):
+# Main loop to play 1000 games
+for game_number in range(1, 101):
     print(f"Starting game {game_number}")
 
     # Resetting last move time for each engine at the start of the game

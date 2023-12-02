@@ -2,7 +2,6 @@ package julius.game.chessengine.utils;
 
 import julius.game.chessengine.board.BitBoard;
 import julius.game.chessengine.engine.GameStateEnum;
-import julius.game.chessengine.figures.PieceType;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
@@ -23,7 +22,7 @@ public class Score {
 
     public static final int KILLER_MOVE_SCORE = 10000;
 
-    private Integer cachedScoreDifference = null;
+    private Double cachedScoreDifference = null;
 
     private int whiteScore;
     private int blackScore;
@@ -227,9 +226,9 @@ public class Score {
     }
 
 
-    public int getScoreDifference() {
+    public double getScoreDifference() {
         if (cachedScoreDifference == null) {
-            cachedScoreDifference = calculateTotalWhiteScore() - calculateTotalBlackScore();
+            cachedScoreDifference = (calculateTotalWhiteScore() - calculateTotalBlackScore()) / 1000.0;
         }
 
         return cachedScoreDifference;
