@@ -60,7 +60,7 @@ public class ChessController {
     @GetMapping(value = "/train")
     public ResponseEntity<?> train() {
         log.info("Start training");
-        ai.train(100);
+        ai.train(1000);
         return ResponseEntity.ok().build();
     }
 

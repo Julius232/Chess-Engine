@@ -90,7 +90,7 @@ engine2_process = start_java_process(jar2_path, jar2_port)
 
 # Give the servers some time to start
 time.sleep(10)  # Adjust this time as needed
-time_limit = 50
+time_limit = 200
 
 # URLs of the chess engine APIs
 engine1_url = "http://localhost:" + jar1_port

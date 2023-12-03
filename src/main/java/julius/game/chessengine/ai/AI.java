@@ -43,8 +43,8 @@ public class AI {
 
     private volatile boolean keepCalculating = true;
 
-    private double epsilon = 0; // Initial Epsilon Value
-    private final double decayRate = 0.99; // Epsilon Decay Rate
+    private double epsilon = 0.69; // Initial Epsilon Value
+    private final double decayRate = 0.995; // Epsilon Decay Rate
     private boolean isAiTraining = false;
 
     private volatile long currentBoardState = -1;
@@ -117,15 +117,14 @@ public class AI {
     }
 
     public void train(int numberOfGames) {
-        timeLimit = 450;
-        boolean white = true;
+        timeLimit = 300;
         for (int i = 0; i < numberOfGames; i++) {
             log.info("Starting Game {}", i + 1);
 
 
             isAiTraining = true;
             // Play a game of chess, AI vs AI
-            startAutoPlay(white, !white);
+            startAutoPlay(true, true);
 
             GameState gameState = mainEngine.getGameState();
 
@@ -145,10 +144,9 @@ public class AI {
             }
             reset();
             updateEpsilon();
-            timeLimit += 7;
+            timeLimit += 1;
             transpositionTable.clear();
             captureTranspositionTable.clear();
-            white = !white;
         }
     }
 
@@ -581,9 +579,22 @@ public class AI {
         // Decide whether to explore (pick a random move) or exploit (use the RL model)
         if (Math.random() < epsilon && isAiTraining) {
             log.info("[{}] Random Move ordering for exploration of the AI", epsilon);
-            // Exploration: Return a list with a random move
+
+            // Exploration: Return a list with three random moves
             ArrayList<Integer> randomMoveList = new ArrayList<>();
-            randomMoveList.add(moves.getMove(new Random().nextInt(moves.size())));
+            Random rand = new Random();
+            int movesToSelect = Math.min(10, moves.size()); // Ensure we don't exceed the number of available moves
+
+            while (randomMoveList.size() < movesToSelect) {
+                int randomIndex = rand.nextInt(moves.size());
+                int randomMove = moves.getMove(randomIndex);
+
+                // Ensure unique moves are selected
+                if (!randomMoveList.contains(randomMove)) {
+                    randomMoveList.add(randomMove);
+                }
+            }
+
             return randomMoveList;
         } else {
             // Exploitation: Use the RL model to sort the moves
@@ -615,15 +626,18 @@ public class AI {
                 sortedMoves.add(moves.getMove(i));
             }
 
-            // Extract the sorted moves
-            ArrayList<Integer> sortedMoveList = new ArrayList<>();
-            while (!sortedMoves.isEmpty()) {
-                sortedMoveList.add(sortedMoves.poll());
+            // Extract the top 3 sorted moves
+            ArrayList<Integer> topThreeMoves = new ArrayList<>();
+            int movesToExtract = Math.min(1, sortedMoves.size()); // Ensure we don't exceed the number of available moves
+
+            for (int i = 0; i < movesToExtract; i++) {
+                topThreeMoves.add(sortedMoves.poll());
             }
 
-            return sortedMoveList;
+            return topThreeMoves;
         }
     }
+
 
     public void updateEpsilon() {
         // Decay epsilon over time
