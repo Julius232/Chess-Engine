@@ -43,6 +43,10 @@ public class AI {
 
     private volatile boolean keepCalculating = true;
 
+    private double epsilon = 0; // Initial Epsilon Value
+    private final double decayRate = 0.99; // Epsilon Decay Rate
+    private boolean isAiTraining = false;
+
     private volatile long currentBoardState = -1;
     private volatile long beforeCalculationBoardState = -2;
 
@@ -95,6 +99,7 @@ public class AI {
         mainEngine.startNewGame();
         depthThreshold = 1;
         lastDepthThresholdAdjustmentTime = 0;
+        isAiTraining = false;
     }
 
     public void stopCalculation() {
@@ -112,12 +117,15 @@ public class AI {
     }
 
     public void train(int numberOfGames) {
-        timeLimit = 413;
+        timeLimit = 450;
+        boolean white = true;
         for (int i = 0; i < numberOfGames; i++) {
             log.info("Starting Game {}", i + 1);
 
+
+            isAiTraining = true;
             // Play a game of chess, AI vs AI
-            startAutoPlay(true, true);
+            startAutoPlay(white, !white);
 
             GameState gameState = mainEngine.getGameState();
 
@@ -136,9 +144,11 @@ public class AI {
                 log.error("Error saving model", e);
             }
             reset();
+            updateEpsilon();
             timeLimit += 7;
             transpositionTable.clear();
             captureTranspositionTable.clear();
+            white = !white;
         }
     }
 
@@ -563,41 +573,61 @@ public class AI {
     }*/
 
     private ArrayList<Integer> sortMovesByEfficiency(MoveList moves, Engine simulatorEngine, boolean isWhite, int currentDepth, long startTime, long timeLimit) {
-        Map<Integer, Double> scoreCache = new HashMap<>();
-        Comparator<Integer> comparator = Comparator.comparingDouble((Integer moveInt) -> {
-            // Check if the score for this move is already cached
-            if (scoreCache.containsKey(moveInt)) {
-                return scoreCache.get(moveInt);
+        if (moves.size() <= 0) {
+            // Handle the case where there are no moves (return an empty list or throw an exception)
+            return new ArrayList<>();
+        }
+
+        // Decide whether to explore (pick a random move) or exploit (use the RL model)
+        if (Math.random() < epsilon && isAiTraining) {
+            log.info("[{}] Random Move ordering for exploration of the AI", epsilon);
+            // Exploration: Return a list with a random move
+            ArrayList<Integer> randomMoveList = new ArrayList<>();
+            randomMoveList.add(moves.getMove(new Random().nextInt(moves.size())));
+            return randomMoveList;
+        } else {
+            // Exploitation: Use the RL model to sort the moves
+            Map<Integer, Double> scoreCache = new HashMap<>();
+            Comparator<Integer> comparator = Comparator.comparingDouble((Integer moveInt) -> {
+                // Check if the score for this move is already cached
+                if (scoreCache.containsKey(moveInt)) {
+                    return scoreCache.get(moveInt);
+                }
+
+                // Evaluate move using the RLModel
+                double modelScore = rlModel.predictMove(simulatorEngine.getBitBoard(), moveInt);
+                log.debug("Move {} got Score {} from RL Model", Move.convertIntToMove(moveInt), modelScore);
+
+                // Cache the score for reuse
+                scoreCache.put(moveInt, modelScore);
+                return modelScore;
+            });
+
+            // If it's black's turn, reverse the comparator to prioritize negative scores
+            if (!isWhite) {
+                comparator = comparator.reversed();
             }
 
-            // Evaluate move using the RLModel
-            double modelScore = rlModel.predictMove(simulatorEngine.getBitBoard(), moveInt);
-            log.debug("Move {} got Score {} from RL Model", Move.convertIntToMove(moveInt), modelScore);
+            PriorityQueue<Integer> sortedMoves = new PriorityQueue<>(comparator);
 
-            // Cache the score for reuse
-            scoreCache.put(moveInt, modelScore);
-            return modelScore;
-        });
+            // Add all moves to the priority queue
+            for (int i = 0; i < moves.size(); i++) {
+                sortedMoves.add(moves.getMove(i));
+            }
 
-        // If it's black's turn, reverse the comparator to prioritize negative scores
-        if (!isWhite) {
-            comparator = comparator.reversed();
+            // Extract the sorted moves
+            ArrayList<Integer> sortedMoveList = new ArrayList<>();
+            while (!sortedMoves.isEmpty()) {
+                sortedMoveList.add(sortedMoves.poll());
+            }
+
+            return sortedMoveList;
         }
+    }
 
-        PriorityQueue<Integer> sortedMoves = new PriorityQueue<>(comparator);
-
-        // Add all moves to the priority queue
-        for (int i = 0; i < moves.size(); i++) {
-            sortedMoves.add(moves.getMove(i));
-        }
-
-        // Extract the sorted moves
-        ArrayList<Integer> sortedMoveList = new ArrayList<>();
-        while (!sortedMoves.isEmpty()) {
-            sortedMoveList.add(sortedMoves.poll());
-        }
-
-        return sortedMoveList;
+    public void updateEpsilon() {
+        // Decay epsilon over time
+        epsilon *= decayRate;
     }
 
 

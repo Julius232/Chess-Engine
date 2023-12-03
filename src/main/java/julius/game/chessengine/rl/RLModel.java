@@ -1,12 +1,12 @@
 package julius.game.chessengine.rl;
 
 
-import jakarta.annotation.PostConstruct;
 import julius.game.chessengine.board.BitBoard;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameStateEnum;
 import lombok.extern.log4j.Log4j2;
 import org.deeplearning4j.core.storage.StatsStorage;
+import org.deeplearning4j.nn.conf.BackpropType;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
@@ -14,7 +14,6 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.model.stats.StatsListener;
-import org.deeplearning4j.ui.model.storage.FileStatsStorage;
 import org.deeplearning4j.ui.model.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.activations.Activation;
@@ -24,7 +23,6 @@ import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -34,10 +32,10 @@ import static julius.game.chessengine.board.MoveHelper.*;
 @Component
 public class RLModel {
 
-    public static String PATH_TO_MODEL = "RLModel.zip";
+    public static String PATH_TO_MODEL = "RLModel_2.zip";
 
     private static final int inputSize = 768 + 221; // Bitboard encoding + Move encoding
-    private static final int outputSize = 4096;
+    private static final int outputSize = 1;
 
 
     private MultiLayerNetwork model;
@@ -62,18 +60,24 @@ public class RLModel {
         var conf = new NeuralNetConfiguration.Builder()
                 .weightInit(WeightInit.XAVIER)
                 .updater(new Adam(0.001))
+                .l2(0.001) // L2 regularization
                 .list()
-                .layer(0, new DenseLayer.Builder().nIn(inputSize).nOut(150)
-                        .activation(Activation.RELU)
+                .layer(0, new DenseLayer.Builder().nIn(inputSize).nOut(1024) // Adjusted neuron count
+                        .activation(Activation.LEAKYRELU)
                         .build())
-                .layer(1, new DenseLayer.Builder().nIn(150).nOut(100)
-                        .activation(Activation.RELU)
+                .layer(1, new DenseLayer.Builder().nIn(1024).nOut(1024)
+                        .activation(Activation.LEAKYRELU)
+                        .dropOut(0.5) // Adding dropout
                         .build())
-                .layer(2, new OutputLayer.Builder(LossFunctions.LossFunction.MSE)
-                        .nIn(100)
-                        .nOut(1)
+                .layer(2, new DenseLayer.Builder().nIn(1024).nOut(256)
+                        .activation(Activation.LEAKYRELU)
+                        .build())
+                .layer(3, new OutputLayer.Builder(LossFunctions.LossFunction.MSE)
+                        .nIn(256)
+                        .nOut(outputSize)
                         .activation(Activation.IDENTITY)
                         .build())
+                .backpropType(BackpropType.Standard)
                 .build();
 
         MultiLayerNetwork multiLayerNetwork = new MultiLayerNetwork(conf);
