@@ -11,12 +11,15 @@ import julius.game.chessengine.pgn.PgnParser;
 import julius.game.chessengine.utils.Score;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 import static julius.game.chessengine.board.MoveHelper.convertIndexToString;
@@ -33,7 +36,7 @@ public class ChessController {
 
     @GetMapping(value = "/score")
     public ResponseEntity<Score> getScore() {
-        return ResponseEntity.ok( ai.getMainEngine().getGameState().getScore());
+        return ResponseEntity.ok(ai.getMainEngine().getGameState().getScore());
     }
 
     @PutMapping(value = "/reset")
@@ -50,16 +53,24 @@ public class ChessController {
 
     @GetMapping(value = "/autoplay")
     public ResponseEntity<?> autoplay() {
-        ai.train();
+        ai.startAutoPlay(true, true);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping(value = "/train")
+    public ResponseEntity<?> train() {
+        log.info("Start training");
+        ai.train(100);
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping(value = "/autoplay/timelimit/{timeLimit}")
-    public ResponseEntity<?> autoplaySetTimelimit(@PathVariable("timeLimit") long timeLimit)  {
+    public ResponseEntity<?> autoplaySetTimelimit(@PathVariable("timeLimit") long timeLimit) {
         ai.setTimeLimit(timeLimit);
         log.debug("setting to: " + timeLimit);
         return ResponseEntity.ok().build();
     }
+
     @PatchMapping(value = "/autoplay/{color}")
     public ResponseEntity<?> calculateMoveForColor(@PathVariable("color") String color) {
         if (color != null) {
@@ -72,13 +83,22 @@ public class ChessController {
     @GetMapping(value = "/autoplay/lastMove")
     public ResponseEntity<ApiMove> getLastMove() {
         GameStateEnum state = ai.getMainEngine().getGameState().getState();
-        int lastMove = ai.getMainEngine().getLine().getLast();
+        Integer lastMove; // Declare lastMove outside the try-catch block
+
+        try {
+            lastMove = ai.getMainEngine().getLine().getLast();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // Use HttpStatus.NOT_FOUND
+        }
+
         int fromIndex = MoveHelper.deriveFromIndex(lastMove);
         int toIndex = MoveHelper.deriveToIndex(lastMove);
 
-        ApiMove move = new ApiMove(state, convertIndexToString(fromIndex),convertIndexToString(toIndex));
+        ApiMove move = new ApiMove(state, convertIndexToString(fromIndex), convertIndexToString(toIndex));
+        log.info("LastMove that the AI played was {}", Move.convertIntToMove(lastMove));
         return ResponseEntity.ok(move);
     }
+
 
     @GetMapping(value = "/undo")
     public ResponseEntity<?> undoLastMove() {
@@ -100,7 +120,7 @@ public class ChessController {
 
     @GetMapping(value = "/field/possible/white")
     public ResponseEntity<List<Move>> getAllPossibleFieldsWhite() {
-        MoveList moves =  ai.getMainEngine().getAllLegalMoves();
+        MoveList moves = ai.getMainEngine().getAllLegalMoves();
         List<Move> restApiMoves = new ArrayList<>();
         for (int i = 0; i < moves.size(); i++) {
             restApiMoves.add(Move.convertIntToMove(moves.getMove(i)));
@@ -122,7 +142,7 @@ public class ChessController {
 
     @GetMapping(value = "/figure/frontend")
     public ResponseEntity<FEN> getFiguresFrontend() {
-        return ResponseEntity.ok( ai.getMainEngine().translateBoardToFen());
+        return ResponseEntity.ok(ai.getMainEngine().translateBoardToFen());
     }
 
     @PatchMapping(value = "/figure/move/{from}/{to}")
@@ -136,18 +156,18 @@ public class ChessController {
         long boardStateHash = -1;
         if (saveToOpeningBook) {
             // Capture the board state hash before the move
-            boardStateHash =  ai.getMainEngine().getBoardStateHash();
+            boardStateHash = ai.getMainEngine().getBoardStateHash();
         }
 
         // Perform the move on the engine
         int fromIndex = convertStringToIndex(from);
         int toIndex = convertStringToIndex(to);
-        GameState state =  ai.getMainEngine().moveFigure(fromIndex, toIndex, 5); // Replace 5 with the actual promotion piece type, if applicable
+        GameState state = ai.getMainEngine().moveFigure(fromIndex, toIndex, 5); // Replace 5 with the actual promotion piece type, if applicable
 
         if (saveToOpeningBook && boardStateHash != -1) {
             // Save the opening if required
-            int lastMove =  ai.getMainEngine().getLastMove();
-            if(lastMove != -1) {
+            int lastMove = ai.getMainEngine().getLastMove();
+            if (lastMove != -1) {
                 openingBook.addOpening(lastMove, boardStateHash);
             }
         }
@@ -173,7 +193,7 @@ public class ChessController {
         BoardState boardState = new BoardState();
         boardState.setGameState(gameState);
         int lastMove = ai.getMainEngine().getLastMove();
-        if(lastMove != -1) {
+        if (lastMove != -1) {
             boardState.setLastMove(Move.convertIntToMove(lastMove).getTo().toString());
         }
 

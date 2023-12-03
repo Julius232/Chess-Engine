@@ -28,6 +28,9 @@ $(document).ready(function () {
         $('#autoPlay').on('click', () => {
             makeRequest('GET', 'http://localhost:8080/chess/autoplay', reloadBoard); // Assuming makeRequest and reloadBoard are defined in chess-data-fetching.js
         });
+        $('#train').on('click', () => {
+            makeRequest('GET', 'http://localhost:8080/chess/train', reloadBoard); // Assuming makeRequest and reloadBoard are defined in chess-data-fetching.js
+        });
         $('#importFEN').on('click', function () {
             var fenString = prompt("Please enter FEN:");
             if (fenString) {

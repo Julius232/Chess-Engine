@@ -111,8 +111,7 @@ public class AI {
         calculatedLine = Collections.synchronizedList(new ArrayList<>());
     }
 
-    public void train() {
-        int numberOfGames = 1000;
+    public void train(int numberOfGames) {
         timeLimit = 413;
         for (int i = 0; i < numberOfGames; i++) {
             log.info("Starting Game {}", i + 1);

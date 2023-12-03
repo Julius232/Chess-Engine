@@ -14,7 +14,7 @@ public class PawnHelper {
             0, 2, 4, 4, 4, 4, 2, 0, //Rank 3
             0, 2, 4, 8, 8, 4, 2, 0, //Rank 4
             0, 2, 4, 8, 8, 4, 2, 0, //Rank 5
-            4, 8, 10, 16, 16, 10, 8, 4, //Rank 6
+            8, 16, 20, 32, 32, 20, 16, 8, //Rank 6
             100, 100, 100, 100, 100, 100, 100, 100, //Rank 7
             0, 0, 0, 0, 0, 0, 0, 0 //Rank 8
     };
@@ -22,7 +22,7 @@ public class PawnHelper {
     public final static int[] BLACK_PAWN_POSITIONAL_VALUES = {
             0, 0, 0, 0, 0, 0, 0, 0, // Rank 1
             100, 100, 100, 100, 100, 100, 100, 100,// Rank 2 -- close to promotion
-            4, 8, 10, 16, 16, 10, 8, 4,// Rank 3
+            8, 16, 20, 32, 32, 20, 16, 8,// Rank 3
             0, 2, 4, 8, 8, 4, 2, 0, // Rank 4
             0, 2, 4, 8, 8, 4, 2, 0,  // Rank 5
             0, 2, 4, 4, 4, 4, 2, 0,// Rank 6

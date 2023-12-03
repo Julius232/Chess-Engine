@@ -189,14 +189,16 @@ public class Engine {
         Color color = bitBoard.getPieceColorAtIndex(fromIndex);
 
         if (pieceType == null || color == null) {
-            throw new IllegalStateException("No piece at the starting position");
+            log.error("No piece at the starting position");
+            return gameState;
         }
 
         // Check if it's the correct player's turn
         Color pieceColor = bitBoard.getPieceColorAtIndex(fromIndex);
         if ((pieceColor == Color.WHITE && !bitBoard.whitesTurn) || (pieceColor == Color.BLACK && bitBoard.whitesTurn)) {
             bitBoard.logBoard();
-            throw new IllegalStateException("It's not " + pieceColor + "'s turn");
+            log.error("It's not " + pieceColor + "'s turn");
+            return gameState;
         }
 
         int move = getMove(fromIndex, toIndex, promotionPiece);

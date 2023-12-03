@@ -18,8 +18,8 @@ def start_java_process(jar_path, jar_port):
    with open(os.devnull, 'w') as devnull:
       return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + jar_port], stdout=devnull, stderr=devnull)
 
-#def start_java_process(jar_path, jar_port):
-    #return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + str(jar_port)])
+def start_java_process_logging(jar_path, jar_port):
+    return subprocess.Popen(['java', '-jar', jar_path, '--server.port=' + str(jar_port)])
 
 # Function to make a move on a chess engine
 def make_move(engine_url, from_pos, to_pos):
