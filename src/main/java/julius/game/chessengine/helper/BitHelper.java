@@ -35,4 +35,6 @@ public class BitHelper {
         return (rank - 1) * 8 + (file - 'a');
     }
 
+    public static String ALien_EMOJI = new String(Character.toChars(0x1F47D));
+
 }

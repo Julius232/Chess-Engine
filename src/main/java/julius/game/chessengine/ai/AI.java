@@ -117,7 +117,7 @@ public class AI {
     }
 
     public void train(int numberOfGames) {
-        timeLimit = 300;
+        timeLimit = 250;
         for (int i = 0; i < numberOfGames; i++) {
             log.info("Starting Game {}", i + 1);
 
@@ -571,6 +571,7 @@ public class AI {
     }*/
 
     private ArrayList<Integer> sortMovesByEfficiency(MoveList moves, Engine simulatorEngine, boolean isWhite, int currentDepth, long startTime, long timeLimit) {
+        log.info(" ------------------------------------------- ");
         if (moves.size() <= 0) {
             // Handle the case where there are no moves (return an empty list or throw an exception)
             return new ArrayList<>();
@@ -578,7 +579,6 @@ public class AI {
 
         // Decide whether to explore (pick a random move) or exploit (use the RL model)
         if (Math.random() < epsilon && isAiTraining) {
-            log.info("[{}] Random Move ordering for exploration of the AI", epsilon);
 
             // Exploration: Return a list with three random moves
             ArrayList<Integer> randomMoveList = new ArrayList<>();
@@ -595,6 +595,11 @@ public class AI {
                 }
             }
 
+            log.info("[{}] AI is exploring ... space? and time! --> {}", epsilon,
+                    randomMoveList.stream()
+                            .map(Move::convertIntToMove)
+                            .map(Move::toString)
+                            .collect(Collectors.joining(", ")));
             return randomMoveList;
         } else {
             // Exploitation: Use the RL model to sort the moves
@@ -633,6 +638,12 @@ public class AI {
             for (int i = 0; i < movesToExtract; i++) {
                 topThreeMoves.add(sortedMoves.poll());
             }
+
+            log.info("[{}] AI is thinking ... I guess? this will destroy him! --> {}", epsilon,
+                    topThreeMoves.stream()
+                            .map(Move::convertIntToMove)
+                            .map(Move::toString)
+                            .collect(Collectors.joining(", ")));
 
             return topThreeMoves;
         }

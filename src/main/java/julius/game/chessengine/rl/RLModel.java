@@ -2,8 +2,10 @@ package julius.game.chessengine.rl;
 
 
 import julius.game.chessengine.board.BitBoard;
+import julius.game.chessengine.board.Move;
 import julius.game.chessengine.engine.Engine;
 import julius.game.chessengine.engine.GameStateEnum;
+import julius.game.chessengine.helper.BitHelper;
 import lombok.extern.log4j.Log4j2;
 import org.deeplearning4j.core.storage.StatsStorage;
 import org.deeplearning4j.nn.conf.BackpropType;
@@ -41,7 +43,7 @@ public class RLModel {
     private MultiLayerNetwork model;
 
     public RLModel() {
-        this.model = createModel();
+        loadModel();
     }
 
     public void initUI() {
@@ -86,32 +88,35 @@ public class RLModel {
     }
 
 
-
     public void train(Engine mainEngine) {
         Engine trainEngine = new Engine();
         double label = determineScoreForOutcome(mainEngine.getGameState().getState()); // This should be a continuous value now
 
         for (Integer move : mainEngine.getLine()) {
             try (INDArray input = encodeBoardStateAndMove(trainEngine.getBitBoard(), move)) {
+                log.info(" ---------------------------------------------------------------------------- ");
+                log.info("Learning Move {} for BoardState below {}", Move.convertIntToMove(move), BitHelper.ALien_EMOJI);
+                trainEngine.logBoard();
                 trainEngine.performMove(move);
 
                 // Create a label INDArray with a single value and reshape it to [1, 1]
                 INDArray labelArray = Nd4j.scalar(label).reshape(1, 1);
+                log.info("labelArray: {}", labelArray);
 
                 // Reshape the input to be a 2D array with a single example
                 INDArray reshapedInput = input.reshape(1, input.length());
+                log.info("reshapedInput: {}", reshapedInput);
 
                 // Train the model
                 model.setInput(reshapedInput);
                 model.setLabels(labelArray);
                 model.computeGradientAndScore();
                 model.fit(reshapedInput, labelArray);
-                log.info("updated model");
+                log.info("updated model {}", Move.convertIntToMove(move));
             }
             // Ensure proper cleanup of resources
         }
     }
-
 
 
     private double determineScoreForOutcome(GameStateEnum gameStateEnum) {
